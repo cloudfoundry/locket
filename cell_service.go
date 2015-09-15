@@ -12,7 +12,7 @@ import (
 
 const CellPresenceTTL = 10 * time.Second
 
-func (l *Client) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
+func (l *client) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
 	payload, err := models.ToJSON(cellPresence)
 	if err != nil {
 		panic(err)
@@ -21,7 +21,7 @@ func (l *Client) NewCellPresence(cellPresence models.CellPresence, retryInterval
 	return maintainer.NewPresence(l.consul, CellSchemaPath(cellPresence.CellID), payload, l.clock, retryInterval, l.logger)
 }
 
-func (l *Client) CellById(cellId string) (models.CellPresence, error) {
+func (l *client) CellById(cellId string) (models.CellPresence, error) {
 	cellPresence := models.CellPresence{}
 
 	value, err := l.consul.GetAcquiredValue(CellSchemaPath(cellId))
@@ -37,7 +37,7 @@ func (l *Client) CellById(cellId string) (models.CellPresence, error) {
 	return cellPresence, nil
 }
 
-func (l *Client) Cells() ([]models.CellPresence, error) {
+func (l *client) Cells() ([]models.CellPresence, error) {
 	cells, err := l.consul.ListAcquiredValues(CellSchemaRoot)
 	if err != nil {
 		err = ConvertConsulError(err)
@@ -61,7 +61,7 @@ func (l *Client) Cells() ([]models.CellPresence, error) {
 	return cellPresences, nil
 }
 
-func (l *Client) CellEvents() <-chan CellEvent {
+func (l *client) CellEvents() <-chan CellEvent {
 	logger := l.logger.Session("cell-events")
 
 	events := make(chan CellEvent)

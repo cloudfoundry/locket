@@ -2,7 +2,7 @@ package locket
 
 import "github.com/cloudfoundry-incubator/runtime-schema/models"
 
-func (l *Client) BBSMasterURL() (string, error) {
+func (l *client) BBSMasterURL() (string, error) {
 	value, err := l.consul.GetAcquiredValue(LockSchemaPath("bbs_lock"))
 	if err != nil {
 		return "", ErrServiceUnavailable

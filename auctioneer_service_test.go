@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Receptor Service Registry", func() {
 	var clock *fakeclock.FakeClock
-	var locketClient *locket.Client
+	var locketClient locket.Client
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {

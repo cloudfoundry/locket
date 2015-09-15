@@ -21,7 +21,7 @@ var _ = Describe("Cell Service Registry", func() {
 	var (
 		clock *fakeclock.FakeClock
 
-		locketClient       *locket.Client
+		locketClient       locket.Client
 		presence1          ifrit.Process
 		presence2          ifrit.Process
 		firstCellPresence  models.CellPresence
