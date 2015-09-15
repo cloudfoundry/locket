@@ -1,4 +1,4 @@
-package status_test
+package locket_test
 
 import (
 	"github.com/cloudfoundry-incubator/consuladapter"
@@ -15,7 +15,7 @@ var consulSession *consuladapter.Session
 
 func TestServicesBbs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Status Suite")
+	RunSpecs(t, "Locket Suite")
 }
 
 var _ = BeforeSuite(func() {

@@ -1,12 +1,12 @@
-package status
+package locket
 
 import (
 	"github.com/cloudfoundry-incubator/locket/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-func (p *PresenceStatus) AuctioneerAddress() (string, error) {
-	value, err := p.consul.GetAcquiredValue(shared.LockSchemaPath("auctioneer_lock"))
+func (l *Locket) AuctioneerAddress() (string, error) {
+	value, err := l.consul.GetAcquiredValue(shared.LockSchemaPath("auctioneer_lock"))
 	if err != nil {
 		return "", shared.ErrServiceUnavailable
 	}

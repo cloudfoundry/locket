@@ -1,4 +1,4 @@
-package status_test
+package locket_test
 
 import (
 	"os"
@@ -11,32 +11,31 @@ import (
 
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/locket/shared"
-	"github.com/cloudfoundry-incubator/locket/status"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
 
-var _ = Describe("BBS Presence", func() {
+var _ = Describe("Receptor Service Registry", func() {
 	var clock *fakeclock.FakeClock
-	var presenceStatus *status.PresenceStatus
+	var locketClient *locket.Locket
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
 		logger = lagertest.NewTestLogger("test")
-		presenceStatus = status.NewPresenceStatus(consulSession, clock, logger)
+		locketClient = locket.New(consulSession, clock, logger)
 	})
 
-	Describe("BBSMasterURL", func() {
-		Context("when able to get a master bbs presence", func() {
+	Describe("AuctioneerAddress", func() {
+		Context("when able to get an auctioneer presence", func() {
 			var heartbeater ifrit.Process
-			var bbsPresence models.BBSPresence
+			var auctioneerPresence models.AuctioneerPresence
 
 			JustBeforeEach(func() {
 				locketClient := locket.New(consulSession, clock, logger)
-				bbsLock, err := locketClient.NewBBSMasterLock(bbsPresence, 100*time.Millisecond)
+				auctioneerLock, err := locketClient.NewAuctioneerLock(auctioneerPresence, 100*time.Millisecond)
 				Expect(err).NotTo(HaveOccurred())
-				heartbeater = ifrit.Invoke(bbsLock)
+				heartbeater = ifrit.Invoke(auctioneerLock)
 			})
 
 			AfterEach(func() {
@@ -44,22 +43,22 @@ var _ = Describe("BBS Presence", func() {
 				Eventually(heartbeater.Wait()).Should(Receive(BeNil()))
 			})
 
-			Context("when the master bbs URL is present", func() {
+			Context("when the auctionner address is present", func() {
 				BeforeEach(func() {
-					bbsPresence = models.NewBBSPresence("a-bbs-id", "https://database-z1-0.database.consul.cf.internal:7085")
+					auctioneerPresence = models.NewAuctioneerPresence("auctioneer-id", "auctioneer.example.com")
 				})
 
-				It("returns the URL", func() {
-					url, err := presenceStatus.BBSMasterURL()
+				It("returns the address", func() {
+					address, err := locketClient.AuctioneerAddress()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(url).To(Equal(bbsPresence.URL))
+					Expect(address).To(Equal(auctioneerPresence.AuctioneerAddress))
 				})
 			})
 		})
 
-		Context("when unable to get any bbs presences", func() {
+		Context("when unable to get any auctioneer presences", func() {
 			It("returns ErrServiceUnavailable", func() {
-				_, err := presenceStatus.BBSMasterURL()
+				_, err := locketClient.AuctioneerAddress()
 				Expect(err).To(Equal(shared.ErrServiceUnavailable))
 			})
 		})

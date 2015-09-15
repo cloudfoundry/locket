@@ -1,4 +1,4 @@
-package status
+package locket
 
 import (
 	"path"
@@ -13,19 +13,19 @@ import (
 
 const CellPresenceTTL = 10 * time.Second
 
-func (p *PresenceStatus) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
+func (l *Locket) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
 	payload, err := models.ToJSON(cellPresence)
 	if err != nil {
 		panic(err)
 	}
 
-	return maintainer.NewPresence(p.consul, shared.CellSchemaPath(cellPresence.CellID), payload, p.clock, retryInterval, p.logger)
+	return maintainer.NewPresence(l.consul, shared.CellSchemaPath(cellPresence.CellID), payload, l.clock, retryInterval, l.logger)
 }
 
-func (p *PresenceStatus) CellById(cellId string) (models.CellPresence, error) {
+func (l *Locket) CellById(cellId string) (models.CellPresence, error) {
 	cellPresence := models.CellPresence{}
 
-	value, err := p.consul.GetAcquiredValue(shared.CellSchemaPath(cellId))
+	value, err := l.consul.GetAcquiredValue(shared.CellSchemaPath(cellId))
 	if err != nil {
 		return cellPresence, shared.ConvertConsulError(err)
 	}
@@ -38,8 +38,8 @@ func (p *PresenceStatus) CellById(cellId string) (models.CellPresence, error) {
 	return cellPresence, nil
 }
 
-func (p *PresenceStatus) Cells() ([]models.CellPresence, error) {
-	cells, err := p.consul.ListAcquiredValues(shared.CellSchemaRoot)
+func (l *Locket) Cells() ([]models.CellPresence, error) {
+	cells, err := l.consul.ListAcquiredValues(shared.CellSchemaRoot)
 	if err != nil {
 		err = shared.ConvertConsulError(err)
 		if err != shared.ErrStoreResourceNotFound {
@@ -52,7 +52,7 @@ func (p *PresenceStatus) Cells() ([]models.CellPresence, error) {
 		cellPresence := models.CellPresence{}
 		err := models.FromJSON(cell, &cellPresence)
 		if err != nil {
-			p.logger.Error("failed-to-unmarshal-cells-json", err)
+			l.logger.Error("failed-to-unmarshal-cells-json", err)
 			continue
 		}
 
@@ -62,12 +62,12 @@ func (p *PresenceStatus) Cells() ([]models.CellPresence, error) {
 	return cellPresences, nil
 }
 
-func (p *PresenceStatus) CellEvents() <-chan CellEvent {
-	logger := p.logger.Session("cell-events")
+func (l *Locket) CellEvents() <-chan CellEvent {
+	logger := l.logger.Session("cell-events")
 
 	events := make(chan CellEvent)
 	go func() {
-		disappeared := p.consul.WatchForDisappearancesUnder(logger, shared.CellSchemaRoot)
+		disappeared := l.consul.WatchForDisappearancesUnder(logger, shared.CellSchemaRoot)
 
 		for {
 			select {
@@ -89,28 +89,4 @@ func (p *PresenceStatus) CellEvents() <-chan CellEvent {
 	}()
 
 	return events
-}
-
-type CellEvent interface {
-	EventType() CellEventType
-	CellIDs() []string
-}
-
-type CellEventType int
-
-const (
-	CellEventTypeInvalid CellEventType = iota
-	CellDisappeared
-)
-
-type CellDisappearedEvent struct {
-	IDs []string
-}
-
-func (CellDisappearedEvent) EventType() CellEventType {
-	return CellDisappeared
-}
-
-func (e CellDisappearedEvent) CellIDs() []string {
-	return e.IDs
 }

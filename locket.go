@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket/maintainer"
 	"github.com/cloudfoundry-incubator/locket/shared"
-	"github.com/cloudfoundry-incubator/locket/status"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -17,16 +16,13 @@ type Locket struct {
 	consul *consuladapter.Session
 	logger lager.Logger
 	clock  clock.Clock
-	status *status.PresenceStatus
 }
 
 func New(consul *consuladapter.Session, clock clock.Clock, logger lager.Logger) *Locket {
-	status := status.NewPresenceStatus(consul, clock, logger)
 	return &Locket{
 		consul: consul,
 		logger: logger,
 		clock:  clock,
-		status: status,
 	}
 }
 
@@ -64,24 +60,4 @@ func (l *Locket) NewBBSMasterLock(bbsPresence models.BBSPresence, retryInterval 
 		return nil, err
 	}
 	return maintainer.NewLock(l.consul, shared.LockSchemaPath("bbs_lock"), bbsPresenceJSON, l.clock, retryInterval, l.logger), nil
-}
-
-func (l *Locket) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
-	return l.status.NewCellPresence(cellPresence, retryInterval)
-}
-
-func (l *Locket) Cells() ([]models.CellPresence, error) {
-	return l.status.Cells()
-}
-
-func (l *Locket) CellsEvents() <-chan status.CellEvent {
-	return l.status.CellEvents()
-}
-
-func (l *Locket) BBSMasterURL() (string, error) {
-	return l.status.BBSMasterURL()
-}
-
-func (l *Locket) AuctioneerAddress() (string, error) {
-	return l.status.AuctioneerAddress()
 }

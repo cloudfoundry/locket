@@ -1,4 +1,4 @@
-package status_test
+package locket_test
 
 import (
 	"os"
@@ -11,8 +11,8 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/locket/shared"
-	"github.com/cloudfoundry-incubator/locket/status"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
@@ -22,7 +22,7 @@ var _ = Describe("Cell Service Registry", func() {
 	var (
 		clock *fakeclock.FakeClock
 
-		presenceStatus     *status.PresenceStatus
+		locketClient       *locket.Locket
 		presence1          ifrit.Process
 		presence2          ifrit.Process
 		firstCellPresence  models.CellPresence
@@ -31,7 +31,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
-		presenceStatus = status.NewPresenceStatus(consulSession, clock, lagertest.NewTestLogger("test"))
+		locketClient = locket.New(consulSession, clock, lagertest.NewTestLogger("test"))
 
 		firstCellPresence = models.NewCellPresence("first-rep", "1.2.3.4", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
 		secondCellPresence = models.NewCellPresence("second-rep", "4.5.6.7", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
@@ -54,7 +54,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 	Describe("MaintainCellPresence", func() {
 		BeforeEach(func() {
-			presence1 = ifrit.Invoke(presenceStatus.NewCellPresence(firstCellPresence, retryInterval))
+			presence1 = ifrit.Invoke(locketClient.NewCellPresence(firstCellPresence, retryInterval))
 		})
 
 		It("should put /cell/CELL_ID in the store", func() {
@@ -71,19 +71,19 @@ var _ = Describe("Cell Service Registry", func() {
 	Describe("CellById", func() {
 		Context("when the cell exists", func() {
 			BeforeEach(func() {
-				presence1 = ifrit.Invoke(presenceStatus.NewCellPresence(firstCellPresence, retryInterval))
+				presence1 = ifrit.Invoke(locketClient.NewCellPresence(firstCellPresence, retryInterval))
 			})
 
 			It("returns the correct CellPresence", func() {
 				Eventually(func() (models.CellPresence, error) {
-					return presenceStatus.CellById(firstCellPresence.CellID)
+					return locketClient.CellById(firstCellPresence.CellID)
 				}).Should(Equal(firstCellPresence))
 			})
 		})
 
 		Context("when the cell does not exist", func() {
 			It("returns ErrStoreResourceNotFound", func() {
-				_, err := presenceStatus.CellById(firstCellPresence.CellID)
+				_, err := locketClient.CellById(firstCellPresence.CellID)
 				Expect(err).To(Equal(shared.ErrStoreResourceNotFound))
 			})
 		})
@@ -92,13 +92,13 @@ var _ = Describe("Cell Service Registry", func() {
 	Describe("Cells", func() {
 		Context("when there are available Cells", func() {
 			BeforeEach(func() {
-				presence1 = ifrit.Invoke(presenceStatus.NewCellPresence(firstCellPresence, retryInterval))
-				presence2 = ifrit.Invoke(presenceStatus.NewCellPresence(secondCellPresence, retryInterval))
+				presence1 = ifrit.Invoke(locketClient.NewCellPresence(firstCellPresence, retryInterval))
+				presence2 = ifrit.Invoke(locketClient.NewCellPresence(secondCellPresence, retryInterval))
 			})
 
 			It("should get from /v1/cell/", func() {
 				Eventually(func() ([]models.CellPresence, error) {
-					return presenceStatus.Cells()
+					return locketClient.Cells()
 				}).Should(ConsistOf(firstCellPresence, secondCellPresence))
 			})
 
@@ -115,7 +115,7 @@ var _ = Describe("Cell Service Registry", func() {
 				})
 
 				It("should ignore the unparsable JSON and move on", func() {
-					cellPresences, err := presenceStatus.Cells()
+					cellPresences, err := locketClient.Cells()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(cellPresences).To(HaveLen(2))
 					Expect(cellPresences).To(ContainElement(firstCellPresence))
@@ -126,7 +126,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 		Context("when there are none", func() {
 			It("should return empty", func() {
-				reps, err := presenceStatus.Cells()
+				reps, err := locketClient.Cells()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(reps).To(BeEmpty())
 			})
@@ -134,35 +134,35 @@ var _ = Describe("Cell Service Registry", func() {
 	})
 
 	Describe("CellEvents", func() {
-		var receivedEvents <-chan status.CellEvent
+		var receivedEvents <-chan locket.CellEvent
 		var otherSession *consuladapter.Session
 
 		setPresences := func() {
-			presence1 = ifrit.Invoke(presenceStatus.NewCellPresence(firstCellPresence, retryInterval))
+			presence1 = ifrit.Invoke(locketClient.NewCellPresence(firstCellPresence, retryInterval))
 
 			Eventually(func() ([]models.CellPresence, error) {
-				return presenceStatus.Cells()
+				return locketClient.Cells()
 			}).Should(HaveLen(1))
 		}
 
 		BeforeEach(func() {
 			otherSession = consulRunner.NewSession("other-session")
-			otherPresenceStatus := status.NewPresenceStatus(otherSession, clock, lagertest.NewTestLogger("test"))
-			receivedEvents = otherPresenceStatus.CellEvents()
+			otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+			receivedEvents = otherLocketClient.CellEvents()
 		})
 
 		Context("when the store is up", func() {
 			Context("when cells are present and then one disappears", func() {
 				BeforeEach(func() {
 					otherSession = consulRunner.NewSession("other-session")
-					otherPresenceStatus := status.NewPresenceStatus(otherSession, clock, lagertest.NewTestLogger("test"))
-					receivedEvents = otherPresenceStatus.CellEvents()
+					otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+					receivedEvents = otherLocketClient.CellEvents()
 
 					setPresences()
 					ginkgomon.Interrupt(presence1)
 
 					Eventually(func() ([]models.CellPresence, error) {
-						return presenceStatus.Cells()
+						return locketClient.Cells()
 					}).Should(HaveLen(0))
 				})
 
@@ -172,7 +172,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 				It("receives a CellDisappeared event", func() {
 					Eventually(receivedEvents).Should(Receive(Equal(
-						status.CellDisappearedEvent{IDs: []string{firstCellPresence.CellID}},
+						locket.CellDisappearedEvent{IDs: []string{firstCellPresence.CellID}},
 					)))
 				})
 			})
@@ -181,8 +181,8 @@ var _ = Describe("Cell Service Registry", func() {
 		Context("when the store is down", func() {
 			BeforeEach(func() {
 				otherSession = consulRunner.NewSession("other-session")
-				otherPresenceStatus := status.NewPresenceStatus(otherSession, clock, lagertest.NewTestLogger("test"))
-				receivedEvents = otherPresenceStatus.CellEvents()
+				otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+				receivedEvents = otherLocketClient.CellEvents()
 
 				consulRunner.Stop()
 			})
@@ -194,12 +194,12 @@ var _ = Describe("Cell Service Registry", func() {
 				By("setting presences")
 				newSession, err := consulSession.Recreate()
 				Expect(err).NotTo(HaveOccurred())
-				presenceStatus = status.NewPresenceStatus(newSession, clock, lagertest.NewTestLogger("test"))
+				locketClient = locket.New(newSession, clock, lagertest.NewTestLogger("test"))
 
 				setPresences()
 
 				Eventually(func() ([]models.CellPresence, error) {
-					return presenceStatus.Cells()
+					return locketClient.Cells()
 				}).Should(HaveLen(1))
 
 				time.Sleep(2 * time.Second) //wait for a watch fail cycle
@@ -208,11 +208,11 @@ var _ = Describe("Cell Service Registry", func() {
 				ginkgomon.Interrupt(presence1)
 
 				Eventually(func() ([]models.CellPresence, error) {
-					return presenceStatus.Cells()
+					return locketClient.Cells()
 				}).Should(HaveLen(0))
 
 				Eventually(receivedEvents).Should(Receive(Equal(
-					status.CellDisappearedEvent{IDs: []string{firstCellPresence.CellID}},
+					locket.CellDisappearedEvent{IDs: []string{firstCellPresence.CellID}},
 				)))
 			})
 		})
