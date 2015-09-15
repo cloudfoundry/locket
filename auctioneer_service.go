@@ -1,14 +1,11 @@
 package locket
 
-import (
-	"github.com/cloudfoundry-incubator/locket/shared"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
-)
+import "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 func (l *Locket) AuctioneerAddress() (string, error) {
-	value, err := l.consul.GetAcquiredValue(shared.LockSchemaPath("auctioneer_lock"))
+	value, err := l.consul.GetAcquiredValue(LockSchemaPath("auctioneer_lock"))
 	if err != nil {
-		return "", shared.ErrServiceUnavailable
+		return "", ErrServiceUnavailable
 	}
 
 	auctioneerPresence := models.AuctioneerPresence{}

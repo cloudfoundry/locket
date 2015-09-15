@@ -1,14 +1,11 @@
 package locket
 
-import (
-	"github.com/cloudfoundry-incubator/locket/shared"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
-)
+import "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 func (l *Locket) BBSMasterURL() (string, error) {
-	value, err := l.consul.GetAcquiredValue(shared.LockSchemaPath("bbs_lock"))
+	value, err := l.consul.GetAcquiredValue(LockSchemaPath("bbs_lock"))
 	if err != nil {
-		return "", shared.ErrServiceUnavailable
+		return "", ErrServiceUnavailable
 	}
 
 	bbsPresence := models.BBSPresence{}

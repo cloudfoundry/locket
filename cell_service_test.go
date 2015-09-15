@@ -12,7 +12,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/locket/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
@@ -62,7 +61,7 @@ var _ = Describe("Cell Service Registry", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() []byte {
-				value, _ := consulSession.GetAcquiredValue(shared.CellSchemaPath(firstCellPresence.CellID))
+				value, _ := consulSession.GetAcquiredValue(locket.CellSchemaPath(firstCellPresence.CellID))
 				return value
 			}, time.Second).Should(MatchJSON(expectedJSON))
 		})
@@ -84,7 +83,7 @@ var _ = Describe("Cell Service Registry", func() {
 		Context("when the cell does not exist", func() {
 			It("returns ErrStoreResourceNotFound", func() {
 				_, err := locketClient.CellById(firstCellPresence.CellID)
-				Expect(err).To(Equal(shared.ErrStoreResourceNotFound))
+				Expect(err).To(Equal(locket.ErrStoreResourceNotFound))
 			})
 		})
 	})
@@ -104,11 +103,11 @@ var _ = Describe("Cell Service Registry", func() {
 
 			Context("when there is unparsable JSON in there...", func() {
 				BeforeEach(func() {
-					err := consulSession.AcquireLock(shared.CellSchemaPath("blah"), []byte("ß"))
+					err := consulSession.AcquireLock(locket.CellSchemaPath("blah"), []byte("ß"))
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() map[string][]byte {
-						cells, err := consulSession.ListAcquiredValues(shared.CellSchemaRoot)
+						cells, err := consulSession.ListAcquiredValues(locket.CellSchemaRoot)
 						Expect(err).NotTo(HaveOccurred())
 						return cells
 					}, 1, 50*time.Millisecond).Should(HaveLen(3))

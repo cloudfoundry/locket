@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/locket/maintainer"
-	"github.com/cloudfoundry-incubator/locket/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -19,15 +18,15 @@ func (l *Locket) NewCellPresence(cellPresence models.CellPresence, retryInterval
 		panic(err)
 	}
 
-	return maintainer.NewPresence(l.consul, shared.CellSchemaPath(cellPresence.CellID), payload, l.clock, retryInterval, l.logger)
+	return maintainer.NewPresence(l.consul, CellSchemaPath(cellPresence.CellID), payload, l.clock, retryInterval, l.logger)
 }
 
 func (l *Locket) CellById(cellId string) (models.CellPresence, error) {
 	cellPresence := models.CellPresence{}
 
-	value, err := l.consul.GetAcquiredValue(shared.CellSchemaPath(cellId))
+	value, err := l.consul.GetAcquiredValue(CellSchemaPath(cellId))
 	if err != nil {
-		return cellPresence, shared.ConvertConsulError(err)
+		return cellPresence, ConvertConsulError(err)
 	}
 
 	err = models.FromJSON(value, &cellPresence)
@@ -39,10 +38,10 @@ func (l *Locket) CellById(cellId string) (models.CellPresence, error) {
 }
 
 func (l *Locket) Cells() ([]models.CellPresence, error) {
-	cells, err := l.consul.ListAcquiredValues(shared.CellSchemaRoot)
+	cells, err := l.consul.ListAcquiredValues(CellSchemaRoot)
 	if err != nil {
-		err = shared.ConvertConsulError(err)
-		if err != shared.ErrStoreResourceNotFound {
+		err = ConvertConsulError(err)
+		if err != ErrStoreResourceNotFound {
 			return nil, err
 		}
 	}
@@ -67,7 +66,7 @@ func (l *Locket) CellEvents() <-chan CellEvent {
 
 	events := make(chan CellEvent)
 	go func() {
-		disappeared := l.consul.WatchForDisappearancesUnder(logger, shared.CellSchemaRoot)
+		disappeared := l.consul.WatchForDisappearancesUnder(logger, CellSchemaRoot)
 
 		for {
 			select {

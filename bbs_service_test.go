@@ -10,7 +10,6 @@ import (
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/locket/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
@@ -59,7 +58,7 @@ var _ = Describe("BBS Presence", func() {
 		Context("when unable to get any bbs presences", func() {
 			It("returns ErrServiceUnavailable", func() {
 				_, err := locketClient.BBSMasterURL()
-				Expect(err).To(Equal(shared.ErrServiceUnavailable))
+				Expect(err).To(Equal(locket.ErrServiceUnavailable))
 			})
 		})
 	})
