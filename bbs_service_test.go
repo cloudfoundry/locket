@@ -16,13 +16,13 @@ import (
 
 var _ = Describe("BBS Presence", func() {
 	var clock *fakeclock.FakeClock
-	var locketClient *locket.Locket
+	var locketClient *locket.Client
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
 		logger = lagertest.NewTestLogger("test")
-		locketClient = locket.New(consulSession, clock, logger)
+		locketClient = locket.NewClient(consulSession, clock, logger)
 	})
 
 	Describe("BBSMasterURL", func() {
@@ -31,7 +31,7 @@ var _ = Describe("BBS Presence", func() {
 			var bbsPresence models.BBSPresence
 
 			JustBeforeEach(func() {
-				locketClient := locket.New(consulSession, clock, logger)
+				locketClient := locket.NewClient(consulSession, clock, logger)
 				bbsLock, err := locketClient.NewBBSMasterLock(bbsPresence, 100*time.Millisecond)
 				Expect(err).NotTo(HaveOccurred())
 				heartbeater = ifrit.Invoke(bbsLock)

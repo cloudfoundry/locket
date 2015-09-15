@@ -21,7 +21,7 @@ var _ = Describe("Cell Service Registry", func() {
 	var (
 		clock *fakeclock.FakeClock
 
-		locketClient       *locket.Locket
+		locketClient       *locket.Client
 		presence1          ifrit.Process
 		presence2          ifrit.Process
 		firstCellPresence  models.CellPresence
@@ -30,7 +30,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
-		locketClient = locket.New(consulSession, clock, lagertest.NewTestLogger("test"))
+		locketClient = locket.NewClient(consulSession, clock, lagertest.NewTestLogger("test"))
 
 		firstCellPresence = models.NewCellPresence("first-rep", "1.2.3.4", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
 		secondCellPresence = models.NewCellPresence("second-rep", "4.5.6.7", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
@@ -146,7 +146,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 		BeforeEach(func() {
 			otherSession = consulRunner.NewSession("other-session")
-			otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+			otherLocketClient := locket.NewClient(otherSession, clock, lagertest.NewTestLogger("test"))
 			receivedEvents = otherLocketClient.CellEvents()
 		})
 
@@ -154,7 +154,7 @@ var _ = Describe("Cell Service Registry", func() {
 			Context("when cells are present and then one disappears", func() {
 				BeforeEach(func() {
 					otherSession = consulRunner.NewSession("other-session")
-					otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+					otherLocketClient := locket.NewClient(otherSession, clock, lagertest.NewTestLogger("test"))
 					receivedEvents = otherLocketClient.CellEvents()
 
 					setPresences()
@@ -180,7 +180,7 @@ var _ = Describe("Cell Service Registry", func() {
 		Context("when the store is down", func() {
 			BeforeEach(func() {
 				otherSession = consulRunner.NewSession("other-session")
-				otherLocketClient := locket.New(otherSession, clock, lagertest.NewTestLogger("test"))
+				otherLocketClient := locket.NewClient(otherSession, clock, lagertest.NewTestLogger("test"))
 				receivedEvents = otherLocketClient.CellEvents()
 
 				consulRunner.Stop()
@@ -193,7 +193,7 @@ var _ = Describe("Cell Service Registry", func() {
 				By("setting presences")
 				newSession, err := consulSession.Recreate()
 				Expect(err).NotTo(HaveOccurred())
-				locketClient = locket.New(newSession, clock, lagertest.NewTestLogger("test"))
+				locketClient = locket.NewClient(newSession, clock, lagertest.NewTestLogger("test"))
 
 				setPresences()
 

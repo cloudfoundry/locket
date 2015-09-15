@@ -16,13 +16,13 @@ import (
 
 var _ = Describe("Receptor Service Registry", func() {
 	var clock *fakeclock.FakeClock
-	var locketClient *locket.Locket
+	var locketClient *locket.Client
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
 		logger = lagertest.NewTestLogger("test")
-		locketClient = locket.New(consulSession, clock, logger)
+		locketClient = locket.NewClient(consulSession, clock, logger)
 	})
 
 	Describe("AuctioneerAddress", func() {
@@ -31,7 +31,7 @@ var _ = Describe("Receptor Service Registry", func() {
 			var auctioneerPresence models.AuctioneerPresence
 
 			JustBeforeEach(func() {
-				locketClient := locket.New(consulSession, clock, logger)
+				locketClient := locket.NewClient(consulSession, clock, logger)
 				auctioneerLock, err := locketClient.NewAuctioneerLock(auctioneerPresence, 100*time.Millisecond)
 				Expect(err).NotTo(HaveOccurred())
 				heartbeater = ifrit.Invoke(auctioneerLock)
