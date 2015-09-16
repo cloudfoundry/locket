@@ -10,7 +10,7 @@ import (
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
 
@@ -28,7 +28,7 @@ var _ = Describe("BBS Presence", func() {
 	Describe("BBSMasterURL", func() {
 		Context("when able to get a master bbs presence", func() {
 			var heartbeater ifrit.Process
-			var bbsPresence models.BBSPresence
+			var bbsPresence presence.BBSPresence
 
 			JustBeforeEach(func() {
 				locketClient := locket.NewClient(consulSession, clock, logger)
@@ -44,7 +44,7 @@ var _ = Describe("BBS Presence", func() {
 
 			Context("when the master bbs URL is present", func() {
 				BeforeEach(func() {
-					bbsPresence = models.NewBBSPresence("a-bbs-id", "https://database-z1-0.database.consul.cf.internal:7085")
+					bbsPresence = presence.NewBBSPresence("a-bbs-id", "https://database-z1-0.database.consul.cf.internal:7085")
 				})
 
 				It("returns the URL", func() {

@@ -12,7 +12,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
 
@@ -24,16 +24,16 @@ var _ = Describe("Cell Service Registry", func() {
 		locketClient       locket.Client
 		presence1          ifrit.Process
 		presence2          ifrit.Process
-		firstCellPresence  models.CellPresence
-		secondCellPresence models.CellPresence
+		firstCellPresence  presence.CellPresence
+		secondCellPresence presence.CellPresence
 	)
 
 	BeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
 		locketClient = locket.NewClient(consulSession, clock, lagertest.NewTestLogger("test"))
 
-		firstCellPresence = models.NewCellPresence("first-rep", "1.2.3.4", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
-		secondCellPresence = models.NewCellPresence("second-rep", "4.5.6.7", "the-zone", models.NewCellCapacity(128, 1024, 3), []string{}, []string{})
+		firstCellPresence = presence.NewCellPresence("first-rep", "1.2.3.4", "the-zone", presence.NewCellCapacity(128, 1024, 3), []string{}, []string{})
+		secondCellPresence = presence.NewCellPresence("second-rep", "4.5.6.7", "the-zone", presence.NewCellCapacity(128, 1024, 3), []string{}, []string{})
 
 		presence1 = nil
 		presence2 = nil
@@ -57,7 +57,7 @@ var _ = Describe("Cell Service Registry", func() {
 		})
 
 		It("should put /cell/CELL_ID in the store", func() {
-			expectedJSON, err := models.ToJSON(firstCellPresence)
+			expectedJSON, err := presence.ToJSON(firstCellPresence)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() []byte {
@@ -74,7 +74,7 @@ var _ = Describe("Cell Service Registry", func() {
 			})
 
 			It("returns the correct CellPresence", func() {
-				Eventually(func() (models.CellPresence, error) {
+				Eventually(func() (presence.CellPresence, error) {
 					return locketClient.CellById(firstCellPresence.CellID)
 				}).Should(Equal(firstCellPresence))
 			})
@@ -96,7 +96,7 @@ var _ = Describe("Cell Service Registry", func() {
 			})
 
 			It("should get from /v1/cell/", func() {
-				Eventually(func() ([]models.CellPresence, error) {
+				Eventually(func() ([]presence.CellPresence, error) {
 					return locketClient.Cells()
 				}).Should(ConsistOf(firstCellPresence, secondCellPresence))
 			})
@@ -139,7 +139,7 @@ var _ = Describe("Cell Service Registry", func() {
 		setPresences := func() {
 			presence1 = ifrit.Invoke(locketClient.NewCellPresence(firstCellPresence, retryInterval))
 
-			Eventually(func() ([]models.CellPresence, error) {
+			Eventually(func() ([]presence.CellPresence, error) {
 				return locketClient.Cells()
 			}).Should(HaveLen(1))
 		}
@@ -160,7 +160,7 @@ var _ = Describe("Cell Service Registry", func() {
 					setPresences()
 					ginkgomon.Interrupt(presence1)
 
-					Eventually(func() ([]models.CellPresence, error) {
+					Eventually(func() ([]presence.CellPresence, error) {
 						return locketClient.Cells()
 					}).Should(HaveLen(0))
 				})
@@ -197,7 +197,7 @@ var _ = Describe("Cell Service Registry", func() {
 
 				setPresences()
 
-				Eventually(func() ([]models.CellPresence, error) {
+				Eventually(func() ([]presence.CellPresence, error) {
 					return locketClient.Cells()
 				}).Should(HaveLen(1))
 
@@ -206,7 +206,7 @@ var _ = Describe("Cell Service Registry", func() {
 				By("stopping the presence")
 				ginkgomon.Interrupt(presence1)
 
-				Eventually(func() ([]models.CellPresence, error) {
+				Eventually(func() ([]presence.CellPresence, error) {
 					return locketClient.Cells()
 				}).Should(HaveLen(0))
 

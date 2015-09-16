@@ -1,6 +1,6 @@
 package locket
 
-import "github.com/cloudfoundry-incubator/runtime-schema/models"
+import "github.com/cloudfoundry-incubator/locket/presence"
 
 func (l *client) AuctioneerAddress() (string, error) {
 	value, err := l.consul.GetAcquiredValue(LockSchemaPath("auctioneer_lock"))
@@ -8,8 +8,8 @@ func (l *client) AuctioneerAddress() (string, error) {
 		return "", ErrServiceUnavailable
 	}
 
-	auctioneerPresence := models.AuctioneerPresence{}
-	err = models.FromJSON(value, &auctioneerPresence)
+	auctioneerPresence := presence.AuctioneerPresence{}
+	err = presence.FromJSON(value, &auctioneerPresence)
 	if err != nil {
 		return "", err
 	}

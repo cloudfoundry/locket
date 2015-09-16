@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/tedsuo/ifrit"
 )
 
 type FakeClient struct {
-	NewAuctioneerLockStub        func(auctioneerPresence models.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error)
+	NewAuctioneerLockStub        func(auctioneerPresence presence.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error)
 	newAuctioneerLockMutex       sync.RWMutex
 	newAuctioneerLockArgsForCall []struct {
-		auctioneerPresence models.AuctioneerPresence
+		auctioneerPresence presence.AuctioneerPresence
 		retryInterval      time.Duration
 	}
 	newAuctioneerLockReturns struct {
@@ -66,10 +66,10 @@ type FakeClient struct {
 	newTpsWatcherLockReturns struct {
 		result1 ifrit.Runner
 	}
-	NewBBSMasterLockStub        func(bbsPresence models.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error)
+	NewBBSMasterLockStub        func(bbsPresence presence.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error)
 	newBBSMasterLockMutex       sync.RWMutex
 	newBBSMasterLockArgsForCall []struct {
-		bbsPresence   models.BBSPresence
+		bbsPresence   presence.BBSPresence
 		retryInterval time.Duration
 	}
 	newBBSMasterLockReturns struct {
@@ -90,29 +90,29 @@ type FakeClient struct {
 		result1 string
 		result2 error
 	}
-	NewCellPresenceStub        func(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner
+	NewCellPresenceStub        func(cellPresence presence.CellPresence, retryInterval time.Duration) ifrit.Runner
 	newCellPresenceMutex       sync.RWMutex
 	newCellPresenceArgsForCall []struct {
-		cellPresence  models.CellPresence
+		cellPresence  presence.CellPresence
 		retryInterval time.Duration
 	}
 	newCellPresenceReturns struct {
 		result1 ifrit.Runner
 	}
-	CellByIdStub        func(cellId string) (models.CellPresence, error)
+	CellByIdStub        func(cellId string) (presence.CellPresence, error)
 	cellByIdMutex       sync.RWMutex
 	cellByIdArgsForCall []struct {
 		cellId string
 	}
 	cellByIdReturns struct {
-		result1 models.CellPresence
+		result1 presence.CellPresence
 		result2 error
 	}
-	CellsStub        func() ([]models.CellPresence, error)
+	CellsStub        func() ([]presence.CellPresence, error)
 	cellsMutex       sync.RWMutex
 	cellsArgsForCall []struct{}
 	cellsReturns struct {
-		result1 []models.CellPresence
+		result1 []presence.CellPresence
 		result2 error
 	}
 	CellEventsStub        func() <-chan locket.CellEvent
@@ -123,10 +123,10 @@ type FakeClient struct {
 	}
 }
 
-func (fake *FakeClient) NewAuctioneerLock(auctioneerPresence models.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error) {
+func (fake *FakeClient) NewAuctioneerLock(auctioneerPresence presence.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error) {
 	fake.newAuctioneerLockMutex.Lock()
 	fake.newAuctioneerLockArgsForCall = append(fake.newAuctioneerLockArgsForCall, struct {
-		auctioneerPresence models.AuctioneerPresence
+		auctioneerPresence presence.AuctioneerPresence
 		retryInterval      time.Duration
 	}{auctioneerPresence, retryInterval})
 	fake.newAuctioneerLockMutex.Unlock()
@@ -143,7 +143,7 @@ func (fake *FakeClient) NewAuctioneerLockCallCount() int {
 	return len(fake.newAuctioneerLockArgsForCall)
 }
 
-func (fake *FakeClient) NewAuctioneerLockArgsForCall(i int) (models.AuctioneerPresence, time.Duration) {
+func (fake *FakeClient) NewAuctioneerLockArgsForCall(i int) (presence.AuctioneerPresence, time.Duration) {
 	fake.newAuctioneerLockMutex.RLock()
 	defer fake.newAuctioneerLockMutex.RUnlock()
 	return fake.newAuctioneerLockArgsForCall[i].auctioneerPresence, fake.newAuctioneerLockArgsForCall[i].retryInterval
@@ -322,10 +322,10 @@ func (fake *FakeClient) NewTpsWatcherLockReturns(result1 ifrit.Runner) {
 	}{result1}
 }
 
-func (fake *FakeClient) NewBBSMasterLock(bbsPresence models.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error) {
+func (fake *FakeClient) NewBBSMasterLock(bbsPresence presence.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error) {
 	fake.newBBSMasterLockMutex.Lock()
 	fake.newBBSMasterLockArgsForCall = append(fake.newBBSMasterLockArgsForCall, struct {
-		bbsPresence   models.BBSPresence
+		bbsPresence   presence.BBSPresence
 		retryInterval time.Duration
 	}{bbsPresence, retryInterval})
 	fake.newBBSMasterLockMutex.Unlock()
@@ -342,7 +342,7 @@ func (fake *FakeClient) NewBBSMasterLockCallCount() int {
 	return len(fake.newBBSMasterLockArgsForCall)
 }
 
-func (fake *FakeClient) NewBBSMasterLockArgsForCall(i int) (models.BBSPresence, time.Duration) {
+func (fake *FakeClient) NewBBSMasterLockArgsForCall(i int) (presence.BBSPresence, time.Duration) {
 	fake.newBBSMasterLockMutex.RLock()
 	defer fake.newBBSMasterLockMutex.RUnlock()
 	return fake.newBBSMasterLockArgsForCall[i].bbsPresence, fake.newBBSMasterLockArgsForCall[i].retryInterval
@@ -406,10 +406,10 @@ func (fake *FakeClient) BBSMasterURLReturns(result1 string, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeClient) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
+func (fake *FakeClient) NewCellPresence(cellPresence presence.CellPresence, retryInterval time.Duration) ifrit.Runner {
 	fake.newCellPresenceMutex.Lock()
 	fake.newCellPresenceArgsForCall = append(fake.newCellPresenceArgsForCall, struct {
-		cellPresence  models.CellPresence
+		cellPresence  presence.CellPresence
 		retryInterval time.Duration
 	}{cellPresence, retryInterval})
 	fake.newCellPresenceMutex.Unlock()
@@ -426,7 +426,7 @@ func (fake *FakeClient) NewCellPresenceCallCount() int {
 	return len(fake.newCellPresenceArgsForCall)
 }
 
-func (fake *FakeClient) NewCellPresenceArgsForCall(i int) (models.CellPresence, time.Duration) {
+func (fake *FakeClient) NewCellPresenceArgsForCall(i int) (presence.CellPresence, time.Duration) {
 	fake.newCellPresenceMutex.RLock()
 	defer fake.newCellPresenceMutex.RUnlock()
 	return fake.newCellPresenceArgsForCall[i].cellPresence, fake.newCellPresenceArgsForCall[i].retryInterval
@@ -439,7 +439,7 @@ func (fake *FakeClient) NewCellPresenceReturns(result1 ifrit.Runner) {
 	}{result1}
 }
 
-func (fake *FakeClient) CellById(cellId string) (models.CellPresence, error) {
+func (fake *FakeClient) CellById(cellId string) (presence.CellPresence, error) {
 	fake.cellByIdMutex.Lock()
 	fake.cellByIdArgsForCall = append(fake.cellByIdArgsForCall, struct {
 		cellId string
@@ -464,15 +464,15 @@ func (fake *FakeClient) CellByIdArgsForCall(i int) string {
 	return fake.cellByIdArgsForCall[i].cellId
 }
 
-func (fake *FakeClient) CellByIdReturns(result1 models.CellPresence, result2 error) {
+func (fake *FakeClient) CellByIdReturns(result1 presence.CellPresence, result2 error) {
 	fake.CellByIdStub = nil
 	fake.cellByIdReturns = struct {
-		result1 models.CellPresence
+		result1 presence.CellPresence
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Cells() ([]models.CellPresence, error) {
+func (fake *FakeClient) Cells() ([]presence.CellPresence, error) {
 	fake.cellsMutex.Lock()
 	fake.cellsArgsForCall = append(fake.cellsArgsForCall, struct{}{})
 	fake.cellsMutex.Unlock()
@@ -489,10 +489,10 @@ func (fake *FakeClient) CellsCallCount() int {
 	return len(fake.cellsArgsForCall)
 }
 
-func (fake *FakeClient) CellsReturns(result1 []models.CellPresence, result2 error) {
+func (fake *FakeClient) CellsReturns(result1 []presence.CellPresence, result2 error) {
 	fake.CellsStub = nil
 	fake.cellsReturns = struct {
-		result1 []models.CellPresence
+		result1 []presence.CellPresence
 		result2 error
 	}{result1, result2}
 }

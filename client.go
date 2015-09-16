@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket/maintainer"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -14,21 +14,21 @@ import (
 //go:generate counterfeiter -o locketfakes/fake_client.go . Client
 type Client interface {
 	// Locks
-	NewAuctioneerLock(auctioneerPresence models.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error)
+	NewAuctioneerLock(auctioneerPresence presence.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error)
 	NewConvergeLock(convergerID string, retryInterval time.Duration) ifrit.Runner
 	NewNsyncBulkerLock(bulkerID string, retryInterval time.Duration) ifrit.Runner
 	NewRouteEmitterLock(emitterID string, retryInterval time.Duration) ifrit.Runner
 	NewRuntimeMetricsLock(runtimeMetricsID string, retryInterval time.Duration) ifrit.Runner
 	NewTpsWatcherLock(tpsWatcherID string, retryInterval time.Duration) ifrit.Runner
-	NewBBSMasterLock(bbsPresence models.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error)
+	NewBBSMasterLock(bbsPresence presence.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error)
 
 	// Presence
 	AuctioneerAddress() (string, error)
 	BBSMasterURL() (string, error)
 
-	NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner
-	CellById(cellId string) (models.CellPresence, error)
-	Cells() ([]models.CellPresence, error)
+	NewCellPresence(cellPresence presence.CellPresence, retryInterval time.Duration) ifrit.Runner
+	CellById(cellId string) (presence.CellPresence, error)
+	Cells() ([]presence.CellPresence, error)
 	CellEvents() <-chan CellEvent
 }
 
@@ -46,8 +46,8 @@ func NewClient(consul *consuladapter.Session, clock clock.Clock, logger lager.Lo
 	}
 }
 
-func (l *client) NewAuctioneerLock(auctioneerPresence models.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error) {
-	auctionerPresenceJSON, err := models.ToJSON(auctioneerPresence)
+func (l *client) NewAuctioneerLock(auctioneerPresence presence.AuctioneerPresence, retryInterval time.Duration) (ifrit.Runner, error) {
+	auctionerPresenceJSON, err := presence.ToJSON(auctioneerPresence)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +74,8 @@ func (l *client) NewTpsWatcherLock(tpsWatcherID string, retryInterval time.Durat
 	return maintainer.NewLock(l.consul, LockSchemaPath("tps_watcher_lock"), []byte(tpsWatcherID), l.clock, retryInterval, l.logger)
 }
 
-func (l *client) NewBBSMasterLock(bbsPresence models.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error) {
-	bbsPresenceJSON, err := models.ToJSON(bbsPresence)
+func (l *client) NewBBSMasterLock(bbsPresence presence.BBSPresence, retryInterval time.Duration) (ifrit.Runner, error) {
+	bbsPresenceJSON, err := presence.ToJSON(bbsPresence)
 	if err != nil {
 		return nil, err
 	}

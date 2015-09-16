@@ -10,7 +10,7 @@ import (
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/clock/fakeclock"
 )
 
@@ -28,7 +28,7 @@ var _ = Describe("Receptor Service Registry", func() {
 	Describe("AuctioneerAddress", func() {
 		Context("when able to get an auctioneer presence", func() {
 			var heartbeater ifrit.Process
-			var auctioneerPresence models.AuctioneerPresence
+			var auctioneerPresence presence.AuctioneerPresence
 
 			JustBeforeEach(func() {
 				locketClient := locket.NewClient(consulSession, clock, logger)
@@ -44,7 +44,7 @@ var _ = Describe("Receptor Service Registry", func() {
 
 			Context("when the auctionner address is present", func() {
 				BeforeEach(func() {
-					auctioneerPresence = models.NewAuctioneerPresence("auctioneer-id", "auctioneer.example.com")
+					auctioneerPresence = presence.NewAuctioneerPresence("auctioneer-id", "auctioneer.example.com")
 				})
 
 				It("returns the address", func() {

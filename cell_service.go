@@ -5,15 +5,15 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/locket/maintainer"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
 
 const CellPresenceTTL = 10 * time.Second
 
-func (l *client) NewCellPresence(cellPresence models.CellPresence, retryInterval time.Duration) ifrit.Runner {
-	payload, err := models.ToJSON(cellPresence)
+func (l *client) NewCellPresence(cellPresence presence.CellPresence, retryInterval time.Duration) ifrit.Runner {
+	payload, err := presence.ToJSON(cellPresence)
 	if err != nil {
 		panic(err)
 	}
@@ -21,15 +21,15 @@ func (l *client) NewCellPresence(cellPresence models.CellPresence, retryInterval
 	return maintainer.NewPresence(l.consul, CellSchemaPath(cellPresence.CellID), payload, l.clock, retryInterval, l.logger)
 }
 
-func (l *client) CellById(cellId string) (models.CellPresence, error) {
-	cellPresence := models.CellPresence{}
+func (l *client) CellById(cellId string) (presence.CellPresence, error) {
+	cellPresence := presence.CellPresence{}
 
 	value, err := l.consul.GetAcquiredValue(CellSchemaPath(cellId))
 	if err != nil {
 		return cellPresence, ConvertConsulError(err)
 	}
 
-	err = models.FromJSON(value, &cellPresence)
+	err = presence.FromJSON(value, &cellPresence)
 	if err != nil {
 		return cellPresence, err
 	}
@@ -37,7 +37,7 @@ func (l *client) CellById(cellId string) (models.CellPresence, error) {
 	return cellPresence, nil
 }
 
-func (l *client) Cells() ([]models.CellPresence, error) {
+func (l *client) Cells() ([]presence.CellPresence, error) {
 	cells, err := l.consul.ListAcquiredValues(CellSchemaRoot)
 	if err != nil {
 		err = ConvertConsulError(err)
@@ -46,10 +46,10 @@ func (l *client) Cells() ([]models.CellPresence, error) {
 		}
 	}
 
-	cellPresences := []models.CellPresence{}
+	cellPresences := []presence.CellPresence{}
 	for _, cell := range cells {
-		cellPresence := models.CellPresence{}
-		err := models.FromJSON(cell, &cellPresence)
+		cellPresence := presence.CellPresence{}
+		err := presence.FromJSON(cell, &cellPresence)
 		if err != nil {
 			l.logger.Error("failed-to-unmarshal-cells-json", err)
 			continue
