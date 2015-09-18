@@ -14,7 +14,7 @@ import (
 	"github.com/pivotal-golang/clock/fakeclock"
 )
 
-var _ = Describe("Receptor Service Registry", func() {
+var _ = Describe("Auctioneer Service", func() {
 	var clock *fakeclock.FakeClock
 	var locketClient locket.Client
 	var logger *lagertest.TestLogger
