@@ -1,10 +1,10 @@
-package maintainer_test
+package locket_test
 
 import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/locket/maintainer"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/hashicorp/consul/api"
 
 	"github.com/pivotal-golang/clock"
@@ -42,12 +42,12 @@ var _ = Describe("Presence", func() {
 		presenceValue = []byte("some-value")
 
 		retryInterval = 500 * time.Millisecond
-		logger = lagertest.NewTestLogger("maintainer")
+		logger = lagertest.NewTestLogger("locket")
 	})
 
 	JustBeforeEach(func() {
 		clock := clock.NewClock()
-		presenceRunner = maintainer.NewPresence(consulSession, presenceKey, presenceValue, clock, retryInterval, logger)
+		presenceRunner = locket.NewPresence(consulSession, presenceKey, presenceValue, clock, retryInterval, logger)
 	})
 
 	AfterEach(func() {

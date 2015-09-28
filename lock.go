@@ -1,4 +1,4 @@
-package maintainer
+package locket
 
 import (
 	"errors"

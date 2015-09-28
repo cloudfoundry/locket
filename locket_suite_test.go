@@ -1,8 +1,8 @@
 package locket_test
 
 import (
-	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -10,30 +10,32 @@ import (
 	"testing"
 )
 
-var consulRunner *consulrunner.ClusterRunner
-var consulSession *consuladapter.Session
+var (
+	consulStartingPort int
+	consulRunner       *consulrunner.ClusterRunner
+)
 
-func TestServicesBbs(t *testing.T) {
+const (
+	defaultScheme = "http"
+)
+
+func TestLocket(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Locket Suite")
 }
 
 var _ = BeforeSuite(func() {
-	consulRunner = consulrunner.NewClusterRunner(
-		5001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
-		1,
-		"http",
-	)
+	consulStartingPort = 5001 + config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength
+	consulRunner = consulrunner.NewClusterRunner(consulStartingPort, 1, defaultScheme)
 
 	consulRunner.Start()
 	consulRunner.WaitUntilReady()
 })
 
-var _ = AfterSuite(func() {
-	consulRunner.Stop()
-})
-
 var _ = BeforeEach(func() {
 	consulRunner.Reset()
-	consulSession = consulRunner.NewSession("a-session")
+})
+
+var _ = AfterSuite(func() {
+	consulRunner.Stop()
 })

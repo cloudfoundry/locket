@@ -1,10 +1,10 @@
-package maintainer_test
+package locket_test
 
 import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/locket/maintainer"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/hashicorp/consul/api"
 
 	"github.com/pivotal-golang/clock"
@@ -42,12 +42,12 @@ var _ = Describe("Lock", func() {
 		lockValue = []byte("some-value")
 
 		retryInterval = 500 * time.Millisecond
-		logger = lagertest.NewTestLogger("maintainer")
+		logger = lagertest.NewTestLogger("locket")
 	})
 
 	JustBeforeEach(func() {
 		clock := clock.NewClock()
-		lockRunner = maintainer.NewLock(consulSession, lockKey, lockValue, clock, retryInterval, logger)
+		lockRunner = locket.NewLock(consulSession, lockKey, lockValue, clock, retryInterval, logger)
 	})
 
 	AfterEach(func() {
@@ -99,7 +99,7 @@ var _ = Describe("Lock", func() {
 					It("loses the lock and exits", func() {
 						var err error
 						Eventually(lockProcess.Wait()).Should(Receive(&err))
-						Expect(err).To(Equal(maintainer.ErrLockLost))
+						Expect(err).To(Equal(locket.ErrLockLost))
 					})
 				})
 
@@ -125,7 +125,7 @@ var _ = Describe("Lock", func() {
 				otherSession := consulRunner.NewSession("other-session")
 				clock := clock.NewClock()
 
-				otherRunner := maintainer.NewLock(otherSession, lockKey, otherValue, clock, retryInterval, logger)
+				otherRunner := locket.NewLock(otherSession, lockKey, otherValue, clock, retryInterval, logger)
 				otherProcess = ifrit.Background(otherRunner)
 
 				Eventually(otherProcess.Ready()).Should(BeClosed())
