@@ -5,6 +5,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
+	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
+	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/hashicorp/consul/api"
 
 	"github.com/pivotal-golang/clock"
@@ -29,6 +31,8 @@ var _ = Describe("Lock", func() {
 		lockProcess   ifrit.Process
 		retryInterval time.Duration
 		logger        lager.Logger
+
+		sender *fake.FakeMetricSender
 	)
 
 	getLockValue := func() ([]byte, error) {
@@ -43,6 +47,9 @@ var _ = Describe("Lock", func() {
 
 		retryInterval = 500 * time.Millisecond
 		logger = lagertest.NewTestLogger("locket")
+
+		sender = fake.NewFakeMetricSender()
+		metrics.Initialize(sender, nil)
 	})
 
 	JustBeforeEach(func() {
@@ -70,6 +77,7 @@ var _ = Describe("Lock", func() {
 
 				Eventually(logger).Should(Say("acquire-lock-failed"))
 				Eventually(logger).Should(Say("retrying-acquiring-lock"))
+				Expect(sender.GetValue(lockKey).Value).To(Equal(float64(0)))
 			})
 		})
 
@@ -78,6 +86,7 @@ var _ = Describe("Lock", func() {
 				lockProcess = ifrit.Background(lockRunner)
 				Eventually(lockProcess.Ready()).Should(BeClosed())
 				Expect(getLockValue()).To(Equal(lockValue))
+				Expect(sender.GetValue(lockKey).Value).To(Equal(float64(1)))
 			})
 
 			Context("and we have acquired the lock", func() {
@@ -100,6 +109,7 @@ var _ = Describe("Lock", func() {
 						var err error
 						Eventually(lockProcess.Wait()).Should(Receive(&err))
 						Expect(err).To(Equal(locket.ErrLockLost))
+						Expect(sender.GetValue(lockKey).Value).To(Equal(float64(0)))
 					})
 				})
 
@@ -161,6 +171,7 @@ var _ = Describe("Lock", func() {
 
 					Eventually(logger).Should(Say("acquire-lock-failed"))
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
+					Expect(sender.GetValue(lockKey).Value).To(Equal(float64(0)))
 				})
 			})
 

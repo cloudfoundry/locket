@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -23,6 +24,8 @@ type Lock struct {
 	retryInterval time.Duration
 
 	logger lager.Logger
+
+	metricEmiter metric.Metric
 }
 
 func NewLock(
@@ -42,6 +45,8 @@ func NewLock(
 		retryInterval: retryInterval,
 
 		logger: logger,
+
+		metricEmiter: metric.Metric(lockKey),
 	}
 }
 
@@ -71,6 +76,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			logger.Info("shutting-down", lager.Data{"received-signal": sig})
 
 			logger.Debug("releasing-lock")
+			l.metricEmiter.Send(0)
 			return nil
 		case err := <-l.consul.Err():
 			var data lager.Data
@@ -80,6 +86,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 			if ready == nil {
 				logger.Info("lost-lock", data)
+				l.metricEmiter.Send(0)
 				return ErrLockLost
 			}
 
@@ -88,11 +95,13 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		case err := <-acquireErr:
 			if err != nil {
 				logger.Info("acquire-lock-failed", lager.Data{"err": err.Error()})
+				l.metricEmiter.Send(0)
 				c = l.clock.NewTimer(l.retryInterval).C()
 				break
 			}
 
 			logger.Info("acquire-lock-succeeded")
+			l.metricEmiter.Send(1)
 
 			close(ready)
 			ready = nil
