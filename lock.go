@@ -3,6 +3,7 @@ package locket
 import (
 	"errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
@@ -25,7 +26,9 @@ type Lock struct {
 
 	logger lager.Logger
 
-	metricEmiter metric.Metric
+	lockAcquiredMetric metric.Metric
+	lockUptimeMetric   metric.Metric
+	lockAcquiredTime   time.Time
 }
 
 func NewLock(
@@ -36,6 +39,7 @@ func NewLock(
 	retryInterval time.Duration,
 	logger lager.Logger,
 ) Lock {
+	lockMetricName := strings.Replace(lockKey, "/", "-", -1)
 	return Lock{
 		consul: consul,
 		key:    lockKey,
@@ -46,7 +50,8 @@ func NewLock(
 
 		logger: logger,
 
-		metricEmiter: metric.Metric(lockKey),
+		lockAcquiredMetric: metric.Metric("LockHeld." + lockMetricName),
+		lockUptimeMetric:   metric.Metric("LockHeldDuration." + lockMetricName),
 	}
 }
 
@@ -67,6 +72,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	var c <-chan time.Time
+	var reemit <-chan time.Time
 
 	go acquire(l.consul)
 
@@ -76,7 +82,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			logger.Info("shutting-down", lager.Data{"received-signal": sig})
 
 			logger.Debug("releasing-lock")
-			l.metricEmiter.Send(0)
+			l.emitMetrics(false)
 			return nil
 		case err := <-l.consul.Err():
 			var data lager.Data
@@ -86,7 +92,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 			if ready == nil {
 				logger.Info("lost-lock", data)
-				l.metricEmiter.Send(0)
+				l.emitMetrics(false)
 				return ErrLockLost
 			}
 
@@ -95,21 +101,24 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		case err := <-acquireErr:
 			if err != nil {
 				logger.Info("acquire-lock-failed", lager.Data{"err": err.Error()})
-				l.metricEmiter.Send(0)
+				l.emitMetrics(false)
 				c = l.clock.NewTimer(l.retryInterval).C()
 				break
 			}
 
 			logger.Info("acquire-lock-succeeded")
-			l.metricEmiter.Send(1)
-
+			l.lockAcquiredTime = l.clock.Now()
+			l.emitMetrics(true)
+			reemit = l.clock.NewTimer(30 * time.Second).C()
 			close(ready)
 			ready = nil
 			c = nil
 			logger.Info("started")
+		case <-reemit:
+			l.emitMetrics(true)
+			reemit = l.clock.NewTimer(30 * time.Second).C()
 		case <-c:
 			logger.Info("retrying-acquiring-lock")
-
 			newSession, err := l.consul.Recreate()
 			if err != nil {
 				c = l.clock.NewTimer(l.retryInterval).C()
@@ -120,4 +129,23 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			}
 		}
 	}
+}
+
+func (l Lock) emitMetrics(acquired bool) {
+	var acqVal, uptime int
+
+	if acquired {
+		acqVal = 1
+		uptime = int(l.clock.Since(l.lockAcquiredTime).Seconds())
+	} else {
+		acqVal = 0
+		uptime = 0
+	}
+
+	l.logger.Debug("reemit-lock-uptime", lager.Data{"uptime": uptime,
+		"uptimeMetricName":       l.lockUptimeMetric,
+		"lockAcquiredMetricName": l.lockAcquiredMetric,
+	})
+	l.lockUptimeMetric.Send(uptime)
+	l.lockAcquiredMetric.Send(acqVal)
 }
