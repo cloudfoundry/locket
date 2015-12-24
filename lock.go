@@ -27,7 +27,7 @@ type Lock struct {
 	logger lager.Logger
 
 	lockAcquiredMetric metric.Metric
-	lockUptimeMetric   metric.Metric
+	lockUptimeMetric   metric.Duration
 	lockAcquiredTime   time.Time
 }
 
@@ -51,7 +51,7 @@ func NewLock(
 		logger: logger,
 
 		lockAcquiredMetric: metric.Metric("LockHeld." + lockMetricName),
-		lockUptimeMetric:   metric.Metric("LockHeldDuration." + lockMetricName),
+		lockUptimeMetric:   metric.Duration("LockHeldDuration." + lockMetricName),
 	}
 }
 
@@ -132,11 +132,12 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 }
 
 func (l Lock) emitMetrics(acquired bool) {
-	var acqVal, uptime int
+	var acqVal int
+	var uptime time.Duration
 
 	if acquired {
 		acqVal = 1
-		uptime = int(l.clock.Since(l.lockAcquiredTime).Seconds())
+		uptime = l.clock.Since(l.lockAcquiredTime)
 	} else {
 		acqVal = 0
 		uptime = 0

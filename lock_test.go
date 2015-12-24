@@ -108,15 +108,15 @@ var _ = Describe("Lock", func() {
 					clock.IncrementBySeconds(30)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(30)))
+					}, 2).Should(Equal(float64(30 * time.Second)))
 					clock.IncrementBySeconds(30)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(60)))
+					}, 2).Should(Equal(float64(60 * time.Second)))
 					clock.IncrementBySeconds(30)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(90)))
+					}, 2).Should(Equal(float64(90 * time.Second)))
 				})
 
 				Context("when consul shuts down", func() {
