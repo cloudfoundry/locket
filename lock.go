@@ -147,6 +147,13 @@ func (l Lock) emitMetrics(acquired bool) {
 		"uptimeMetricName":       l.lockUptimeMetric,
 		"lockAcquiredMetricName": l.lockAcquiredMetric,
 	})
-	l.lockUptimeMetric.Send(uptime)
-	l.lockAcquiredMetric.Send(acqVal)
+	err := l.lockUptimeMetric.Send(uptime)
+	if err != nil {
+		l.logger.Error("failed-to-send-lock-uptime-metric", err)
+	}
+
+	err = l.lockAcquiredMetric.Send(acqVal)
+	if err != nil {
+		l.logger.Error("failed-to-send-lock-acquired-metric", err)
+	}
 }
