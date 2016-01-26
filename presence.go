@@ -21,15 +21,22 @@ type Presence struct {
 }
 
 func NewPresence(
-	consul *consuladapter.Session,
+	consulClient consuladapter.Client,
 	lockKey string,
 	lockValue []byte,
 	clock clock.Clock,
 	retryInterval time.Duration,
 	logger lager.Logger,
+	lockTTL time.Duration,
 ) Presence {
+	// TODO find default lock ttl
+	session, err := consuladapter.NewSessionNoChecks("consul-db", lockTTL, consulClient)
+	if err != nil {
+		logger.Fatal("consul-session-failed", err)
+	}
+
 	return Presence{
-		consul: consul,
+		consul: session,
 		key:    lockKey,
 		value:  lockValue,
 

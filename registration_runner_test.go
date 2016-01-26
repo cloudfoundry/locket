@@ -185,7 +185,7 @@ var _ = Describe("Service Registration Unit Tests", func() {
 	)
 
 	BeforeEach(func() {
-		client, agent, _ = fakes.NewFakeClient()
+		client, agent, _, _ = fakes.NewFakeClient()
 		logger = lagertest.NewTestLogger("test")
 		clock = fakeclock.NewFakeClock(time.Now())
 
