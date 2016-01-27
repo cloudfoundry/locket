@@ -170,7 +170,7 @@ var _ = Describe("Presence", func() {
 			})
 
 			Context("and the session is destroyed", func() {
-				It("should recreate the session and continue to retry", func() {
+				XIt("should recreate the session and continue to retry", func() {
 					var err error
 					presenceProcess = ifrit.Background(presenceRunner)
 					Eventually(presenceProcess.Ready()).Should(BeClosed())

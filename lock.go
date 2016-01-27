@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
+	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -32,16 +33,28 @@ type Lock struct {
 }
 
 func NewLock(
-	consul *consuladapter.Session,
+	logger lager.Logger,
+	consulClient consuladapter.Client,
 	lockKey string,
 	lockValue []byte,
 	clock clock.Clock,
 	retryInterval time.Duration,
-	logger lager.Logger,
+	lockTTL time.Duration,
 ) Lock {
 	lockMetricName := strings.Replace(lockKey, "/", "-", -1)
+
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		logger.Fatal("create-uuid-failed", err)
+	}
+
+	session, err := consuladapter.NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
+	if err != nil {
+		logger.Fatal("consul-session-failed", err)
+	}
+
 	return Lock{
-		consul: consul,
+		consul: session,
 		key:    lockKey,
 		value:  lockValue,
 
