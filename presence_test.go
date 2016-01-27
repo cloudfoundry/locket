@@ -23,7 +23,7 @@ var _ = Describe("Presence", func() {
 		presenceKey   string
 		presenceValue []byte
 
-		consulSession *consuladapter.Session
+		consulClient consuladapter.Client
 
 		presenceRunner  ifrit.Runner
 		presenceProcess ifrit.Process
@@ -32,11 +32,20 @@ var _ = Describe("Presence", func() {
 	)
 
 	getPresenceValue := func() ([]byte, error) {
-		return consulSession.GetAcquiredValue(presenceKey)
+		kvPair, _, err := consulClient.KV().Get(presenceKey, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if kvPair == nil || kvPair.Session == "" {
+			return nil, consuladapter.NewKeyNotFoundError(presenceKey)
+		}
+
+		return kvPair.Value, nil
 	}
 
 	BeforeEach(func() {
-		consulSession = consulRunner.NewSession("a-session")
+		consulClient = consulRunner.NewConsulClient()
 
 		presenceKey = "some-key"
 		presenceValue = []byte("some-value")
@@ -47,12 +56,11 @@ var _ = Describe("Presence", func() {
 
 	JustBeforeEach(func() {
 		clock := clock.NewClock()
-		presenceRunner = locket.NewPresence(consulSession, presenceKey, presenceValue, clock, retryInterval, logger)
+		presenceRunner = locket.NewPresence(logger, consulClient, presenceKey, presenceValue, clock, retryInterval, 5*time.Second)
 	})
 
 	AfterEach(func() {
 		ginkgomon.Kill(presenceProcess)
-		consulSession.Destroy()
 	})
 
 	Context("When consul is running", func() {
@@ -63,9 +71,8 @@ var _ = Describe("Presence", func() {
 
 			It("continues to retry", func() {
 				presenceProcess = ifrit.Background(presenceRunner)
-				Eventually(consulSession.ID).ShouldNot(Equal(""))
 
-				Consistently(presenceProcess.Ready()).Should(BeClosed())
+				Eventually(presenceProcess.Ready()).Should(BeClosed())
 				Consistently(presenceProcess.Wait()).ShouldNot(Receive())
 
 				Eventually(logger).Should(Say("failed-setting-presence"))
@@ -115,8 +122,9 @@ var _ = Describe("Presence", func() {
 
 		Context("and the presence is unavailable", func() {
 			var (
-				otherSession *consuladapter.Session
-				otherValue   []byte
+				otherSession   *consuladapter.Session
+				otherValue     []byte
+				otherSessionID string
 			)
 
 			BeforeEach(func() {
@@ -126,6 +134,7 @@ var _ = Describe("Presence", func() {
 				_, err := otherSession.SetPresence(presenceKey, otherValue)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(getPresenceValue()).To(Equal(otherValue))
+				otherSessionID = otherSession.ID()
 			})
 
 			AfterEach(func() {
@@ -141,7 +150,7 @@ var _ = Describe("Presence", func() {
 			Context("when consul shuts down", func() {
 				JustBeforeEach(func() {
 					presenceProcess = ifrit.Background(presenceRunner)
-					Eventually(consulSession.ID).ShouldNot(Equal(""))
+					Eventually(presenceProcess.Ready()).Should(BeClosed())
 
 					consulRunner.Stop()
 				})
@@ -162,38 +171,53 @@ var _ = Describe("Presence", func() {
 
 			Context("and the session is destroyed", func() {
 				It("should recreate the session and continue to retry", func() {
+					var err error
 					presenceProcess = ifrit.Background(presenceRunner)
-					Eventually(consulSession.ID).ShouldNot(Equal(""))
+					Eventually(presenceProcess.Ready()).Should(BeClosed())
 
-					sessionID := consulSession.ID()
+					var sessions []*api.SessionEntry
+					Eventually(func() int {
+						sessions, _, err = consulClient.Session().List(nil)
+						Expect(err).NotTo(HaveOccurred())
+						return len(sessions)
+					}).Should(Equal(2))
 
-					consulSession.Destroy()
-					Eventually(logger).Should(Say("consul-error"))
+					var originalSessionID string
+					for _, session := range sessions {
+						if session.ID != otherSessionID {
+							originalSessionID = session.ID
+							break
+						}
+					}
+
+					_, err = consulClient.Session().Destroy(originalSessionID, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(logger, 6*time.Second).Should(Say("consul-error"))
 					Eventually(logger).Should(Say("recreating-session"))
 
-					client := consulRunner.NewClient()
-
-					var entry *api.SessionEntry
-					Eventually(func() *api.SessionEntry {
-						entries, _, err := client.Session().List(nil)
+					Eventually(func() int {
+						sessions, _, err = consulClient.Session().List(nil)
 						Expect(err).NotTo(HaveOccurred())
-						for _, e := range entries {
-							if e.Name == "a-session" {
-								entry = e
-								return e
-							}
-						}
-						return nil
-					}).ShouldNot(BeNil())
+						return len(sessions)
+					}).Should(Equal(2))
 
-					Expect(entry.ID).NotTo(Equal(sessionID))
+					var newSessionID string
+					for _, session := range sessions {
+						if session.ID != otherSessionID {
+							newSessionID = session.ID
+							break
+						}
+					}
+
+					Expect(newSessionID).NotTo(Equal(originalSessionID))
 				})
 			})
 
 			Context("and the process is shutting down", func() {
 				It("exits", func() {
 					presenceProcess = ifrit.Background(presenceRunner)
-					Eventually(consulSession.ID).ShouldNot(Equal(""))
+					Eventually(presenceProcess.Ready()).Should(BeClosed())
 
 					ginkgomon.Interrupt(presenceProcess)
 					Eventually(presenceProcess.Wait()).Should(Receive(BeNil()))

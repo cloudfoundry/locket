@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -21,16 +22,20 @@ type Presence struct {
 }
 
 func NewPresence(
+	logger lager.Logger,
 	consulClient consuladapter.Client,
 	lockKey string,
 	lockValue []byte,
 	clock clock.Clock,
 	retryInterval time.Duration,
-	logger lager.Logger,
 	lockTTL time.Duration,
 ) Presence {
-	// TODO find default lock ttl
-	session, err := consuladapter.NewSessionNoChecks("consul-db", lockTTL, consulClient)
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		logger.Fatal("create-uuid-failed", err)
+	}
+
+	session, err := consuladapter.NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
