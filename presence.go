@@ -11,7 +11,7 @@ import (
 )
 
 type Presence struct {
-	consul *consuladapter.Session
+	consul *Session
 	key    string
 	value  []byte
 
@@ -35,7 +35,7 @@ func NewPresence(
 		logger.Fatal("create-uuid-failed", err)
 	}
 
-	session, err := consuladapter.NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
+	session, err := NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
@@ -68,7 +68,7 @@ func (p Presence) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	presenceCh := make(chan presenceResult, 1)
-	setPresence := func(session *consuladapter.Session) {
+	setPresence := func(session *Session) {
 		logger.Info("setting-presence")
 		presenceLost, err := session.SetPresence(p.key, p.value)
 		presenceCh <- presenceResult{presenceLost, err}

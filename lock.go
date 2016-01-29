@@ -18,7 +18,7 @@ var (
 )
 
 type Lock struct {
-	consul *consuladapter.Session
+	consul *Session
 	key    string
 	value  []byte
 
@@ -48,7 +48,7 @@ func NewLock(
 		logger.Fatal("create-uuid-failed", err)
 	}
 
-	session, err := consuladapter.NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
+	session, err := NewSessionNoChecks(uuid.String(), lockTTL, consulClient)
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
@@ -79,7 +79,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 	acquireErr := make(chan error, 1)
 
-	acquire := func(session *consuladapter.Session) {
+	acquire := func(session *Session) {
 		logger.Info("acquiring-lock")
 		acquireErr <- session.AcquireLock(l.key, l.value)
 	}

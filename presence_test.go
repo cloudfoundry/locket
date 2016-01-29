@@ -122,16 +122,18 @@ var _ = Describe("Presence", func() {
 
 		Context("and the presence is unavailable", func() {
 			var (
-				otherSession   *consuladapter.Session
+				otherSession   *locket.Session
 				otherValue     []byte
 				otherSessionID string
 			)
 
 			BeforeEach(func() {
 				otherValue = []byte("doppel-value")
-				otherSession = consulRunner.NewSession("other-session")
+				var err error
+				otherSession, err = locket.NewSession("other-session", 10*time.Second, consulClient)
+				Expect(err).NotTo(HaveOccurred())
 
-				_, err := otherSession.SetPresence(presenceKey, otherValue)
+				_, err = otherSession.SetPresence(presenceKey, otherValue)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(getPresenceValue()).To(Equal(otherValue))
 				otherSessionID = otherSession.ID()
