@@ -45,7 +45,7 @@ var _ = Describe("Presence", func() {
 	}
 
 	BeforeEach(func() {
-		consulClient = consulRunner.NewConsulClient()
+		consulClient = consulRunner.NewClient()
 
 		presenceKey = "some-key"
 		presenceValue = []byte("some-value")
@@ -172,7 +172,7 @@ var _ = Describe("Presence", func() {
 			})
 
 			Context("and the session is destroyed", func() {
-				XIt("should recreate the session and continue to retry", func() {
+				It("should recreate the session and continue to retry", func() {
 					var err error
 					presenceProcess = ifrit.Background(presenceRunner)
 					Eventually(presenceProcess.Ready()).Should(BeClosed())
@@ -184,15 +184,18 @@ var _ = Describe("Presence", func() {
 						return len(sessions)
 					}).Should(Equal(2))
 
-					var originalSessionID string
+					sessions, _, err = consulClient.Session().List(nil)
+					Expect(err).NotTo(HaveOccurred())
+					var mostRecentSession *api.SessionEntry
 					for _, session := range sessions {
-						if session.ID != otherSessionID {
-							originalSessionID = session.ID
-							break
+						if mostRecentSession == nil {
+							mostRecentSession = session
+						} else if session.CreateIndex > mostRecentSession.CreateIndex {
+							mostRecentSession = session
 						}
 					}
 
-					_, err = consulClient.Session().Destroy(originalSessionID, nil)
+					_, err = consulClient.Session().Destroy(mostRecentSession.ID, nil)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(logger, 6*time.Second).Should(Say("consul-error"))
@@ -203,16 +206,6 @@ var _ = Describe("Presence", func() {
 						Expect(err).NotTo(HaveOccurred())
 						return len(sessions)
 					}).Should(Equal(2))
-
-					var newSessionID string
-					for _, session := range sessions {
-						if session.ID != otherSessionID {
-							newSessionID = session.ID
-							break
-						}
-					}
-
-					Expect(newSessionID).NotTo(Equal(originalSessionID))
 				})
 			})
 

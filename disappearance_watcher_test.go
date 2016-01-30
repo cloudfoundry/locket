@@ -29,7 +29,7 @@ var _ = Describe("Disappearance Watcher", func() {
 	)
 
 	BeforeEach(func() {
-		consulClient = consulRunner.NewConsulClient()
+		consulClient = consulRunner.NewClient()
 		logger = lagertest.NewTestLogger("test")
 		clock := clock.NewClock()
 		watcherRunner, disappearChan = locket.NewDisappearanceWatcher(logger, consulClient, "under", clock)
@@ -69,11 +69,10 @@ var _ = Describe("Disappearance Watcher", func() {
 				})
 			})
 
-			Context("when destroying the session", func() {
+			Context("when signalled", func() {
 				It("closes the disappearance channel", func() {
-					// session.Destroy()
-
-					Eventually(disappearChan, 15).Should(BeClosed())
+					ginkgomon.Kill(watcherProcess)
+					Eventually(disappearChan).Should(BeClosed())
 				})
 			})
 
@@ -107,4 +106,8 @@ var _ = Describe("Disappearance Watcher", func() {
 			Eventually(disappearChan).Should(Receive(Equal([]string{"under/here"})))
 		})
 	})
+})
+
+var _ = Describe("Disappearance Watcher Unit Tests", func() {
+
 })

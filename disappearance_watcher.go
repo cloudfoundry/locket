@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/hashicorp/consul/api"
-	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -40,23 +39,7 @@ func NewDisappearanceWatcher(
 func (d DisappearanceWatcher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := d.logger.Session("disappearance-watcher", lager.Data{"key-prefix": d.keyPrefix})
 	logger.Info("starting")
-
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		logger.Fatal("create-uuid-failed", err)
-	}
-
-	// this session doesn't do lockin, but has a session TTL
-	session, err := NewSessionNoChecks(uuid.String(), LockTTL, d.consulClient)
-	if err != nil {
-		logger.Fatal("consul-session-failed", err)
-	}
-
-	defer func() {
-		logger.Info("cleaning-up")
-		session.Destroy()
-		logger.Info("done")
-	}()
+	defer logger.Info("done")
 
 	stop := make(chan struct{})
 	WatchForDisappearancesUnder(logger, d.consulClient, d.disappearChan, stop, d.keyPrefix)
@@ -65,8 +48,6 @@ func (d DisappearanceWatcher) Run(signals <-chan os.Signal, ready chan<- struct{
 	select {
 	case <-signals:
 		logger.Info("signalled")
-	case <-session.doneCh:
-		logger.Info("session-destroyed")
 	}
 
 	close(stop)

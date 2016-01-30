@@ -53,7 +53,7 @@ var _ = Describe("Lock", func() {
 	}
 
 	BeforeEach(func() {
-		consulClient = consulRunner.NewConsulClient()
+		consulClient = consulRunner.NewClient()
 
 		lockKey = locket.LockSchemaPath("some-key")
 		lockKeyMetric := strings.Replace(lockKey, "/", "-", -1)
@@ -70,7 +70,7 @@ var _ = Describe("Lock", func() {
 
 	JustBeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
-		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, 10*time.Second)
+		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, 5*time.Second)
 	})
 
 	AfterEach(func() {
@@ -173,7 +173,7 @@ var _ = Describe("Lock", func() {
 				otherValue = []byte("doppel-value")
 				otherClock := fakeclock.NewFakeClock(time.Now())
 
-				otherRunner := locket.NewLock(logger, consulClient, lockKey, otherValue, otherClock, retryInterval, 10*time.Second)
+				otherRunner := locket.NewLock(logger, consulClient, lockKey, otherValue, otherClock, retryInterval, 5*time.Second)
 				otherProcess = ifrit.Background(otherRunner)
 
 				Eventually(otherProcess.Ready()).Should(BeClosed())
@@ -215,30 +215,29 @@ var _ = Describe("Lock", func() {
 			})
 
 			Context("and the session is destroyed", func() {
-				XIt("should recreate the session and continue to retry", func() {
+				It("should recreate the session and continue to retry", func() {
 					lockProcess = ifrit.Background(lockRunner)
+
 					shouldEventuallyHaveNumSessions(2)
 
-					// consulClient.Session().Destroy(sessionID, nil)
+					sessions, _, err := consulClient.Session().List(nil)
+					Expect(err).NotTo(HaveOccurred())
+					var mostRecentSession *api.SessionEntry
+					for _, session := range sessions {
+						if mostRecentSession == nil {
+							mostRecentSession = session
+						} else if session.CreateIndex > mostRecentSession.CreateIndex {
+							mostRecentSession = session
+						}
+					}
+
+					_, err = consulClient.Session().Destroy(mostRecentSession.ID, nil)
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(logger, 10*time.Second).Should(Say("consul-error"))
 					clock.Increment(retryInterval)
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
-
-					var entry *api.SessionEntry
-					Eventually(func() *api.SessionEntry {
-						entries, _, err := consulClient.Session().List(nil)
-						Expect(err).NotTo(HaveOccurred())
-						for _, e := range entries {
-							if e.Name == "a-session" {
-								entry = e
-								return e
-							}
-						}
-						return nil
-					}).ShouldNot(BeNil())
-
-					// Expect(entry.ID).NotTo(Equal(sessionID))
+					shouldEventuallyHaveNumSessions(2)
 				})
 			})
 

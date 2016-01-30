@@ -35,7 +35,7 @@ var _ = Describe("Service Registration Integration", func() {
 	)
 
 	BeforeEach(func() {
-		consulClient = consulRunner.NewConsulClient()
+		consulClient = consulRunner.NewClient()
 
 		logger = lagertest.NewTestLogger("test")
 		clock = fakeclock.NewFakeClock(time.Now())
@@ -185,7 +185,9 @@ var _ = Describe("Service Registration Unit Tests", func() {
 	)
 
 	BeforeEach(func() {
-		client, agent, _, _ = fakes.NewFakeClient()
+		var fakeComponents *fakes.FakeClientComponents
+		client, fakeComponents = fakes.NewFakeClient()
+		agent = fakeComponents.Agent
 		logger = lagertest.NewTestLogger("test")
 		clock = fakeclock.NewFakeClock(time.Now())
 
