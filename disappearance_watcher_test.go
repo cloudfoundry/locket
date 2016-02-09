@@ -6,13 +6,13 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/pivotal-golang/clock"
-	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Disappearance Watcher", func() {
@@ -25,7 +25,7 @@ var _ = Describe("Disappearance Watcher", func() {
 
 		disappearChan <-chan []string
 
-		logger lager.Logger
+		logger *lagertest.TestLogger
 	)
 
 	BeforeEach(func() {
@@ -49,6 +49,7 @@ var _ = Describe("Disappearance Watcher", func() {
 			Expect(err).NotTo(HaveOccurred())
 			return len(sessions)
 		}).Should(Equal(1))
+		Eventually(logger).Should(gbytes.Say("presence.succeeded-setting-presence"))
 
 		ginkgomon.Kill(presenceProcess)
 	}
