@@ -283,9 +283,9 @@ var _ = Describe("Lock", func() {
 			Consistently(lockProcess.Wait()).ShouldNot(Receive())
 
 			Eventually(logger).Should(Say("acquire-lock-failed"))
-			clock.Increment(retryInterval)
+			clock.WaitForWatcherAndIncrement(retryInterval)
 			Eventually(logger).Should(Say("retrying-acquiring-lock"))
-			clock.Increment(retryInterval)
+			clock.WaitForWatcherAndIncrement(retryInterval)
 			Eventually(logger).Should(Say("retrying-acquiring-lock"))
 		})
 

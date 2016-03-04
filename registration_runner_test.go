@@ -281,7 +281,7 @@ var _ = Describe("Service Registration Unit Tests", func() {
 
 		It("updates the health status after TTL/2", func() {
 			Eventually(agent.PassTTLCallCount).Should(Equal(1))
-			clock.IncrementBySeconds(5)
+			clock.WaitForWatcherAndIncrement(5 * time.Second)
 			Eventually(agent.PassTTLCallCount).Should(Equal(2))
 		})
 
