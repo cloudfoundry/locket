@@ -320,11 +320,15 @@ var _ = Describe("Service Registration Unit Tests", func() {
 
 	Context("when registering hangs forever", func() {
 		var blockRegister chan struct{}
+		var blockRegisterDone chan struct{}
 
 		BeforeEach(func() {
 			blockRegister = make(chan struct{})
+			blockRegisterDone = make(chan struct{})
+
 			agent.ServiceRegisterStub = func(*api.AgentServiceRegistration) error {
 				<-blockRegister
+				close(blockRegisterDone)
 				return nil
 			}
 		})
@@ -335,6 +339,7 @@ var _ = Describe("Service Registration Unit Tests", func() {
 
 		AfterEach(func() {
 			close(blockRegister)
+			Eventually(blockRegisterDone).Should(BeClosed())
 			ginkgomon.Kill(registrationProcess)
 		})
 
