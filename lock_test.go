@@ -33,6 +33,7 @@ var _ = Describe("Lock", func() {
 		lockRunner    ifrit.Runner
 		lockProcess   ifrit.Process
 		retryInterval time.Duration
+		lockTTL       time.Duration
 		logger        lager.Logger
 
 		sender *fake.FakeMetricSender
@@ -62,6 +63,7 @@ var _ = Describe("Lock", func() {
 		lockValue = []byte("some-value")
 
 		retryInterval = 500 * time.Millisecond
+		lockTTL = 5 * time.Second
 		logger = lagertest.NewTestLogger("locket")
 
 		sender = fake.NewFakeMetricSender()
@@ -70,7 +72,7 @@ var _ = Describe("Lock", func() {
 
 	JustBeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
-		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, 5*time.Second)
+		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, lockTTL)
 	})
 
 	AfterEach(func() {
@@ -235,6 +237,7 @@ var _ = Describe("Lock", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(logger, 10*time.Second).Should(Say("consul-error"))
+					Eventually(logger, 15*time.Second).Should(Say("acquire-lock-failed"))
 					clock.Increment(retryInterval)
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
 					shouldEventuallyHaveNumSessions(2)

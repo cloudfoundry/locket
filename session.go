@@ -180,9 +180,15 @@ func (s *Session) AcquireLock(key string, value []byte) error {
 		select {
 		case <-lostCh:
 			s.lock.Lock()
+			defer s.lock.Unlock()
+
+			if s.destroyed {
+				s.errCh <- LostLockError(key)
+				return
+			}
+
 			s.lostLock = key
 			s.destroy()
-			s.lock.Unlock()
 		case <-s.doneCh:
 		}
 	}()

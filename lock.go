@@ -98,22 +98,16 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			l.emitMetrics(false)
 			return nil
 		case err := <-l.consul.Err():
-			var data lager.Data
-			if err != nil {
-				data = lager.Data{"err": err.Error()}
-			}
-
 			if ready == nil {
-				logger.Info("lost-lock", data)
+				logger.Error("lost-lock", err)
 				l.emitMetrics(false)
 				return ErrLockLost
 			}
 
-			logger.Info("consul-error", data)
-			c = l.clock.NewTimer(l.retryInterval).C()
+			logger.Error("consul-error-without-lock", err)
 		case err := <-acquireErr:
 			if err != nil {
-				logger.Info("acquire-lock-failed", lager.Data{"err": err.Error()})
+				logger.Error("acquire-lock-failed", err)
 				l.emitMetrics(false)
 				c = l.clock.NewTimer(l.retryInterval).C()
 				break
@@ -134,6 +128,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			logger.Info("retrying-acquiring-lock")
 			newSession, err := l.consul.Recreate()
 			if err != nil {
+				logger.Error("failed-to-recreate-session", err)
 				c = l.clock.NewTimer(l.retryInterval).C()
 			} else {
 				l.consul = newSession
