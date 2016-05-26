@@ -262,7 +262,7 @@ var _ = Describe("Lock", func() {
 
 					ginkgomon.Interrupt(otherProcess)
 
-					Eventually(lockProcess.Ready()).Should(BeClosed())
+					Eventually(lockProcess.Ready(), 7*time.Second).Should(BeClosed())
 					Expect(getLockValue()).To(Equal(lockValue))
 				})
 			})

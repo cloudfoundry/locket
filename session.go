@@ -158,9 +158,11 @@ func (s *Session) AcquireLock(key string, value []byte) error {
 	}
 
 	lockOptions := api.LockOptions{
-		Key:     key,
-		Value:   value,
-		Session: s.id,
+		Key:              key,
+		Value:            value,
+		Session:          s.id,
+		MonitorRetries:   7,
+		MonitorRetryTime: 2 * time.Second,
 	}
 
 	lock, err := s.client.LockOpts(&lockOptions)

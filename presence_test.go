@@ -227,7 +227,7 @@ var _ = Describe("Presence", func() {
 
 					otherSession.Destroy()
 
-					Eventually(getPresenceValue).Should(Equal(presenceValue))
+					Eventually(getPresenceValue, 7*time.Second).Should(Equal(presenceValue))
 				})
 			})
 		})
