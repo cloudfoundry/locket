@@ -139,6 +139,13 @@ func (r *registrationRunner) checkID() string {
 	return checkID
 }
 
+func (r *registrationRunner) unregisterID() string {
+	if r.registration.ID == "" {
+		return r.registration.Name
+	}
+	return r.registration.ID
+}
+
 func (r *registrationRunner) pollUntilSignaled(logger lager.Logger, interval time.Duration, signals <-chan os.Signal) error {
 	logger = logger.Session("poll-until-signaled", lager.Data{"update-interval": interval.String()})
 	logger.Info("started")
@@ -152,7 +159,7 @@ func (r *registrationRunner) pollUntilSignaled(logger lager.Logger, interval tim
 		select {
 		case <-signals:
 			logger.Info("deregistering-service")
-			return agent.ServiceDeregister(r.registration.ID)
+			return agent.ServiceDeregister(r.unregisterID())
 		case <-timer.C():
 			logger.Debug("updating-ttl-healthcheck", lager.Data{"checkID": checkID})
 			agent.PassTTL(checkID, "")

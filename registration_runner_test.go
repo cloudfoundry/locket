@@ -285,12 +285,27 @@ var _ = Describe("Service Registration Unit Tests", func() {
 			Eventually(agent.PassTTLCallCount).Should(Equal(2))
 		})
 
-		It("deregisters the service after being signalled", func() {
-			Expect(agent.ServiceDeregisterCallCount()).Should(Equal(0))
-			ginkgomon.Kill(registrationProcess)
-			Expect(agent.ServiceDeregisterCallCount()).Should(Equal(1))
-		})
+		Context("deregistering the service", func() {
+			It("deregisters the service after being signalled", func() {
+				Expect(agent.ServiceDeregisterCallCount()).Should(Equal(0))
+				ginkgomon.Kill(registrationProcess)
+				Expect(agent.ServiceDeregisterCallCount()).Should(Equal(1))
+				Expect(agent.ServiceDeregisterArgsForCall(0)).To(Equal(registration.ID))
+			})
 
+			Context("when the registration does not have an ID", func() {
+				BeforeEach(func() {
+					registration.ID = ""
+				})
+
+				It("unregisters with the service name", func() {
+					Expect(agent.ServiceDeregisterCallCount()).Should(Equal(0))
+					ginkgomon.Kill(registrationProcess)
+					Expect(agent.ServiceDeregisterCallCount()).Should(Equal(1))
+					Expect(agent.ServiceDeregisterArgsForCall(0)).To(Equal(registration.Name))
+				})
+			})
+		})
 	})
 
 	Context("when we fail to register the service", func() {
