@@ -2,6 +2,7 @@ package locket_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -283,6 +284,15 @@ var _ = Describe("Service Registration Unit Tests", func() {
 			Eventually(agent.PassTTLCallCount).Should(Equal(1))
 			clock.WaitForWatcherAndIncrement(5 * time.Second)
 			Eventually(agent.PassTTLCallCount).Should(Equal(2))
+		})
+
+		It("when the passTTL fails we should try and reregister", func() {
+			Eventually(agent.ServiceRegisterCallCount()).Should(Equal(1))
+			Eventually(agent.PassTTLCallCount).Should(Equal(1))
+			agent.PassTTLReturns(fmt.Errorf("Invalid status: failed"))
+			clock.WaitForWatcherAndIncrement(5 * time.Second)
+			Eventually(agent.PassTTLCallCount).Should(Equal(2))
+			Eventually(agent.ServiceRegisterCallCount()).Should(Equal(2))
 		})
 
 		Context("deregistering the service", func() {

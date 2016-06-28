@@ -154,6 +154,11 @@ func (r *registrationRunner) pollUntilSignaled(logger lager.Logger, interval tim
 	agent := r.consulClient.Agent()
 	timer := r.clock.NewTimer(interval)
 	checkID := r.checkID()
+	errChan := make(chan error, 1)
+	register := func() {
+		logger.Info("attempting-registering-service")
+		errChan <- agent.ServiceRegister(r.registration)
+	}
 
 	for {
 		select {
@@ -162,7 +167,18 @@ func (r *registrationRunner) pollUntilSignaled(logger lager.Logger, interval tim
 			return agent.ServiceDeregister(r.unregisterID())
 		case <-timer.C():
 			logger.Debug("updating-ttl-healthcheck", lager.Data{"checkID": checkID})
-			agent.PassTTL(checkID, "")
+			err := agent.PassTTL(checkID, "")
+			if err != nil {
+				logger.Error("failed-healthcheck-in-consul", err)
+				go register()
+			}
+			timer.Reset(interval)
+		case err := <-errChan:
+			if err != nil {
+				logger.Error("failed-registering-service", err)
+			} else {
+				logger.Info("succeeded-registering-service")
+			}
 			timer.Reset(interval)
 		}
 	}
