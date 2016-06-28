@@ -7,7 +7,7 @@ import (
 
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/fakes"
-	"github.com/cloudfoundry-incubator/locket"
+	"code.cloudfoundry.org/locket"
 	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"

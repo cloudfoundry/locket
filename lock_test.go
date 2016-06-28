@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/consuladapter"
-	"github.com/cloudfoundry-incubator/locket"
+	"code.cloudfoundry.org/locket"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/hashicorp/consul/api"
