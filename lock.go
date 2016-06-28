@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"code.cloudfoundry.org/consuladapter"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"

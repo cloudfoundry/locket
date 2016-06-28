@@ -3,7 +3,7 @@ package locket_test
 import (
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"code.cloudfoundry.org/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"

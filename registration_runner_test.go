@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/consuladapter/fakes"
+	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/consuladapter/fakes"
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock/fakeclock"

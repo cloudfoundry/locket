@@ -3,7 +3,7 @@ package locket_test
 import (
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"code.cloudfoundry.org/consuladapter"
 	"github.com/cloudfoundry-incubator/locket"
 	"github.com/hashicorp/consul/api"
 
@@ -144,9 +144,8 @@ var _ = Describe("Presence", func() {
 
 		Context("and the presence is unavailable", func() {
 			var (
-				otherSession   *locket.Session
-				otherValue     []byte
-				otherSessionID string
+				otherSession *locket.Session
+				otherValue   []byte
 			)
 
 			BeforeEach(func() {
@@ -158,7 +157,6 @@ var _ = Describe("Presence", func() {
 				_, err = otherSession.SetPresence(presenceKey, otherValue)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(getPresenceValue()).To(Equal(otherValue))
-				otherSessionID = otherSession.ID()
 			})
 
 			AfterEach(func() {

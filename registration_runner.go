@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"code.cloudfoundry.org/consuladapter"
 	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
