@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"github.com/nu7hatch/gouuid"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
 

@@ -10,7 +10,7 @@ import (
 	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/hashicorp/consul/api"
 
-	"github.com/pivotal-golang/clock/fakeclock"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
