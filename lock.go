@@ -8,9 +8,9 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/metric"
 	"github.com/nu7hatch/gouuid"
-	"github.com/pivotal-golang/lager"
 )
 
 var (

@@ -8,8 +8,8 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/lager"
 	"github.com/hashicorp/consul/api"
-	"github.com/pivotal-golang/lager"
 )
 
 type registrationRunner struct {

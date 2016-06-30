@@ -6,8 +6,8 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/lager"
 	"github.com/nu7hatch/gouuid"
-	"github.com/pivotal-golang/lager"
 )
 
 type Presence struct {
