@@ -95,6 +95,7 @@ func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			logger.Info("shutting-down", lager.Data{"received-signal": sig})
 
 			logger.Debug("releasing-lock")
+			l.consul.Destroy()
 			l.emitMetrics(false)
 			return nil
 		case err := <-l.consul.Err():
