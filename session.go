@@ -17,6 +17,9 @@ func (e LostLockError) Error() string {
 	return fmt.Sprintf("Lost lock '%s'", string(e))
 }
 
+const MonitorRetryTime = 2 * time.Second
+const MonitorRetries = (int)(SessionLockTTL / MonitorRetryTime)
+
 var ErrInvalidSession = errors.New("invalid session")
 var ErrDestroyed = errors.New("already destroyed")
 var ErrCancelled = errors.New("cancelled")
@@ -161,8 +164,8 @@ func (s *Session) AcquireLock(key string, value []byte) error {
 		Key:              key,
 		Value:            value,
 		Session:          s.id,
-		MonitorRetries:   7,
-		MonitorRetryTime: 2 * time.Second,
+		MonitorRetries:   MonitorRetries,
+		MonitorRetryTime: MonitorRetryTime,
 	}
 
 	lock, err := s.client.LockOpts(&lockOptions)

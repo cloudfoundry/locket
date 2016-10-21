@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-const LockTTL = 10 * time.Second
+const SessionLockTTL = 15 * time.Second
 const RetryInterval = 5 * time.Second
 
 const LockSchemaRoot = "v1/locks"
