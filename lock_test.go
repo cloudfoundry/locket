@@ -1,9 +1,14 @@
 package locket_test
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/locket"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
@@ -162,6 +167,88 @@ var _ = Describe("Lock", func() {
 						Expect(err).To(Equal(consuladapter.NewKeyNotFoundError(lockKey)))
 					})
 				})
+
+				Context("and consul goes through a period of instability", func() {
+					var serveFiveHundreds chan struct{}
+					var fakeConsul *httptest.Server
+
+					BeforeEach(func() {
+						serveFiveHundreds = make(chan struct{}, 4)
+
+						consulClusterURL, err := url.Parse(consulRunner.URL())
+						Expect(err).NotTo(HaveOccurred())
+						proxy := httputil.NewSingleHostReverseProxy(consulClusterURL)
+						fakeConsul = httptest.NewServer(
+							http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								// We only want to return 500's on the lock monitor query
+								if !strings.Contains(r.URL.Path, "/v1/lock") {
+									proxy.ServeHTTP(w, r)
+									return
+								}
+
+								select {
+								case <-serveFiveHundreds:
+									w.WriteHeader(http.StatusInternalServerError)
+								default:
+									proxy.ServeHTTP(w, r)
+								}
+							}),
+						)
+
+						fakeConsulURL, err := url.Parse(fakeConsul.URL)
+						Expect(err).NotTo(HaveOccurred())
+
+						client, err := api.NewClient(&api.Config{
+							Address:    fakeConsulURL.Host,
+							Scheme:     fakeConsulURL.Scheme,
+							HttpClient: cfhttp.NewStreamingClient(),
+						})
+						Expect(err).NotTo(HaveOccurred())
+
+						consulClient = consuladapter.NewConsulClient(client)
+						lockTTL = 6 * time.Second
+					})
+
+					Context("for longer than the MonitorRetries * MonitorRetryTime", func() {
+						It("loses lock", func() {
+							Expect(sender.GetValue(lockUptimeMetricName).Value).Should(Equal(float64(0)))
+							Expect(getLockValue()).To(Equal(lockValue))
+							Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(1)))
+
+							// Serve 500's to simulate a leader election. We know that we need
+							// to serve more than lockTTL / 2 500's to lose the lock.
+							for i := 0; i < 4; i++ {
+								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
+							}
+							// Close the existing connection with consul so that the
+							// lock monitor is forced to retry. This is because consul
+							// performs a blocking query until the lock index is changed.
+							fakeConsul.CloseClientConnections()
+
+							Eventually(lockProcess.Wait(), 7*time.Second).Should(Receive())
+						})
+					})
+
+					Context("for less than the MonitorRetries * MonitorRetryTime", func() {
+						It("does not lose the lock", func() {
+							Expect(sender.GetValue(lockUptimeMetricName).Value).Should(Equal(float64(0)))
+							Expect(getLockValue()).To(Equal(lockValue))
+							Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(1)))
+
+							// Serve 500's to simulate a leader election. We know that if we
+							// serve less than lockTTL / 2 500's, we will not lose the lock.
+							for i := 0; i < 2; i++ {
+								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
+							}
+							// Close the existing connection with consul so that the
+							// lock monitor is forced to retry. This is because consul
+							// performs a blocking query until the lock index is changed.
+							fakeConsul.CloseClientConnections()
+
+							Consistently(lockProcess.Wait(), 7*time.Second).ShouldNot(Receive())
+						})
+					})
+				})
 			})
 		})
 
@@ -262,7 +349,7 @@ var _ = Describe("Lock", func() {
 
 					ginkgomon.Interrupt(otherProcess)
 
-					Eventually(lockProcess.Ready(), 7*time.Second).Should(BeClosed())
+					Eventually(lockProcess.Ready(), 6*time.Second).Should(BeClosed())
 					Expect(getLockValue()).To(Equal(lockValue))
 				})
 			})
