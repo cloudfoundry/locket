@@ -182,14 +182,17 @@ var _ = Describe("Lock", func() {
 							http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 								// We only want to return 500's on the lock monitor query
 								if !strings.Contains(r.URL.Path, "/v1/lock") {
+									By("forwarding request to " + r.URL.Path)
 									proxy.ServeHTTP(w, r)
 									return
 								}
 
 								select {
 								case <-serveFiveHundreds:
+									By("returning 500 to " + r.URL.Path)
 									w.WriteHeader(http.StatusInternalServerError)
 								default:
+									By("forwarding request to " + r.URL.Path)
 									proxy.ServeHTTP(w, r)
 								}
 							}),
@@ -220,6 +223,9 @@ var _ = Describe("Lock", func() {
 							for i := 0; i < 4; i++ {
 								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
 							}
+
+							By("closing all connections")
+
 							// Close the existing connection with consul so that the
 							// lock monitor is forced to retry. This is because consul
 							// performs a blocking query until the lock index is changed.
@@ -240,6 +246,9 @@ var _ = Describe("Lock", func() {
 							for i := 0; i < 2; i++ {
 								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
 							}
+
+							By("closing all connections")
+
 							// Close the existing connection with consul so that the
 							// lock monitor is forced to retry. This is because consul
 							// performs a blocking query until the lock index is changed.
