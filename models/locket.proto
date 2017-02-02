@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+package models;
+
+service Locket {
+  rpc Lock(LockRequest) returns (LockResponse) {}
+  rpc Fetch(FetchRequest) returns (FetchResponse) {}
+  rpc Release(ReleaseRequest) returns (ReleaseResponse) {}
+}
+
+message Resource {
+  optional string key = 1;
+  optional string owner = 2;
+  optional string value = 3;
+}
+
+message LockRequest {
+  optional Resource resource = 1;
+}
+
+message ReleaseRequest {
+  optional Resource resource = 1;
+}
+
+message FetchRequest {
+  optional string key = 1;
+}
+
+message LockResponse {}
+
+message ReleaseResponse {}
+
+message FetchResponse {
+  optional Resource resource = 1;
+}
