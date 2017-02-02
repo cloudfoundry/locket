@@ -2,15 +2,11 @@ package main_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"time"
 
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
+	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
 	"google.golang.org/grpc"
 
@@ -24,10 +20,9 @@ var _ = Describe("Locket", func() {
 	var (
 		conn *grpc.ClientConn
 
-		locketAddress        string
-		locketClient         models.LocketClient
-		locketProcess        ifrit.Process
-		locketConfigFilePath string
+		locketAddress string
+		locketClient  models.LocketClient
+		locketProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -35,10 +30,6 @@ var _ = Describe("Locket", func() {
 
 		locketAddress = fmt.Sprintf("127.0.0.1:%d", 9000+GinkgoParallelNode())
 
-		locketConfig, err := ioutil.TempFile("", "locket-config")
-		Expect(err).NotTo(HaveOccurred())
-
-		locketConfigFilePath = locketConfig.Name()
 		cfg := config.LocketConfig{
 			ListenAddress:            locketAddress,
 			DatabaseDriver:           sqlRunner.DriverName(),
@@ -49,16 +40,7 @@ var _ = Describe("Locket", func() {
 			},
 		}
 
-		encoder := json.NewEncoder(locketConfig)
-		err = encoder.Encode(&cfg)
-		Expect(err).NotTo(HaveOccurred())
-
-		locketRunner := ginkgomon.New(ginkgomon.Config{
-			Name:              "locket",
-			StartCheck:        "locket.started",
-			StartCheckTimeout: 10 * time.Second,
-			Command:           exec.Command(locketBinPath, "-config="+locketConfigFilePath),
-		})
+		locketRunner := testrunner.NewLocketRunner(locketBinPath, cfg)
 		locketProcess = ginkgomon.Invoke(locketRunner)
 
 		conn, err = grpc.Dial(locketAddress, grpc.WithInsecure())
@@ -70,8 +52,6 @@ var _ = Describe("Locket", func() {
 	AfterEach(func() {
 		Expect(conn.Close()).To(Succeed())
 		ginkgomon.Kill(locketProcess)
-		Expect(os.RemoveAll(locketConfigFilePath)).To(Succeed())
-
 		sqlRunner.ResetTables(TruncateTableList)
 	})
 
