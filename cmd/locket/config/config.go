@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager/lagerflags"
 )
 
@@ -12,6 +13,7 @@ type LocketConfig struct {
 	DatabaseDriver           string `json:"database_driver,omitempty"`
 	ListenAddress            string `json:"listen_address"`
 	lagerflags.LagerConfig
+	debugserver.DebugServerConfig
 }
 
 func DefaultLocketConfig() LocketConfig {

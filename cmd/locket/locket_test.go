@@ -3,7 +3,9 @@ package main_test
 import (
 	"context"
 	"fmt"
+	"net"
 
+	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
@@ -22,19 +24,24 @@ var _ = Describe("Locket", func() {
 		locketAddress string
 		locketClient  models.LocketClient
 		locketProcess ifrit.Process
+		cfg           config.LocketConfig
 	)
 
 	BeforeEach(func() {
-		var err error
+		locketPort, err := localip.LocalPort()
+		Expect(err).NotTo(HaveOccurred())
 
-		locketAddress = fmt.Sprintf("127.0.0.1:%d", 9000+GinkgoParallelNode())
+		locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
 
-		cfg := config.LocketConfig{
+		cfg = config.LocketConfig{
 			ListenAddress:            locketAddress,
 			DatabaseDriver:           sqlRunner.DriverName(),
 			DatabaseConnectionString: sqlRunner.ConnectionString(),
 		}
+	})
 
+	JustBeforeEach(func() {
+		var err error
 		locketRunner := testrunner.NewLocketRunner(locketBinPath, cfg)
 		locketProcess = ginkgomon.Invoke(locketRunner)
 
@@ -48,6 +55,23 @@ var _ = Describe("Locket", func() {
 		Expect(conn.Close()).To(Succeed())
 		ginkgomon.Kill(locketProcess)
 		sqlRunner.ResetTables(TruncateTableList)
+	})
+
+	Context("debug address", func() {
+		var debugAddress string
+
+		BeforeEach(func() {
+			port, err := localip.LocalPort()
+			Expect(err).NotTo(HaveOccurred())
+
+			debugAddress = fmt.Sprintf("127.0.0.1:%d", port)
+			cfg.DebugAddress = debugAddress
+		})
+
+		It("listens on the debug address specified", func() {
+			_, err := net.Dial("tcp", debugAddress)
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("when locking", func() {
@@ -79,7 +103,7 @@ var _ = Describe("Locket", func() {
 			})
 
 			Context("when the lock exists", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
 					_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource})
 					Expect(err).NotTo(HaveOccurred())

@@ -13,6 +13,7 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/db"
@@ -36,7 +37,7 @@ func main() {
 		panic(err)
 	}
 
-	logger, _ := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
+	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
 
 	if cfg.DatabaseDriver != "" && cfg.DatabaseConnectionString != "" {
 		var err error
@@ -81,6 +82,13 @@ func main() {
 	members := grouper.Members{
 		{"server", server},
 	}
+
+	if cfg.DebugAddress != "" {
+		members = append(grouper.Members{
+			{"debug-server", debugserver.Runner(cfg.DebugAddress, reconfigurableSink)},
+		}, members...)
+	}
+
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))
 

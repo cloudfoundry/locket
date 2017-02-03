@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 
@@ -20,7 +21,8 @@ var _ = Describe("LocketConfig", func() {
 			"log_level": "debug",
 			"listen_address": "1.2.3.4:9090",
 			"database_driver": "mysql",
-			"database_connection_string": "stuff"
+			"database_connection_string": "stuff",
+			"debug_address": "some-more-stuff"
 		}`
 	})
 
@@ -50,6 +52,9 @@ var _ = Describe("LocketConfig", func() {
 			DatabaseConnectionString: "stuff",
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
+			},
+			DebugServerConfig: debugserver.DebugServerConfig{
+				DebugAddress: "some-more-stuff",
 			},
 		}
 
