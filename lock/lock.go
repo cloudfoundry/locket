@@ -36,7 +36,7 @@ func NewLockRunner(
 }
 
 func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	logger := l.logger.Session("lock")
+	logger := l.logger.Session("sql-lock")
 
 	logger.Info("started")
 	defer logger.Info("completed")
