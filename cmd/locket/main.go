@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -38,6 +40,11 @@ func main() {
 
 	if cfg.DatabaseDriver != "" && cfg.DatabaseConnectionString != "" {
 		var err error
+
+		if cfg.DatabaseDriver == "postgres" && !strings.Contains(cfg.DatabaseConnectionString, "sslmode") {
+			cfg.DatabaseConnectionString = fmt.Sprintf("%s?sslmode=disable", cfg.DatabaseConnectionString)
+		}
+
 		sqlConn, err := sql.Open(cfg.DatabaseDriver, cfg.DatabaseConnectionString)
 		if err != nil {
 			logger.Fatal("failed-to-open-sql", err)
