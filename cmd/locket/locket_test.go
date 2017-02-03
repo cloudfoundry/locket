@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
@@ -34,10 +33,6 @@ var _ = Describe("Locket", func() {
 			ListenAddress:            locketAddress,
 			DatabaseDriver:           sqlRunner.DriverName(),
 			DatabaseConnectionString: sqlRunner.ConnectionString(),
-			EncryptionConfig: encryption.EncryptionConfig{
-				EncryptionKeys: map[string]string{"label": "key"},
-				ActiveKeyLabel: "label",
-			},
 		}
 
 		locketRunner := testrunner.NewLocketRunner(locketBinPath, cfg)
