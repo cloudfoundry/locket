@@ -49,7 +49,7 @@ var _ = Describe("Lock", func() {
 	})
 
 	JustBeforeEach(func() {
-		lockProcess = ginkgomon.Invoke(lockRunner)
+		lockProcess = ifrit.Background(lockRunner)
 	})
 
 	AfterEach(func() {
@@ -57,6 +57,7 @@ var _ = Describe("Lock", func() {
 	})
 
 	It("locks the key", func() {
+		Eventually(lockProcess.Ready()).Should(BeClosed())
 		Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 		_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 		Expect(lockReq.Resource).To(Equal(expectedLock))
@@ -77,6 +78,8 @@ var _ = Describe("Lock", func() {
 			Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 			_, lockReq, _ = fakeLocker.LockArgsForCall(1)
 			Expect(lockReq.Resource).To(Equal(expectedLock))
+
+			Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 		})
 
 		Context("and the lock becomes available", func() {
@@ -84,10 +87,12 @@ var _ = Describe("Lock", func() {
 				Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 				_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
+				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 
 				fakeLocker.LockReturns(nil, nil)
 				fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
 
+				Eventually(lockProcess.Ready()).Should(BeClosed())
 				Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 				_, lockReq, _ = fakeLocker.LockArgsForCall(1)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
@@ -101,6 +106,7 @@ var _ = Describe("Lock", func() {
 
 	Context("when the lock can be acquired", func() {
 		It("grabs the lock and then stops trying to grab it", func() {
+			Eventually(lockProcess.Ready()).Should(BeClosed())
 			Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 			_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 			Expect(lockReq.Resource).To(Equal(expectedLock))

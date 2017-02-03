@@ -22,7 +22,7 @@ var (
 	sqlProcess ifrit.Process
 	sqlRunner  sqlrunner.SQLRunner
 
-	TruncateTableList = []string{"TRUNCATE TABLE locks"}
+	TruncateTableList = []string{"locks"}
 )
 
 func TestLocket(t *testing.T) {

@@ -41,8 +41,6 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	close(ready)
-
 	retry := l.clock.NewTimer(l.retryInterval)
 
 	_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock})
@@ -52,6 +50,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 	} else {
 		logger.Info("acquired-lock")
 		retry.Stop()
+		close(ready)
 	}
 
 	for {
@@ -76,6 +75,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			} else {
 				logger.Info("acquired-lock")
 				retry.Stop()
+				close(ready)
 			}
 		}
 	}

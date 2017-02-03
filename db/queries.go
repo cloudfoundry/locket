@@ -5,7 +5,7 @@ import "code.cloudfoundry.org/lager"
 func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
 	_, err := db.db.Exec(`
 		CREATE TABLE IF NOT EXISTS locks (
-			key VARCHAR(255) PRIMARY KEY,
+			path VARCHAR(255) PRIMARY KEY,
 			owner VARCHAR(255),
 			value VARCHAR(255)
 		);

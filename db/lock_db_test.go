@@ -21,7 +21,7 @@ var _ = Describe("Lock", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				lockQuery := helpers.RebindForFlavor(
-					"SELECT * FROM Locks WHERE key = ?",
+					"SELECT * FROM locks WHERE path = ?",
 					dbFlavor,
 				)
 
@@ -71,7 +71,7 @@ var _ = Describe("Lock", func() {
 		Context("when the lock exists", func() {
 			BeforeEach(func() {
 				query := helpers.RebindForFlavor(
-					`INSERT INTO locks (key, owner, value) VALUES (?, ?, ?);`,
+					`INSERT INTO locks (path, owner, value) VALUES (?, ?, ?);`,
 					dbFlavor,
 				)
 				result, err := db.Exec(query, lock.Key, lock.Owner, lock.Value)
@@ -83,7 +83,7 @@ var _ = Describe("Lock", func() {
 				err := sqlDB.Release(logger, &lock)
 				Expect(err).NotTo(HaveOccurred())
 
-				rows, err := db.Query(`SELECT key FROM locks;`)
+				rows, err := db.Query(`SELECT path FROM locks;`)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(rows.Next()).To(BeFalse())
 			})
@@ -122,7 +122,7 @@ var _ = Describe("Lock", func() {
 		Context("when the lock exists", func() {
 			BeforeEach(func() {
 				query := helpers.RebindForFlavor(
-					`INSERT INTO locks (key, owner, value) VALUES (?, ?, ?);`,
+					`INSERT INTO locks (path, owner, value) VALUES (?, ?, ?);`,
 					dbFlavor,
 				)
 				result, err := db.Exec(query, lock.Key, lock.Owner, lock.Value)

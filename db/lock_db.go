@@ -13,7 +13,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource) error {
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
 		_, err := db.helper.Insert(logger, tx, "locks", helpers.SQLAttributes{
-			"key":   resource.Key,
+			"path":  resource.Key,
 			"owner": resource.Owner,
 			"value": resource.Value,
 		})
@@ -34,24 +34,24 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock")
 
 	return db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
-		var owner string
-		row := db.helper.One(logger, tx, "locks", []string{"owner"}, true, "key = ?", resource.Key)
-		err := row.Scan(&owner)
+		result, err := db.helper.Delete(logger, tx, "locks", "path = ? AND owner = ?", resource.Key, resource.Owner)
+
+		n, err := result.RowsAffected()
 		if err != nil {
+			logger.Error("failed-to-get-rows-affected", err)
 			return err
 		}
 
-		if owner != resource.Owner {
+		if n < 1 {
 			logger.Error("cannot-release-lock", models.ErrLockCollision, lager.Data{
 				"key":   resource.Key,
-				"owner": owner,
+				"owner": resource.Owner,
 				"actor": resource.Owner,
 			})
 
 			return models.ErrLockCollision
 		}
 
-		_, err = db.helper.Delete(logger, tx, "locks", "key = ?", resource.Key)
 		return err
 	})
 }
@@ -62,7 +62,7 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*models.Resource, error
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
 		var value, owner string
-		row := db.helper.One(logger, tx, "locks", []string{"value", "owner"}, true, "key = ?", key)
+		row := db.helper.One(logger, tx, "locks", []string{"value", "owner"}, true, "path = ?", key)
 		err := row.Scan(&value, &owner)
 		if err != nil {
 			return err
