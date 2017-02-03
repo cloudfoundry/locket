@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
@@ -14,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("Lock", func() {
@@ -83,13 +86,28 @@ var _ = Describe("Lock", func() {
 		})
 
 		Context("and the lock becomes available", func() {
+			var done chan struct{}
+
+			BeforeEach(func() {
+				done = make(chan struct{})
+
+				fakeLocker.LockStub = func(ctx context.Context, res *models.LockRequest, opts ...grpc.CallOption) (*models.LockResponse, error) {
+					select {
+					case <-done:
+						return nil, nil
+					default:
+						return nil, errors.New("no-lock-for-you")
+					}
+				}
+			})
+
 			It("stops retrying to grab the lock", func() {
 				Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 				_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
 				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 
-				fakeLocker.LockReturns(nil, nil)
+				close(done)
 				fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
 
 				Eventually(lockProcess.Ready()).Should(BeClosed())
