@@ -6,6 +6,7 @@ import (
 )
 
 const DefaultSessionTTL = 15 * time.Second
+const DefaultSessionTTLInSeconds int64 = 15
 const MonitorRetryTime = 2 * time.Second
 const RetryInterval = 5 * time.Second
 

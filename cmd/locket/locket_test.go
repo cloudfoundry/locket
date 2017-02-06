@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
@@ -74,59 +75,77 @@ var _ = Describe("Locket", func() {
 		})
 	})
 
-	Context("when locking", func() {
-		Context("Lock", func() {
-			It("locks the key with the corresponding value", func() {
-				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
-				_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource})
+	Context("Lock", func() {
+		It("locks the key with the corresponding value", func() {
+			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
+
+			requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima"}
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 10,
+			})
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("expires after a ttl", func() {
+			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 1,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+				return err
+			}, 2*time.Second).Should(HaveOccurred())
+		})
+	})
+
+	Context("Release", func() {
+		var requestedResource *models.Resource
+
+		Context("when the lock does not exist", func() {
+			It("throws an error releasing the lock", func() {
+				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+				_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when the lock exists", func() {
+			JustBeforeEach(func() {
+				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+				_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource, TtlInSeconds: 10})
 				Expect(err).NotTo(HaveOccurred())
 
 				resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
+			})
 
-				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima"}
-				_, err = locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource})
+			It("releases the lock", func() {
+				_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 				Expect(err).To(HaveOccurred())
 			})
-		})
 
-		Context("Release", func() {
-			var requestedResource *models.Resource
-
-			Context("when the lock does not exist", func() {
-				It("throws an error releasing the lock", func() {
-					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+			Context("when another process is the lock owner", func() {
+				It("throws an error", func() {
+					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima"}
 					_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
 					Expect(err).To(HaveOccurred())
-				})
-			})
-
-			Context("when the lock exists", func() {
-				JustBeforeEach(func() {
-					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
-					_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource})
-					Expect(err).NotTo(HaveOccurred())
-
-					resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
-				})
-
-				It("releases the lock", func() {
-					_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
-					Expect(err).NotTo(HaveOccurred())
-
-					_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-					Expect(err).To(HaveOccurred())
-				})
-
-				Context("when another process is the lock owner", func() {
-					It("throws an error", func() {
-						requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima"}
-						_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
-						Expect(err).To(HaveOccurred())
-					})
 				})
 			})
 		})

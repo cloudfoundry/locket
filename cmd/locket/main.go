@@ -13,6 +13,7 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
@@ -39,6 +40,8 @@ func main() {
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
 
+	clk := clock.NewClock()
+
 	if cfg.DatabaseDriver != "" && cfg.DatabaseConnectionString != "" {
 		var err error
 
@@ -60,6 +63,7 @@ func main() {
 		sqlDB = db.NewSQLDB(
 			sqlConn,
 			cfg.DatabaseDriver,
+			clk,
 		)
 
 		err = sqlDB.SetIsolationLevel(logger, helpers.IsolationLevelReadCommitted)

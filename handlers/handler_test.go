@@ -34,13 +34,37 @@ var _ = Describe("Lock", func() {
 	})
 
 	Context("Lock", func() {
+		var request *models.LockRequest
+
+		BeforeEach(func() {
+			request = &models.LockRequest{
+				Resource:     resource,
+				TtlInSeconds: 10,
+			}
+		})
+
 		It("reserves the lock in the database", func() {
-			_, err := locketHandler.Lock(context.Background(), &models.LockRequest{Resource: resource})
+			_, err := locketHandler.Lock(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLockDB.LockCallCount()).Should(Equal(1))
-			_, actualResource := fakeLockDB.LockArgsForCall(0)
+			_, actualResource, ttl := fakeLockDB.LockArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
+			Expect(ttl).To(BeEquivalentTo(10))
+		})
+
+		Context("when request does not have TTL", func() {
+			BeforeEach(func() {
+				request = &models.LockRequest{
+					Resource: resource,
+				}
+			})
+
+			It("returns a validation error", func() {
+				_, err := locketHandler.Lock(context.Background(), request)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(models.ErrInvalidTTL))
+			})
 		})
 
 		Context("when locking errors", func() {
@@ -49,7 +73,7 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := locketHandler.Lock(context.Background(), &models.LockRequest{Resource: resource})
+				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 			})
 		})

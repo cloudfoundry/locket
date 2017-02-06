@@ -10,11 +10,12 @@ import (
 )
 
 type FakeLockDB struct {
-	LockStub        func(logger lager.Logger, resource *models.Resource) error
+	LockStub        func(logger lager.Logger, resource *models.Resource, ttl int64) error
 	lockMutex       sync.RWMutex
 	lockArgsForCall []struct {
 		logger   lager.Logger
 		resource *models.Resource
+		ttl      int64
 	}
 	lockReturns struct {
 		result1 error
@@ -42,16 +43,17 @@ type FakeLockDB struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeLockDB) Lock(logger lager.Logger, resource *models.Resource) error {
+func (fake *FakeLockDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64) error {
 	fake.lockMutex.Lock()
 	fake.lockArgsForCall = append(fake.lockArgsForCall, struct {
 		logger   lager.Logger
 		resource *models.Resource
-	}{logger, resource})
-	fake.recordInvocation("Lock", []interface{}{logger, resource})
+		ttl      int64
+	}{logger, resource, ttl})
+	fake.recordInvocation("Lock", []interface{}{logger, resource, ttl})
 	fake.lockMutex.Unlock()
 	if fake.LockStub != nil {
-		return fake.LockStub(logger, resource)
+		return fake.LockStub(logger, resource, ttl)
 	} else {
 		return fake.lockReturns.result1
 	}
@@ -63,10 +65,10 @@ func (fake *FakeLockDB) LockCallCount() int {
 	return len(fake.lockArgsForCall)
 }
 
-func (fake *FakeLockDB) LockArgsForCall(i int) (lager.Logger, *models.Resource) {
+func (fake *FakeLockDB) LockArgsForCall(i int) (lager.Logger, *models.Resource, int64) {
 	fake.lockMutex.RLock()
 	defer fake.lockMutex.RUnlock()
-	return fake.lockArgsForCall[i].logger, fake.lockArgsForCall[i].resource
+	return fake.lockArgsForCall[i].logger, fake.lockArgsForCall[i].resource, fake.lockArgsForCall[i].ttl
 }
 
 func (fake *FakeLockDB) LockReturns(result1 error) {

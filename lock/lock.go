@@ -15,6 +15,7 @@ type lockRunner struct {
 
 	locker        models.LocketClient
 	lock          *models.Resource
+	ttlInSeconds  int64
 	clock         clock.Clock
 	retryInterval time.Duration
 }
@@ -23,6 +24,7 @@ func NewLockRunner(
 	logger lager.Logger,
 	locker models.LocketClient,
 	lock *models.Resource,
+	ttlInSeconds int64,
 	clock clock.Clock,
 	retryInterval time.Duration,
 ) *lockRunner {
@@ -30,28 +32,29 @@ func NewLockRunner(
 		logger:        logger,
 		locker:        locker,
 		lock:          lock,
+		ttlInSeconds:  ttlInSeconds,
 		clock:         clock,
 		retryInterval: retryInterval,
 	}
 }
 
 func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	logger := l.logger.Session("sql-lock")
+	logger := l.logger.Session("sql-lock", lager.Data{"lock": l.lock, "ttl_in_seconds": l.ttlInSeconds})
 
 	logger.Info("started")
 	defer logger.Info("completed")
 
-	retry := l.clock.NewTimer(l.retryInterval)
-
-	_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock})
+	var acquired bool
+	_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds})
 	if err != nil {
 		logger.Error("failed-to-acquire-lock", err)
-		retry.Reset(l.retryInterval)
 	} else {
 		logger.Info("acquired-lock")
-		retry.Stop()
 		close(ready)
+		acquired = true
 	}
+
+	retry := l.clock.NewTimer(l.retryInterval)
 
 	for {
 		select {
@@ -68,15 +71,21 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			return nil
 
 		case <-retry.C():
-			_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock})
+			_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds})
 			if err != nil {
-				logger.Error("failed-to-acquire-lock", err)
-				retry.Reset(l.retryInterval)
-			} else {
+				if acquired {
+					logger.Error("lost-lock", err)
+					return err
+				}
+
+				logger.Debug("failed-to-acquire-lock", lager.Data{"error": err})
+			} else if !acquired {
 				logger.Info("acquired-lock")
-				retry.Stop()
 				close(ready)
+				acquired = true
 			}
+
+			retry.Reset(l.retryInterval)
 		}
 	}
 

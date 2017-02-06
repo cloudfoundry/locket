@@ -1,4 +1,4 @@
-syntax = "proto2";
+syntax = "proto3";
 
 package models;
 
@@ -9,21 +9,22 @@ service Locket {
 }
 
 message Resource {
-  optional string key = 1;
-  optional string owner = 2;
-  optional string value = 3;
+  string key = 1;
+  string owner = 2;
+  string value = 3;
 }
 
 message LockRequest {
-  optional Resource resource = 1;
+  Resource resource = 1;
+  int64 ttl_in_seconds = 2;
 }
 
 message ReleaseRequest {
-  optional Resource resource = 1;
+  Resource resource = 1;
 }
 
 message FetchRequest {
-  optional string key = 1;
+  string key = 1;
 }
 
 message LockResponse {}
@@ -31,5 +32,5 @@ message LockResponse {}
 message ReleaseResponse {}
 
 message FetchResponse {
-  optional Resource resource = 1;
+  Resource resource = 1;
 }

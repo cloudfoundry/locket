@@ -3,9 +3,11 @@ package db_test
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
 	. "github.com/onsi/ginkgo"
@@ -22,6 +24,7 @@ var (
 	logger                               *lagertest.TestLogger
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
+	fakeClock                            *fakeclock.FakeClock
 )
 
 func TestSql(t *testing.T) {
@@ -33,6 +36,7 @@ func TestSql(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 	logger = lagertest.NewTestLogger("sql-db")
+	fakeClock = fakeclock.NewFakeClock(time.Now())
 
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
@@ -60,7 +64,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 
-	sqlDB = sqldb.NewSQLDB(db, dbFlavor)
+	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeClock)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())
 
