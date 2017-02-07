@@ -1,7 +1,6 @@
 package locket_test
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -163,14 +162,17 @@ var _ = Describe("Presence", func() {
 							http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 								// We only want to return 500's on the lock monitor query
 								if !strings.Contains(r.URL.Path, "/v1/kv") {
+									By("forwarding request to " + r.URL.Path)
 									proxy.ServeHTTP(w, r)
 									return
 								}
 
 								select {
 								case <-serveFiveHundreds:
+									By("returning 500 to " + r.URL.Path)
 									w.WriteHeader(http.StatusInternalServerError)
 								default:
+									By("returning 500 to " + r.URL.Path)
 									proxy.ServeHTTP(w, r)
 								}
 							}),
@@ -197,10 +199,12 @@ var _ = Describe("Presence", func() {
 							for i := 0; i < 4; i++ {
 								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
 							}
+
+							By("closing all connections")
+
 							// Close the existing connection with consul so that the
 							// lock monitor is forced to retry. This is because consul
 							// performs a blocking query until the lock index is changed.
-							fmt.Printf("Closing Blocking Connections")
 							fakeConsul.CloseClientConnections()
 
 							Eventually(logger, 7*time.Second).Should(Say("presence-lost"))
