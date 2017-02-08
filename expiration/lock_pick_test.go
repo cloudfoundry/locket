@@ -145,6 +145,7 @@ var _ = Describe("LockPick", func() {
 				_, key := fakeLockDB.FetchArgsForCall(0)
 				Expect(key).To(Equal(lock.Key))
 
+				Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 				Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 			})
 
@@ -156,6 +157,7 @@ var _ = Describe("LockPick", func() {
 					_, key := fakeLockDB.FetchArgsForCall(0)
 					Expect(key).To(Equal(lock.Key))
 
+					Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 					Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 				})
 
@@ -169,6 +171,7 @@ var _ = Describe("LockPick", func() {
 					_, key := fakeLockDB.FetchArgsForCall(0)
 					Expect(key).To(Equal(lock.Key))
 
+					Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(2))
 					Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(2))
 				})
 			})
