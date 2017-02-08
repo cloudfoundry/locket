@@ -25,6 +25,7 @@ var _ = Describe("Locket", func() {
 		locketAddress string
 		locketClient  models.LocketClient
 		locketProcess ifrit.Process
+		locketRunner  ifrit.Runner
 		cfg           config.LocketConfig
 	)
 
@@ -43,7 +44,7 @@ var _ = Describe("Locket", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		locketRunner := testrunner.NewLocketRunner(locketBinPath, cfg)
+		locketRunner = testrunner.NewLocketRunner(locketBinPath, cfg)
 		locketProcess = ginkgomon.Invoke(locketRunner)
 
 		conn, err = grpc.Dial(locketAddress, grpc.WithInsecure())
@@ -108,6 +109,32 @@ var _ = Describe("Locket", func() {
 				_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 				return err
 			}, 2*time.Second).Should(HaveOccurred())
+		})
+
+		Context("when the lock server disappears unexpectedly", func() {
+			It("still disappears after ~ the ttl", func() {
+				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim"}
+				_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+					Resource:     requestedResource,
+					TtlInSeconds: 3,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				ginkgomon.Kill(locketProcess)
+
+				locketRunner = testrunner.NewLocketRunner(locketBinPath, cfg)
+				locketProcess = ginkgomon.Invoke(locketRunner)
+
+				// Recreate the grpc client to avoid default backoff
+				conn, err = grpc.Dial(locketAddress, grpc.WithInsecure())
+				Expect(err).NotTo(HaveOccurred())
+				locketClient = models.NewLocketClient(conn)
+
+				Eventually(func() error {
+					_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+					return err
+				}, 6*time.Second).Should(HaveOccurred())
+			})
 		})
 	})
 

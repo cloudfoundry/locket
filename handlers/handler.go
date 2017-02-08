@@ -3,19 +3,23 @@ package handlers
 import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
+	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/models"
 	"golang.org/x/net/context"
 )
 
 type locketHandler struct {
-	db     db.LockDB
 	logger lager.Logger
+
+	db       db.LockDB
+	lockPick expiration.LockPick
 }
 
-func NewLocketHandler(logger lager.Logger, db db.LockDB) *locketHandler {
+func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick) *locketHandler {
 	return &locketHandler{
-		logger: logger,
-		db:     db,
+		logger:   logger,
+		db:       db,
+		lockPick: lockPick,
 	}
 }
 
@@ -28,10 +32,13 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 		return nil, models.ErrInvalidTTL
 	}
 
-	err := h.db.Lock(h.logger, req.Resource, req.TtlInSeconds)
+	lock, err := h.db.Lock(h.logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		return nil, err
 	}
+
+	h.lockPick.RegisterTTL(logger, lock)
+
 	return &models.LockResponse{}, nil
 }
 
@@ -52,11 +59,11 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	resource, err := h.db.Fetch(h.logger, req.Key)
+	lock, err := h.db.Fetch(h.logger, req.Key)
 	if err != nil {
 		return nil, err
 	}
 	return &models.FetchResponse{
-		Resource: resource,
+		Resource: lock.Resource,
 	}, nil
 }

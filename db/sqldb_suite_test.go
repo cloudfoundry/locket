@@ -3,11 +3,9 @@ package db_test
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
 	. "github.com/onsi/ginkgo"
@@ -19,12 +17,11 @@ import (
 )
 
 var (
-	db                                   *sql.DB
+	rawDB                                *sql.DB
 	sqlDB                                *sqldb.SQLDB
 	logger                               *lagertest.TestLogger
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
-	fakeClock                            *fakeclock.FakeClock
 )
 
 func TestSql(t *testing.T) {
@@ -36,7 +33,6 @@ func TestSql(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 	logger = lagertest.NewTestLogger("sql-db")
-	fakeClock = fakeclock.NewFakeClock(time.Now())
 
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
@@ -52,19 +48,19 @@ var _ = BeforeSuite(func() {
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
-	db, err = sql.Open(dbDriverName, dbBaseConnectionString)
+	rawDB, err = sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Ping()).NotTo(HaveOccurred())
+	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
-	_, err = db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
+	_, err = rawDB.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
 	Expect(err).NotTo(HaveOccurred())
 
-	db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+	rawDB, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
 	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Ping()).NotTo(HaveOccurred())
+	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
-	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeClock)
+	sqlDB = sqldb.NewSQLDB(rawDB, dbFlavor)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -77,21 +73,21 @@ var _ = BeforeEach(func() {
 	// ensure that all sqldb functions being tested only require one connection
 	// to operate, otherwise a deadlock can be caused in bbs. For more
 	// information see https://www.pivotaltracker.com/story/show/136754083
-	db.SetMaxOpenConns(1)
+	rawDB.SetMaxOpenConns(1)
 })
 
 var _ = AfterEach(func() {
-	truncateTables(db)
+	truncateTables(rawDB)
 })
 
 var _ = AfterSuite(func() {
-	Expect(db.Close()).NotTo(HaveOccurred())
-	db, err := sql.Open(dbDriverName, dbBaseConnectionString)
+	Expect(rawDB.Close()).NotTo(HaveOccurred())
+	rawDB, err := sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Ping()).NotTo(HaveOccurred())
-	_, err = db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
+	Expect(rawDB.Ping()).NotTo(HaveOccurred())
+	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS diego_%d", GinkgoParallelNode()))
 	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Close()).NotTo(HaveOccurred())
+	Expect(rawDB.Close()).NotTo(HaveOccurred())
 })
 
 func truncateTables(db *sql.DB) {

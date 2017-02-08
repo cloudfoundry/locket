@@ -5,7 +5,9 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
+	"code.cloudfoundry.org/locket/expiration/expirationfakes"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
@@ -15,6 +17,7 @@ import (
 var _ = Describe("Lock", func() {
 	var (
 		fakeLockDB    *dbfakes.FakeLockDB
+		fakeLockPick  *expirationfakes.FakeLockPick
 		logger        *lagertest.TestLogger
 		locketHandler models.LocketServer
 		resource      *models.Resource
@@ -22,6 +25,7 @@ var _ = Describe("Lock", func() {
 
 	BeforeEach(func() {
 		fakeLockDB = &dbfakes.FakeLockDB{}
+		fakeLockPick = &expirationfakes.FakeLockPick{}
 		logger = lagertest.NewTestLogger("locket-handler")
 
 		resource = &models.Resource{
@@ -30,17 +34,28 @@ var _ = Describe("Lock", func() {
 			Owner: "myself",
 		}
 
-		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB)
+		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB, fakeLockPick)
 	})
 
 	Context("Lock", func() {
-		var request *models.LockRequest
+		var (
+			request      *models.LockRequest
+			expectedLock *db.Lock
+		)
 
 		BeforeEach(func() {
 			request = &models.LockRequest{
 				Resource:     resource,
 				TtlInSeconds: 10,
 			}
+
+			expectedLock = &db.Lock{
+				Resource:      resource,
+				TtlInSeconds:  10,
+				ModifiedIndex: 2,
+			}
+
+			fakeLockDB.LockReturns(expectedLock, nil)
 		})
 
 		It("reserves the lock in the database", func() {
@@ -51,6 +66,15 @@ var _ = Describe("Lock", func() {
 			_, actualResource, ttl := fakeLockDB.LockArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
 			Expect(ttl).To(BeEquivalentTo(10))
+		})
+
+		It("registers the lock and ttl with the lock pick", func() {
+			_, err := locketHandler.Lock(context.Background(), request)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeLockPick.RegisterTTLCallCount()).To(Equal(1))
+			_, lock := fakeLockPick.RegisterTTLArgsForCall(0)
+			Expect(lock).To(Equal(expectedLock))
 		})
 
 		Context("when request does not have TTL", func() {
@@ -69,7 +93,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when locking errors", func() {
 			BeforeEach(func() {
-				fakeLockDB.LockReturns(errors.New("Boom."))
+				fakeLockDB.LockReturns(nil, errors.New("Boom."))
 			})
 
 			It("returns the error", func() {
@@ -103,7 +127,7 @@ var _ = Describe("Lock", func() {
 
 	Context("Fetch", func() {
 		BeforeEach(func() {
-			fakeLockDB.FetchReturns(resource, nil)
+			fakeLockDB.FetchReturns(&db.Lock{Resource: resource}, nil)
 		})
 
 		It("fetches the lock in the database", func() {

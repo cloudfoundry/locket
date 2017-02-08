@@ -16,8 +16,10 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/db"
+	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
 )
@@ -39,8 +41,7 @@ func main() {
 	}
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
-
-	clk := clock.NewClock()
+	clock := clock.NewClock()
 
 	if cfg.DatabaseDriver != "" && cfg.DatabaseConnectionString != "" {
 		var err error
@@ -63,7 +64,6 @@ func main() {
 		sqlDB = db.NewSQLDB(
 			sqlConn,
 			cfg.DatabaseDriver,
-			clk,
 		)
 
 		err = sqlDB.SetIsolationLevel(logger, helpers.IsolationLevelReadCommitted)
@@ -81,10 +81,13 @@ func main() {
 		logger.Fatal("failed-to-create-lock-table", err)
 	}
 
-	handler := handlers.NewLocketHandler(logger, sqlDB)
+	lockPick := expiration.NewLockPick(sqlDB, clock)
+	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
+	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, handler)
 	members := grouper.Members{
 		{"server", server},
+		{"burglar", burglar},
 	}
 
 	if cfg.DebugAddress != "" {
