@@ -162,17 +162,17 @@ var _ = Describe("Presence", func() {
 							http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 								// We only want to return 500's on the lock monitor query
 								if !strings.Contains(r.URL.Path, "/v1/kv") {
-									By("forwarding request to " + r.URL.Path)
+									By(time.Now().String() + ": forwarding request to " + r.URL.String())
 									proxy.ServeHTTP(w, r)
 									return
 								}
 
 								select {
 								case <-serveFiveHundreds:
-									By("returning 500 to " + r.URL.Path)
+									By(time.Now().String() + ": returning 500 to " + r.URL.String())
 									w.WriteHeader(http.StatusInternalServerError)
 								default:
-									By("returning 500 to " + r.URL.Path)
+									By(time.Now().String() + ": forwarding request to " + r.URL.String())
 									proxy.ServeHTTP(w, r)
 								}
 							}),
