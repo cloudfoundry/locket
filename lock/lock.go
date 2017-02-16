@@ -77,8 +77,6 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 					logger.Error("lost-lock", err)
 					return err
 				}
-
-				logger.Debug("failed-to-acquire-lock", lager.Data{"error": err})
 			} else if !acquired {
 				logger.Info("acquired-lock")
 				close(ready)
