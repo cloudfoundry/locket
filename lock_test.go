@@ -169,30 +169,30 @@ var _ = Describe("Lock", func() {
 				})
 
 				Context("and consul goes through a period of instability", func() {
-					var serveFiveHundreds chan struct{}
+					var serveFiveHundreds chan bool
 					var fakeConsul *httptest.Server
 
 					BeforeEach(func() {
-						serveFiveHundreds = make(chan struct{}, 4)
+						serveFiveHundreds = make(chan bool, 4)
 
 						consulClusterURL, err := url.Parse(consulRunner.URL())
 						Expect(err).NotTo(HaveOccurred())
 						proxy := httputil.NewSingleHostReverseProxy(consulClusterURL)
 						fakeConsul = httptest.NewServer(
 							http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-								// We only want to return 500's on the lock monitor query
-								if !strings.Contains(r.URL.Path, "/v1/lock") {
-									By("forwarding request to " + r.URL.Path)
+								// We only want to return 500's on the lock monitor query which is of the form /v1/kv/some-key?consistent=
+								_, hasConsistent := r.URL.Query()["consistent"]
+								if !hasConsistent {
+									By(time.Now().String() + ": forwarding request to " + r.URL.String())
 									proxy.ServeHTTP(w, r)
 									return
 								}
 
-								select {
-								case <-serveFiveHundreds:
-									By("returning 500 to " + r.URL.Path)
+								if <-serveFiveHundreds {
+									By(time.Now().String() + ": returning 500 to " + r.URL.String())
 									w.WriteHeader(http.StatusInternalServerError)
-								default:
-									By("forwarding request to " + r.URL.Path)
+								} else {
+									By(time.Now().String() + ": forwarding request to " + r.URL.String())
 									proxy.ServeHTTP(w, r)
 								}
 							}),
@@ -221,15 +221,10 @@ var _ = Describe("Lock", func() {
 							// Serve 500's to simulate a leader election. We know that we need
 							// to serve more than lockTTL / 2 500's to lose the lock.
 							for i := 0; i < 4; i++ {
-								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
+								Eventually(serveFiveHundreds).Should(BeSent(true))
 							}
 
-							By("closing all connections")
-
-							// Close the existing connection with consul so that the
-							// lock monitor is forced to retry. This is because consul
-							// performs a blocking query until the lock index is changed.
-							fakeConsul.CloseClientConnections()
+							close(serveFiveHundreds)
 
 							Eventually(lockProcess.Wait(), 7*time.Second).Should(Receive())
 						})
@@ -244,15 +239,10 @@ var _ = Describe("Lock", func() {
 							// Serve 500's to simulate a leader election. We know that if we
 							// serve less than lockTTL / 2 500's, we will not lose the lock.
 							for i := 0; i < 2; i++ {
-								Eventually(serveFiveHundreds).Should(BeSent(struct{}{}))
+								Eventually(serveFiveHundreds).Should(BeSent(true))
 							}
 
-							By("closing all connections")
-
-							// Close the existing connection with consul so that the
-							// lock monitor is forced to retry. This is because consul
-							// performs a blocking query until the lock index is changed.
-							fakeConsul.CloseClientConnections()
+							close(serveFiveHundreds)
 
 							Consistently(lockProcess.Wait(), 7*time.Second).ShouldNot(Receive())
 						})
