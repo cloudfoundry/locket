@@ -3,9 +3,12 @@ package db_test
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"net"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers/tool_helpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
 	. "github.com/onsi/ginkgo"
@@ -42,6 +45,10 @@ var _ = BeforeSuite(func() {
 		dbDriverName = "mysql"
 		dbBaseConnectionString = "diego:diego_password@/"
 		dbFlavor = helpers.MySQL
+	} else if test_helpers.UseMSSQL() {
+		dbDriverName = "mssql"
+		dbBaseConnectionString = os.Getenv("MSSQL_BASE_CONNECTION_STRING")
+		dbFlavor = helpers.MSSQL
 	} else {
 		panic("Unsupported driver")
 	}
@@ -53,13 +60,25 @@ var _ = BeforeSuite(func() {
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
 	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
-	_, err = rawDB.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	if dbFlavor == helpers.MSSQL {
+		_, err = rawDB.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
 
-	rawDB, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(rawDB.Ping()).NotTo(HaveOccurred())
+		err = tool_helpers.Retry(5, func() error {
+			var err error
+			rawDB, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+			err = rawDB.Ping()
+			return err
+		})
+		Expect(err).NotTo(HaveOccurred())
 
+	} else {
+		_, err = rawDB.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+
+		rawDB, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rawDB.Ping()).NotTo(HaveOccurred())
+	}
 	sqlDB = sqldb.NewSQLDB(rawDB, dbFlavor)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())
@@ -85,8 +104,19 @@ var _ = AfterSuite(func() {
 	rawDB, err := sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
-	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	if dbFlavor == helpers.MSSQL {
+		_, err = rawDB.Exec(fmt.Sprintf("IF EXISTS (SELECT * FROM master.dbo.sysdatabases WHERE name='diego_%d') DROP DATABASE diego_%d;", GinkgoParallelNode(), GinkgoParallelNode()))
+		switch err.(type) {
+		case *net.OpError:
+			// On Azure, it may return a "i/o timeout" error when the database is dropped.
+			// do nothing here
+		default:
+			Expect(err).NotTo(HaveOccurred())
+		}
+	} else {
+		_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS diego_%d", GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+	}
 	Expect(rawDB.Close()).NotTo(HaveOccurred())
 })
 
