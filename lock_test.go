@@ -104,7 +104,7 @@ var _ = Describe("Lock", func() {
 				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 				Consistently(lockProcess.Wait()).ShouldNot(Receive())
 
-				clock.Increment(retryInterval)
+				clock.WaitForWatcherAndIncrement(retryInterval)
 				Eventually(logger).Should(Say("acquire-lock-failed"))
 				Eventually(logger).Should(Say("retrying-acquiring-lock"))
 				Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(0)))
@@ -127,15 +127,15 @@ var _ = Describe("Lock", func() {
 				})
 
 				It("continues to emit lock metric", func() {
-					clock.IncrementBySeconds(30)
+					clock.WaitForWatcherAndIncrement(30 * time.Second)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
 					}, 2).Should(Equal(float64(30 * time.Second)))
-					clock.IncrementBySeconds(30)
+					clock.WaitForWatcherAndIncrement(30 * time.Second)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
 					}, 2).Should(Equal(float64(60 * time.Second)))
-					clock.IncrementBySeconds(30)
+					clock.WaitForWatcherAndIncrement(30 * time.Second)
 					Eventually(func() float64 {
 						return sender.GetValue(lockUptimeMetricName).Value
 					}, 2).Should(Equal(float64(90 * time.Second)))
@@ -296,7 +296,7 @@ var _ = Describe("Lock", func() {
 					Consistently(lockProcess.Wait()).ShouldNot(Receive())
 
 					Eventually(logger).Should(Say("acquire-lock-failed"))
-					clock.Increment(retryInterval)
+					clock.WaitForWatcherAndIncrement(retryInterval)
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
 					Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(0)))
 				})
@@ -324,7 +324,7 @@ var _ = Describe("Lock", func() {
 
 					Eventually(logger, 10*time.Second).Should(Say("consul-error"))
 					Eventually(logger, 15*time.Second).Should(Say("acquire-lock-failed"))
-					clock.Increment(retryInterval)
+					clock.WaitForWatcherAndIncrement(retryInterval)
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
 					shouldEventuallyHaveNumSessions(2)
 				})
@@ -383,7 +383,7 @@ var _ = Describe("Lock", func() {
 				lockProcess = ifrit.Background(lockRunner)
 
 				Eventually(logger).Should(Say("acquire-lock-failed"))
-				clock.Increment(retryInterval)
+				clock.WaitForWatcherAndIncrement(retryInterval)
 				Eventually(logger).Should(Say("retrying-acquiring-lock"))
 				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 				Consistently(lockProcess.Wait()).ShouldNot(Receive())
@@ -391,7 +391,7 @@ var _ = Describe("Lock", func() {
 				consulRunner.Start()
 				consulRunner.WaitUntilReady()
 
-				clock.Increment(retryInterval)
+				clock.WaitForWatcherAndIncrement(retryInterval)
 				Eventually(lockProcess.Ready()).Should(BeClosed())
 				Expect(getLockValue()).To(Equal(lockValue))
 			})
