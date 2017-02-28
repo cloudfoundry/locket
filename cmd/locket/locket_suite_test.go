@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,8 +20,9 @@ import (
 var (
 	locketBinPath string
 
-	sqlProcess ifrit.Process
-	sqlRunner  sqlrunner.SQLRunner
+	sqlProcess   ifrit.Process
+	sqlRunner    sqlrunner.SQLRunner
+	consulRunner *consulrunner.ClusterRunner
 
 	TruncateTableList = []string{"locks"}
 )
@@ -43,10 +45,27 @@ var _ = SynchronizedBeforeSuite(
 		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
 		sqlRunner = test_helpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
+
+		consulRunner = consulrunner.NewClusterRunner(
+			consulrunner.ClusterRunnerConfig{
+				StartingPort: 9001 + GinkgoParallelNode()*consulrunner.PortOffsetLength,
+				NumNodes:     1,
+				Scheme:       "http",
+			},
+		)
+		consulRunner.Start()
 	},
 )
 
+var _ = BeforeEach(func() {
+	consulRunner.WaitUntilReady()
+	consulRunner.Reset()
+})
+
 var _ = SynchronizedAfterSuite(func() {
+	if consulRunner != nil {
+		consulRunner.Stop()
+	}
 	ginkgomon.Kill(sqlProcess)
 }, func() {
 	gexec.CleanupBuildArtifacts()

@@ -12,6 +12,7 @@ import (
 	"code.cloudfoundry.org/locket/models"
 	"google.golang.org/grpc"
 
+	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -25,18 +26,21 @@ var _ = Describe("Locket", func() {
 		locketAddress string
 		locketClient  models.LocketClient
 		locketProcess ifrit.Process
+		locketPort    uint16
 		locketRunner  ifrit.Runner
 		cfg           config.LocketConfig
 	)
 
 	BeforeEach(func() {
-		locketPort, err := localip.LocalPort()
+		var err error
+		locketPort, err = localip.LocalPort()
 		Expect(err).NotTo(HaveOccurred())
 
 		locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
 
 		cfg = config.LocketConfig{
 			ListenAddress:            locketAddress,
+			ConsulCluster:            consulRunner.ConsulCluster(),
 			DatabaseDriver:           sqlRunner.DriverName(),
 			DatabaseConnectionString: sqlRunner.ConnectionString(),
 		}
@@ -73,6 +77,37 @@ var _ = Describe("Locket", func() {
 		It("listens on the debug address specified", func() {
 			_, err := net.Dial("tcp", debugAddress)
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("ServiceRegistration", func() {
+		It("registers itself with consul", func() {
+			consulClient := consulRunner.NewClient()
+			services, err := consulClient.Agent().Services()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(services).To(HaveKeyWithValue("locket",
+				&api.AgentService{
+					Service: "locket",
+					ID:      "locket",
+					Port:    int(locketPort),
+				}))
+		})
+
+		It("registers a TTL healthcheck", func() {
+			consulClient := consulRunner.NewClient()
+			checks, err := consulClient.Agent().Checks()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(checks).To(HaveKeyWithValue("service:locket",
+				&api.AgentCheck{
+					Node:        "0",
+					CheckID:     "service:locket",
+					Name:        "Service 'locket' check",
+					Status:      "passing",
+					ServiceID:   "locket",
+					ServiceName: "locket",
+				}))
 		})
 	})
 

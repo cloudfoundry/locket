@@ -22,7 +22,8 @@ var _ = Describe("LocketConfig", func() {
 			"listen_address": "1.2.3.4:9090",
 			"database_driver": "mysql",
 			"database_connection_string": "stuff",
-			"debug_address": "some-more-stuff"
+			"debug_address": "some-more-stuff",
+			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345"
 		}`
 	})
 
@@ -50,6 +51,7 @@ var _ = Describe("LocketConfig", func() {
 			DatabaseDriver:           "mysql",
 			ListenAddress:            "1.2.3.4:9090",
 			DatabaseConnectionString: "stuff",
+			ConsulCluster:            "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},

@@ -12,6 +12,7 @@ type LocketConfig struct {
 	DatabaseConnectionString string `json:"database_connection_string"`
 	DatabaseDriver           string `json:"database_driver,omitempty"`
 	ListenAddress            string `json:"listen_address"`
+	ConsulCluster            string `json:"consul_cluster,omitempty"`
 	lagerflags.LagerConfig
 	debugserver.DebugServerConfig
 }
