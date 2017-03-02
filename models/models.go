@@ -10,3 +10,4 @@ const LockType = "lock"
 
 var ErrLockCollision = errors.New("lock-collision")
 var ErrInvalidTTL = errors.New("invalid-ttl")
+var ErrResourceNotFound = errors.New("resource-not-found")

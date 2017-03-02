@@ -217,9 +217,9 @@ var _ = Describe("Lock", func() {
 
 		Context("when the lock does not exist", func() {
 			Context("because the row does not exist", func() {
-				It("returns an error", func() {
+				It("returns an resource not found error", func() {
 					_, err := sqlDB.Fetch(logger, "test")
-					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(models.ErrResourceNotFound))
 				})
 			})
 
@@ -236,7 +236,7 @@ var _ = Describe("Lock", func() {
 
 				It("returns an error", func() {
 					_, err := sqlDB.Fetch(logger, "test")
-					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(models.ErrResourceNotFound))
 				})
 			})
 		})

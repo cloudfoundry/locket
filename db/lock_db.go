@@ -96,7 +96,11 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 		res, index, ttl, err := db.fetchLock(logger, tx, key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
-			return err
+			sqlErr := db.helper.ConvertSQLError(err)
+			if sqlErr == helpers.ErrResourceNotFound {
+				return models.ErrResourceNotFound
+			}
+			return sqlErr
 		}
 
 		lock = &Lock{Resource: res, ModifiedIndex: index, TtlInSeconds: ttl}
