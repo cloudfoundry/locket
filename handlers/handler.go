@@ -73,7 +73,7 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	locks, err := h.db.FetchAll(h.logger)
+	locks, err := h.db.FetchAll(h.logger, req.Type)
 	if err != nil {
 		return nil, err
 	}

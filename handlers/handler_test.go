@@ -168,11 +168,12 @@ var _ = Describe("Lock", func() {
 		})
 
 		It("fetches all the locks in the database", func() {
-			fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+			fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "dawg"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fetchResp.Resources).To(Equal(expectedResources))
-
 			Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+			_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+			Expect(lockType).To(Equal("dawg"))
 		})
 
 		Context("when fetching errors", func() {

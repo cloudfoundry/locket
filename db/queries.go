@@ -8,6 +8,7 @@ func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
 			path VARCHAR(255) PRIMARY KEY,
 			owner VARCHAR(255),
 			value VARCHAR(4096),
+			type VARCHAR(255) DEFAULT '',
 			modified_index BIGINT DEFAULT 0,
 			ttl BIGINT DEFAULT 0
 		);

@@ -13,6 +13,7 @@ message Resource {
   string key = 1;
   string owner = 2;
   string value = 3;
+  string type = 4;
 }
 
 message LockRequest {
@@ -20,22 +21,24 @@ message LockRequest {
   int64 ttl_in_seconds = 2;
 }
 
+message LockResponse {}
+
 message ReleaseRequest {
   Resource resource = 1;
 }
+
+message ReleaseResponse {}
 
 message FetchRequest {
   string key = 1;
 }
 
-message FetchAllRequest {}
-
-message LockResponse {}
-
-message ReleaseResponse {}
-
 message FetchResponse {
   Resource resource = 1;
+}
+
+message FetchAllRequest {
+  string type = 1;
 }
 
 message FetchAllResponse {

@@ -41,6 +41,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 			helpers.SQLAttributes{
 				"owner":          lock.Owner,
 				"value":          lock.Value,
+				"type":           lock.Type,
 				"modified_index": lock.ModifiedIndex,
 				"ttl":            lock.TtlInSeconds,
 			},
@@ -75,6 +76,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 			helpers.SQLAttributes{
 				"value":          "",
 				"owner":          "",
+				"type":           "",
 				"modified_index": index,
 			},
 			"path = ?", resource.Key,
@@ -105,14 +107,22 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 	return lock, err
 }
 
-func (db *SQLDB) FetchAll(logger lager.Logger) ([]*Lock, error) {
+func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error) {
 	logger = logger.Session("fetch-all-locks")
 	var locks []*Lock
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+		var where string
+		whereBindings := make([]interface{}, 0)
+
+		if lockType != "" {
+			where = "type = ?"
+			whereBindings = append(whereBindings, lockType)
+		}
+
 		rows, err := db.helper.All(logger, tx, "locks",
-			helpers.ColumnList{"path", "owner", "value", "modified_index", "ttl"},
-			helpers.LockRow, "",
+			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "ttl"},
+			helpers.LockRow, where, whereBindings...,
 		)
 		if err != nil {
 			logger.Error("failed-to-fetch-locks", err)
@@ -121,10 +131,10 @@ func (db *SQLDB) FetchAll(logger lager.Logger) ([]*Lock, error) {
 		defer rows.Close()
 
 		for rows.Next() {
-			var key, owner, value string
+			var key, owner, value, lockType string
 			var index, ttl int64
 
-			err := rows.Scan(&key, &owner, &value, &index, &ttl)
+			err := rows.Scan(&key, &owner, &value, &lockType, &index, &ttl)
 			if err != nil {
 				logger.Error("failed-to-scan-lock", err)
 				continue
@@ -139,6 +149,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger) ([]*Lock, error) {
 					Key:   key,
 					Owner: owner,
 					Value: value,
+					Type:  lockType,
 				},
 				ModifiedIndex: index,
 				TtlInSeconds:  ttl,
@@ -153,15 +164,14 @@ func (db *SQLDB) FetchAll(logger lager.Logger) ([]*Lock, error) {
 
 func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, int64, error) {
 	row := db.helper.One(logger, q, "locks",
-		helpers.ColumnList{"owner", "value", "modified_index", "ttl"},
+		helpers.ColumnList{"owner", "value", "type", "modified_index", "ttl"},
 		helpers.LockRow,
 		"path = ?", key,
 	)
 
-	var owner string
-	var value string
+	var owner, value, lockType string
 	var index, ttl int64
-	err := row.Scan(&owner, &value, &index, &ttl)
+	err := row.Scan(&owner, &value, &lockType, &index, &ttl)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -174,5 +184,6 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 		Key:   key,
 		Owner: owner,
 		Value: value,
+		Type:  lockType,
 	}, index, ttl, nil
 }

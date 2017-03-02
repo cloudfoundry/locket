@@ -13,7 +13,7 @@ type LockDB interface {
 	Lock(logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error)
 	Release(logger lager.Logger, resource *models.Resource) error
 	Fetch(logger lager.Logger, key string) (*Lock, error)
-	FetchAll(logger lager.Logger) ([]*Lock, error)
+	FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 }
 
 type Lock struct {

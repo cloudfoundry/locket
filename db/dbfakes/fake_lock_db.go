@@ -40,10 +40,11 @@ type FakeLockDB struct {
 		result1 *db.Lock
 		result2 error
 	}
-	FetchAllStub        func(logger lager.Logger) ([]*db.Lock, error)
+	FetchAllStub        func(logger lager.Logger, lockType string) ([]*db.Lock, error)
 	fetchAllMutex       sync.RWMutex
 	fetchAllArgsForCall []struct {
-		logger lager.Logger
+		logger   lager.Logger
+		lockType string
 	}
 	fetchAllReturns struct {
 		result1 []*db.Lock
@@ -158,15 +159,16 @@ func (fake *FakeLockDB) FetchReturns(result1 *db.Lock, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeLockDB) FetchAll(logger lager.Logger) ([]*db.Lock, error) {
+func (fake *FakeLockDB) FetchAll(logger lager.Logger, lockType string) ([]*db.Lock, error) {
 	fake.fetchAllMutex.Lock()
 	fake.fetchAllArgsForCall = append(fake.fetchAllArgsForCall, struct {
-		logger lager.Logger
-	}{logger})
-	fake.recordInvocation("FetchAll", []interface{}{logger})
+		logger   lager.Logger
+		lockType string
+	}{logger, lockType})
+	fake.recordInvocation("FetchAll", []interface{}{logger, lockType})
 	fake.fetchAllMutex.Unlock()
 	if fake.FetchAllStub != nil {
-		return fake.FetchAllStub(logger)
+		return fake.FetchAllStub(logger, lockType)
 	} else {
 		return fake.fetchAllReturns.result1, fake.fetchAllReturns.result2
 	}
@@ -178,10 +180,10 @@ func (fake *FakeLockDB) FetchAllCallCount() int {
 	return len(fake.fetchAllArgsForCall)
 }
 
-func (fake *FakeLockDB) FetchAllArgsForCall(i int) lager.Logger {
+func (fake *FakeLockDB) FetchAllArgsForCall(i int) (lager.Logger, string) {
 	fake.fetchAllMutex.RLock()
 	defer fake.fetchAllMutex.RUnlock()
-	return fake.fetchAllArgsForCall[i].logger
+	return fake.fetchAllArgsForCall[i].logger, fake.fetchAllArgsForCall[i].lockType
 }
 
 func (fake *FakeLockDB) FetchAllReturns(result1 []*db.Lock, result2 error) {

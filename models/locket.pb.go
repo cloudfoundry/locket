@@ -3,21 +3,21 @@
 // DO NOT EDIT!
 
 /*
-Package models is a generated protocol buffer package.
+	Package models is a generated protocol buffer package.
 
-It is generated from these files:
-	locket.proto
+	It is generated from these files:
+		locket.proto
 
-It has these top-level messages:
-	Resource
-	LockRequest
-	ReleaseRequest
-	FetchRequest
-	FetchAllRequest
-	LockResponse
-	ReleaseResponse
-	FetchResponse
-	FetchAllResponse
+	It has these top-level messages:
+		Resource
+		LockRequest
+		LockResponse
+		ReleaseRequest
+		ReleaseResponse
+		FetchRequest
+		FetchResponse
+		FetchAllRequest
+		FetchAllResponse
 */
 package models
 
@@ -50,6 +50,7 @@ type Resource struct {
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Owner string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 	Value string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	Type  string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (m *Resource) Reset()                    { *m = Resource{} }
@@ -77,6 +78,13 @@ func (m *Resource) GetValue() string {
 	return ""
 }
 
+func (m *Resource) GetType() string {
+	if m != nil {
+		return m.Type
+	}
+	return ""
+}
+
 type LockRequest struct {
 	Resource     *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
 	TtlInSeconds int64     `protobuf:"varint,2,opt,name=ttl_in_seconds,json=ttlInSeconds,proto3" json:"ttl_in_seconds,omitempty"`
@@ -100,13 +108,20 @@ func (m *LockRequest) GetTtlInSeconds() int64 {
 	return 0
 }
 
+type LockResponse struct {
+}
+
+func (m *LockResponse) Reset()                    { *m = LockResponse{} }
+func (*LockResponse) ProtoMessage()               {}
+func (*LockResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{2} }
+
 type ReleaseRequest struct {
 	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
 }
 
 func (m *ReleaseRequest) Reset()                    { *m = ReleaseRequest{} }
 func (*ReleaseRequest) ProtoMessage()               {}
-func (*ReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{2} }
+func (*ReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{3} }
 
 func (m *ReleaseRequest) GetResource() *Resource {
 	if m != nil {
@@ -115,13 +130,20 @@ func (m *ReleaseRequest) GetResource() *Resource {
 	return nil
 }
 
+type ReleaseResponse struct {
+}
+
+func (m *ReleaseResponse) Reset()                    { *m = ReleaseResponse{} }
+func (*ReleaseResponse) ProtoMessage()               {}
+func (*ReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{4} }
+
 type FetchRequest struct {
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 }
 
 func (m *FetchRequest) Reset()                    { *m = FetchRequest{} }
 func (*FetchRequest) ProtoMessage()               {}
-func (*FetchRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{3} }
+func (*FetchRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{5} }
 
 func (m *FetchRequest) GetKey() string {
 	if m != nil {
@@ -130,40 +152,34 @@ func (m *FetchRequest) GetKey() string {
 	return ""
 }
 
-type FetchAllRequest struct {
-}
-
-func (m *FetchAllRequest) Reset()                    { *m = FetchAllRequest{} }
-func (*FetchAllRequest) ProtoMessage()               {}
-func (*FetchAllRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{4} }
-
-type LockResponse struct {
-}
-
-func (m *LockResponse) Reset()                    { *m = LockResponse{} }
-func (*LockResponse) ProtoMessage()               {}
-func (*LockResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{5} }
-
-type ReleaseResponse struct {
-}
-
-func (m *ReleaseResponse) Reset()                    { *m = ReleaseResponse{} }
-func (*ReleaseResponse) ProtoMessage()               {}
-func (*ReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{6} }
-
 type FetchResponse struct {
 	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
 }
 
 func (m *FetchResponse) Reset()                    { *m = FetchResponse{} }
 func (*FetchResponse) ProtoMessage()               {}
-func (*FetchResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{7} }
+func (*FetchResponse) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{6} }
 
 func (m *FetchResponse) GetResource() *Resource {
 	if m != nil {
 		return m.Resource
 	}
 	return nil
+}
+
+type FetchAllRequest struct {
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+}
+
+func (m *FetchAllRequest) Reset()                    { *m = FetchAllRequest{} }
+func (*FetchAllRequest) ProtoMessage()               {}
+func (*FetchAllRequest) Descriptor() ([]byte, []int) { return fileDescriptorLocket, []int{7} }
+
+func (m *FetchAllRequest) GetType() string {
+	if m != nil {
+		return m.Type
+	}
+	return ""
 }
 
 type FetchAllResponse struct {
@@ -184,12 +200,12 @@ func (m *FetchAllResponse) GetResources() []*Resource {
 func init() {
 	proto.RegisterType((*Resource)(nil), "models.Resource")
 	proto.RegisterType((*LockRequest)(nil), "models.LockRequest")
-	proto.RegisterType((*ReleaseRequest)(nil), "models.ReleaseRequest")
-	proto.RegisterType((*FetchRequest)(nil), "models.FetchRequest")
-	proto.RegisterType((*FetchAllRequest)(nil), "models.FetchAllRequest")
 	proto.RegisterType((*LockResponse)(nil), "models.LockResponse")
+	proto.RegisterType((*ReleaseRequest)(nil), "models.ReleaseRequest")
 	proto.RegisterType((*ReleaseResponse)(nil), "models.ReleaseResponse")
+	proto.RegisterType((*FetchRequest)(nil), "models.FetchRequest")
 	proto.RegisterType((*FetchResponse)(nil), "models.FetchResponse")
+	proto.RegisterType((*FetchAllRequest)(nil), "models.FetchAllRequest")
 	proto.RegisterType((*FetchAllResponse)(nil), "models.FetchAllResponse")
 }
 func (this *Resource) Equal(that interface{}) bool {
@@ -224,6 +240,9 @@ func (this *Resource) Equal(that interface{}) bool {
 		return false
 	}
 	if this.Value != that1.Value {
+		return false
+	}
+	if this.Type != that1.Type {
 		return false
 	}
 	return true
@@ -261,6 +280,33 @@ func (this *LockRequest) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *LockResponse) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*LockResponse)
+	if !ok {
+		that2, ok := that.(LockResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	return true
+}
 func (this *ReleaseRequest) Equal(that interface{}) bool {
 	if that == nil {
 		if this == nil {
@@ -287,6 +333,33 @@ func (this *ReleaseRequest) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.Resource.Equal(that1.Resource) {
+		return false
+	}
+	return true
+}
+func (this *ReleaseResponse) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*ReleaseResponse)
+	if !ok {
+		that2, ok := that.(ReleaseResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
 		return false
 	}
 	return true
@@ -321,87 +394,6 @@ func (this *FetchRequest) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *FetchAllRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*FetchAllRequest)
-	if !ok {
-		that2, ok := that.(FetchAllRequest)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *LockResponse) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*LockResponse)
-	if !ok {
-		that2, ok := that.(LockResponse)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-func (this *ReleaseResponse) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*ReleaseResponse)
-	if !ok {
-		that2, ok := that.(ReleaseResponse)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	return true
-}
 func (this *FetchResponse) Equal(that interface{}) bool {
 	if that == nil {
 		if this == nil {
@@ -428,6 +420,36 @@ func (this *FetchResponse) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.Resource.Equal(that1.Resource) {
+		return false
+	}
+	return true
+}
+func (this *FetchAllRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*FetchAllRequest)
+	if !ok {
+		that2, ok := that.(FetchAllRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Type != that1.Type {
 		return false
 	}
 	return true
@@ -471,11 +493,12 @@ func (this *Resource) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 8)
 	s = append(s, "&models.Resource{")
 	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
 	s = append(s, "Owner: "+fmt.Sprintf("%#v", this.Owner)+",\n")
 	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
+	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -492,6 +515,15 @@ func (this *LockRequest) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *LockResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&models.LockResponse{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *ReleaseRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -501,6 +533,15 @@ func (this *ReleaseRequest) GoString() string {
 	if this.Resource != nil {
 		s = append(s, "Resource: "+fmt.Sprintf("%#v", this.Resource)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ReleaseResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&models.ReleaseResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -514,33 +555,6 @@ func (this *FetchRequest) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *FetchAllRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&models.FetchAllRequest{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *LockResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&models.LockResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ReleaseResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&models.ReleaseResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *FetchResponse) GoString() string {
 	if this == nil {
 		return "nil"
@@ -550,6 +564,16 @@ func (this *FetchResponse) GoString() string {
 	if this.Resource != nil {
 		s = append(s, "Resource: "+fmt.Sprintf("%#v", this.Resource)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FetchAllRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&models.FetchAllRequest{")
+	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -778,6 +802,12 @@ func (m *Resource) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintLocket(dAtA, i, uint64(len(m.Value)))
 		i += copy(dAtA[i:], m.Value)
 	}
+	if len(m.Type) > 0 {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintLocket(dAtA, i, uint64(len(m.Type)))
+		i += copy(dAtA[i:], m.Type)
+	}
 	return i, nil
 }
 
@@ -814,6 +844,24 @@ func (m *LockRequest) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *LockResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LockResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
 func (m *ReleaseRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -842,6 +890,24 @@ func (m *ReleaseRequest) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *ReleaseResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReleaseResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
 func (m *FetchRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -863,60 +929,6 @@ func (m *FetchRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintLocket(dAtA, i, uint64(len(m.Key)))
 		i += copy(dAtA[i:], m.Key)
 	}
-	return i, nil
-}
-
-func (m *FetchAllRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *FetchAllRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *LockResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *LockResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *ReleaseResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ReleaseResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
 	return i, nil
 }
 
@@ -944,6 +956,30 @@ func (m *FetchResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n3
+	}
+	return i, nil
+}
+
+func (m *FetchAllRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FetchAllRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Type) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintLocket(dAtA, i, uint64(len(m.Type)))
+		i += copy(dAtA[i:], m.Type)
 	}
 	return i, nil
 }
@@ -1020,6 +1056,10 @@ func (m *Resource) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovLocket(uint64(l))
 	}
+	l = len(m.Type)
+	if l > 0 {
+		n += 1 + l + sovLocket(uint64(l))
+	}
 	return n
 }
 
@@ -1036,6 +1076,12 @@ func (m *LockRequest) Size() (n int) {
 	return n
 }
 
+func (m *LockResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
 func (m *ReleaseRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -1043,6 +1089,12 @@ func (m *ReleaseRequest) Size() (n int) {
 		l = m.Resource.Size()
 		n += 1 + l + sovLocket(uint64(l))
 	}
+	return n
+}
+
+func (m *ReleaseResponse) Size() (n int) {
+	var l int
+	_ = l
 	return n
 }
 
@@ -1056,29 +1108,21 @@ func (m *FetchRequest) Size() (n int) {
 	return n
 }
 
-func (m *FetchAllRequest) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *LockResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *ReleaseResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
 func (m *FetchResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Resource != nil {
 		l = m.Resource.Size()
+		n += 1 + l + sovLocket(uint64(l))
+	}
+	return n
+}
+
+func (m *FetchAllRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Type)
+	if l > 0 {
 		n += 1 + l + sovLocket(uint64(l))
 	}
 	return n
@@ -1117,6 +1161,7 @@ func (this *Resource) String() string {
 		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
 		`Owner:` + fmt.Sprintf("%v", this.Owner) + `,`,
 		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1132,12 +1177,30 @@ func (this *LockRequest) String() string {
 	}, "")
 	return s
 }
+func (this *LockResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LockResponse{`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *ReleaseRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ReleaseRequest{`,
 		`Resource:` + strings.Replace(fmt.Sprintf("%v", this.Resource), "Resource", "Resource", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReleaseResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReleaseResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -1152,39 +1215,22 @@ func (this *FetchRequest) String() string {
 	}, "")
 	return s
 }
-func (this *FetchAllRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&FetchAllRequest{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LockResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LockResponse{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ReleaseResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ReleaseResponse{`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *FetchResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&FetchResponse{`,
 		`Resource:` + strings.Replace(fmt.Sprintf("%v", this.Resource), "Resource", "Resource", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *FetchAllRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&FetchAllRequest{`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1323,6 +1369,35 @@ func (m *Resource) Unmarshal(dAtA []byte) error {
 			}
 			m.Value = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocket
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocket
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Type = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipLocket(dAtA[iNdEx:])
@@ -1446,6 +1521,56 @@ func (m *LockRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *LockResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowLocket
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LockResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipLocket(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthLocket
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *ReleaseRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1508,6 +1633,56 @@ func (m *ReleaseRequest) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipLocket(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthLocket
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReleaseResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowLocket
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReleaseResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReleaseResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipLocket(dAtA[iNdEx:])
@@ -1608,156 +1783,6 @@ func (m *FetchRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *FetchAllRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowLocket
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: FetchAllRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: FetchAllRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipLocket(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocket
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *LockResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowLocket
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: LockResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipLocket(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocket
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ReleaseResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowLocket
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ReleaseResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ReleaseResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipLocket(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocket
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *FetchResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1819,6 +1844,85 @@ func (m *FetchResponse) Unmarshal(dAtA []byte) error {
 			if err := m.Resource.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipLocket(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthLocket
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FetchAllRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowLocket
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FetchAllRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FetchAllRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocket
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocket
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Type = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2030,30 +2134,31 @@ var (
 func init() { proto.RegisterFile("locket.proto", fileDescriptorLocket) }
 
 var fileDescriptorLocket = []byte{
-	// 386 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x92, 0xbd, 0x4e, 0xfb, 0x30,
-	0x14, 0xc5, 0xe3, 0x7f, 0xfe, 0x2d, 0xed, 0x6d, 0x28, 0xc5, 0x14, 0x1a, 0x65, 0xb0, 0xaa, 0x88,
-	0x81, 0xa1, 0xca, 0xd0, 0x4a, 0x4c, 0x7c, 0x88, 0x0e, 0x08, 0xa4, 0x4e, 0xe1, 0x01, 0xaa, 0x92,
-	0x5a, 0x02, 0xd5, 0xc4, 0x25, 0x76, 0x41, 0x6c, 0x3c, 0x02, 0x8f, 0xc1, 0xa3, 0x30, 0x76, 0x64,
-	0xa4, 0x61, 0x61, 0xec, 0xc0, 0x03, 0xa0, 0x38, 0x5f, 0x2d, 0x65, 0x81, 0x2d, 0xfe, 0xf9, 0xdc,
-	0x73, 0xee, 0xf5, 0x0d, 0x18, 0x8c, 0x7b, 0x23, 0x2a, 0x9d, 0x71, 0xc0, 0x25, 0xc7, 0xc5, 0x1b,
-	0x3e, 0xa4, 0x4c, 0xd8, 0x67, 0x50, 0x72, 0xa9, 0xe0, 0x93, 0xc0, 0xa3, 0xb8, 0x06, 0xfa, 0x88,
-	0x3e, 0x98, 0xa8, 0x89, 0xf6, 0xca, 0x6e, 0xf4, 0x89, 0xeb, 0x50, 0xe0, 0xf7, 0x3e, 0x0d, 0xcc,
-	0x7f, 0x8a, 0xc5, 0x87, 0x88, 0xde, 0x0d, 0xd8, 0x84, 0x9a, 0x7a, 0x4c, 0xd5, 0xc1, 0x1e, 0x40,
-	0xa5, 0xc7, 0xbd, 0x91, 0x4b, 0x6f, 0x27, 0x54, 0x48, 0xdc, 0x82, 0x52, 0x90, 0x18, 0x2b, 0xc7,
-	0x4a, 0xbb, 0xe6, 0xc4, 0x99, 0x4e, 0x1a, 0xe8, 0x66, 0x0a, 0xbc, 0x0b, 0x55, 0x29, 0x59, 0xff,
-	0xda, 0xef, 0x0b, 0xea, 0x71, 0x7f, 0x28, 0x54, 0xa2, 0xee, 0x1a, 0x52, 0xb2, 0x73, 0xff, 0x22,
-	0x66, 0xf6, 0x11, 0x54, 0x5d, 0xca, 0xe8, 0x40, 0xd0, 0x3f, 0xa5, 0xd8, 0x4d, 0x30, 0x4e, 0xa9,
-	0xf4, 0xae, 0xd2, 0xea, 0x95, 0x81, 0xed, 0x4d, 0xd8, 0x50, 0x8a, 0x13, 0xc6, 0x12, 0x91, 0x5d,
-	0x05, 0x23, 0x9e, 0x4b, 0x8c, 0xb9, 0x2f, 0x68, 0x24, 0xc9, 0x9a, 0x48, 0xd0, 0x21, 0xac, 0x27,
-	0xbe, 0x31, 0xf8, 0x65, 0x5b, 0x5d, 0xa8, 0xe5, 0xa1, 0x89, 0x83, 0x03, 0xe5, 0xf4, 0x5e, 0x98,
-	0xa8, 0xa9, 0xff, 0x68, 0x91, 0x4b, 0xda, 0x9f, 0x08, 0x8a, 0x3d, 0xb5, 0x60, 0xdc, 0x81, 0xff,
-	0xd1, 0x17, 0xde, 0x4a, 0xf5, 0x0b, 0x6b, 0xb1, 0xea, 0xcb, 0x30, 0x19, 0x40, 0xc3, 0xfb, 0x50,
-	0x50, 0x3d, 0xe0, 0x4c, 0xb0, 0xf8, 0x52, 0xd6, 0xf6, 0x37, 0x9a, 0xd5, 0x1d, 0xc0, 0x5a, 0xf2,
-	0x1a, 0x78, 0x27, 0xef, 0x6f, 0x71, 0x47, 0x56, 0x63, 0x85, 0x67, 0xd5, 0xc7, 0x50, 0x4a, 0x27,
-	0xc7, 0x8d, 0xa5, 0x88, 0x7c, 0x01, 0x96, 0xb9, 0x7a, 0x91, 0x1a, 0x74, 0x5b, 0xd3, 0x19, 0xd1,
-	0x5e, 0x67, 0x44, 0x9b, 0xcf, 0x08, 0x7a, 0x0c, 0x09, 0x7a, 0x0e, 0x09, 0x7a, 0x09, 0x09, 0x9a,
-	0x86, 0x04, 0xbd, 0x85, 0x04, 0x7d, 0x84, 0x44, 0x9b, 0x87, 0x04, 0x3d, 0xbd, 0x13, 0xed, 0xb2,
-	0xa8, 0xfe, 0xfd, 0xce, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0xaa, 0x62, 0xe5, 0x29, 0x0b, 0x03,
-	0x00, 0x00,
+	// 405 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x53, 0xcd, 0xae, 0xd2, 0x40,
+	0x18, 0xed, 0x58, 0x40, 0xf8, 0xa8, 0x80, 0x23, 0x4a, 0xd3, 0xc5, 0x84, 0x34, 0x9a, 0xb8, 0x20,
+	0x5d, 0x40, 0xe2, 0xca, 0x9f, 0xc8, 0xc2, 0xc4, 0x84, 0x55, 0xdd, 0x9a, 0x10, 0x2c, 0x5f, 0xa2,
+	0x61, 0xec, 0x60, 0x67, 0xd0, 0xb0, 0xf3, 0x11, 0x7c, 0x0c, 0x1f, 0xc5, 0x25, 0x4b, 0x97, 0x52,
+	0x37, 0x77, 0xc9, 0xe2, 0x3e, 0xc0, 0x0d, 0xd3, 0x4e, 0x5b, 0x2e, 0x77, 0x73, 0xef, 0xee, 0x9b,
+	0xd3, 0x73, 0xbe, 0x73, 0x7a, 0xa6, 0x05, 0x87, 0x8b, 0x68, 0x85, 0x2a, 0x58, 0x27, 0x42, 0x09,
+	0xda, 0xf8, 0x2a, 0x96, 0xc8, 0xa5, 0xff, 0x11, 0x9a, 0x21, 0x4a, 0xb1, 0x49, 0x22, 0xa4, 0x3d,
+	0xb0, 0x57, 0xb8, 0x75, 0xc9, 0x90, 0x3c, 0x6f, 0x85, 0xc7, 0x91, 0xf6, 0xa1, 0x2e, 0x7e, 0xc4,
+	0x98, 0xb8, 0xf7, 0x34, 0x96, 0x1d, 0x8e, 0xe8, 0xf7, 0x05, 0xdf, 0xa0, 0x6b, 0x67, 0xa8, 0x3e,
+	0x50, 0x0a, 0x35, 0xb5, 0x5d, 0xa3, 0x5b, 0xd3, 0xa0, 0x9e, 0xfd, 0x05, 0xb4, 0x67, 0x22, 0x5a,
+	0x85, 0xf8, 0x6d, 0x83, 0x52, 0xd1, 0x11, 0x34, 0x93, 0xdc, 0x4c, 0xbb, 0xb4, 0xc7, 0xbd, 0x20,
+	0xcb, 0x11, 0x98, 0x10, 0x61, 0xc1, 0xa0, 0x4f, 0xa1, 0xa3, 0x14, 0x9f, 0x7f, 0x89, 0xe7, 0x12,
+	0x23, 0x11, 0x2f, 0xa5, 0x4e, 0x61, 0x87, 0x8e, 0x52, 0xfc, 0x7d, 0xfc, 0x21, 0xc3, 0xfc, 0x0e,
+	0x38, 0x99, 0x85, 0x5c, 0x8b, 0x58, 0xa2, 0xff, 0x1a, 0x3a, 0x21, 0x72, 0x5c, 0x48, 0xbc, 0x93,
+	0xab, 0xff, 0x10, 0xba, 0x85, 0x3e, 0x5f, 0x39, 0x04, 0xe7, 0x1d, 0xaa, 0xe8, 0xb3, 0x59, 0x78,
+	0xd6, 0x93, 0xff, 0x0a, 0x1e, 0xe4, 0x8c, 0x4c, 0x72, 0x4b, 0xcf, 0x67, 0xd0, 0xd5, 0xf2, 0xb7,
+	0x9c, 0x1b, 0x0f, 0xd3, 0x26, 0xa9, 0xb4, 0x39, 0x85, 0x5e, 0x49, 0xcb, 0x8d, 0x02, 0x68, 0x99,
+	0x35, 0xd2, 0x25, 0x43, 0xfb, 0x46, 0xa7, 0x92, 0x32, 0xbe, 0x24, 0xd0, 0x98, 0xe9, 0x0f, 0x81,
+	0x4e, 0xa0, 0x76, 0x9c, 0xe8, 0x23, 0xc3, 0xaf, 0x5c, 0x95, 0xd7, 0x3f, 0x05, 0xf3, 0x26, 0x2c,
+	0xfa, 0x02, 0xea, 0x3a, 0x03, 0x2d, 0x08, 0xd5, 0x6a, 0xbc, 0xc7, 0xd7, 0xd0, 0x42, 0xf7, 0x12,
+	0xee, 0xe7, 0xb5, 0xd2, 0x27, 0x65, 0xbe, 0xea, 0x3d, 0x79, 0x83, 0x33, 0xbc, 0x50, 0xbf, 0x81,
+	0xa6, 0x79, 0x73, 0x3a, 0x38, 0xb1, 0x28, 0x2b, 0xf3, 0xdc, 0xf3, 0x07, 0x66, 0xc1, 0x74, 0xb4,
+	0xdb, 0x33, 0xeb, 0xef, 0x9e, 0x59, 0x87, 0x3d, 0x23, 0x3f, 0x53, 0x46, 0x7e, 0xa7, 0x8c, 0xfc,
+	0x49, 0x19, 0xd9, 0xa5, 0x8c, 0xfc, 0x4b, 0x19, 0xb9, 0x48, 0x99, 0x75, 0x48, 0x19, 0xf9, 0xf5,
+	0x9f, 0x59, 0x9f, 0x1a, 0xfa, 0x1f, 0x99, 0x5c, 0x05, 0x00, 0x00, 0xff, 0xff, 0x79, 0xfd, 0xc9,
+	0x49, 0x33, 0x03, 0x00, 0x00,
 }

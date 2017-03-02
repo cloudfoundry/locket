@@ -33,7 +33,7 @@ func (b burglar) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger.Info("started")
 	defer logger.Info("complete")
 
-	locks, err := b.lockDB.FetchAll(logger)
+	locks, err := b.lockDB.FetchAll(logger, "")
 	if err != nil {
 		logger.Error("failed-fetching-locks", err)
 	}
@@ -52,7 +52,7 @@ func (b burglar) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			logger.Info("signalled", lager.Data{"signal": sig})
 			return nil
 		case <-check.C():
-			locks, err := b.lockDB.FetchAll(logger)
+			locks, err := b.lockDB.FetchAll(logger, "")
 			if err != nil {
 				logger.Error("failed-fetching-locks", err)
 				continue

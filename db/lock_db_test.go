@@ -13,16 +13,16 @@ import (
 )
 
 func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expectedTTL int64) error {
-	var key, owner, value string
+	var key, owner, value, lockType string
 	var index, ttl int64
 
 	lockQuery := helpers.RebindForFlavor(
-		"SELECT path, owner, value, modified_index, ttl FROM locks WHERE path = ?",
+		"SELECT path, owner, value, type, modified_index, ttl FROM locks WHERE path = ?",
 		dbFlavor,
 	)
 
 	row := rawDB.QueryRow(lockQuery, res.Key)
-	Expect(row.Scan(&key, &owner, &value, &index, &ttl)).To(Succeed())
+	Expect(row.Scan(&key, &owner, &value, &lockType, &index, &ttl)).To(Succeed())
 	errMsg := ""
 	if res.Key != key {
 		errMsg += fmt.Sprintf("mismatch key (%s, %s),", res.Key, key)
@@ -32,6 +32,9 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 	}
 	if res.Value != value {
 		errMsg += fmt.Sprintf("mismatch value (%s, %s),", res.Value, value)
+	}
+	if res.Type != lockType {
+		errMsg += fmt.Sprintf("mismatch value (%s, %s),", res.Type, lockType)
 	}
 	if expectedIndex != index {
 		errMsg += fmt.Sprintf("mismatch index (%d, %d),", expectedIndex, index)
@@ -55,6 +58,7 @@ var _ = Describe("Lock", func() {
 			Key:   "quack",
 			Owner: "iamthelizardking",
 			Value: "i can do anything",
+			Type:  "fooooobar",
 		}
 
 		emptyResource = &models.Resource{Key: "quack"}
@@ -185,16 +189,17 @@ var _ = Describe("Lock", func() {
 				Key:   "test",
 				Owner: "jim",
 				Value: "locks stuff for days",
+				Type:  "FOR DAYS",
 			}
 		})
 
 		Context("when the lock exists", func() {
 			BeforeEach(func() {
 				query := helpers.RebindForFlavor(
-					`INSERT INTO locks (path, owner, value, modified_index, ttl) VALUES (?, ?, ?, ?, ?);`,
+					`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
 					dbFlavor,
 				)
-				result, err := rawDB.Exec(query, lock.Key, lock.Owner, lock.Value, 434, 5)
+				result, err := rawDB.Exec(query, lock.Key, lock.Owner, lock.Value, lock.Type, 434, 5)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 			})
@@ -238,48 +243,59 @@ var _ = Describe("Lock", func() {
 	})
 
 	Context("FetchAll", func() {
+		var dogLock, humanLock *db.Lock
+
 		BeforeEach(func() {
 			query := helpers.RebindForFlavor(
-				`INSERT INTO locks (path, owner, value, modified_index, ttl) VALUES (?, ?, ?, ?, ?);`,
+				`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
 				dbFlavor,
 			)
-			result, err := rawDB.Exec(query, "test1", "jake", "thedog", 10, 20)
+			result, err := rawDB.Exec(query, "test1", "jake", "thedog", "dog", 10, 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			result, err = rawDB.Exec(query, "test2", "", "", 10, 20)
+			result, err = rawDB.Exec(query, "test2", "", "", "", 10, 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", 10, 20)
+			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "human", 10, 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
-		})
 
-		It("retrieves a list of all locks with owners", func() {
-			locks, err := sqlDB.FetchAll(logger)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(locks).To(HaveLen(2))
-
-			Expect(locks).To(ContainElement(&db.Lock{
+			dogLock = &db.Lock{
 				Resource: &models.Resource{
 					Key:   "test1",
 					Owner: "jake",
 					Value: "thedog",
+					Type:  "dog",
 				},
 				ModifiedIndex: 10,
 				TtlInSeconds:  20,
-			}))
-
-			Expect(locks).To(ContainElement(&db.Lock{
+			}
+			humanLock = &db.Lock{
 				Resource: &models.Resource{
 					Key:   "test3",
 					Owner: "finn",
 					Value: "thehuman",
+					Type:  "human",
 				},
 				ModifiedIndex: 10,
 				TtlInSeconds:  20,
-			}))
+			}
+		})
+
+		It("retrieves a list of all locks with owners", func() {
+			locks, err := sqlDB.FetchAll(logger, "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(locks).To(ConsistOf(dogLock, humanLock))
+		})
+
+		Context("when a type is specified", func() {
+			It("filters the locks returned by that type", func() {
+				locks, err := sqlDB.FetchAll(logger, "human")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(locks).To(ConsistOf(humanLock))
+			})
 		})
 
 		Context("when fetching the locks fail", func() {
@@ -294,7 +310,7 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := sqlDB.FetchAll(logger)
+				_, err := sqlDB.FetchAll(logger, "")
 				Expect(err).To(HaveOccurred())
 			})
 		})
