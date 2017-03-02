@@ -67,3 +67,23 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 		Resource: lock.Resource,
 	}, nil
 }
+
+func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+	logger := h.logger.Session("fetch-all", lager.Data{"request": req})
+	logger.Info("started")
+	defer logger.Info("complete")
+
+	locks, err := h.db.FetchAll(h.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	var responses []*models.Resource
+	for _, lock := range locks {
+		responses = append(responses, lock.Resource)
+	}
+
+	return &models.FetchAllResponse{
+		Resources: responses,
+	}, nil
+}

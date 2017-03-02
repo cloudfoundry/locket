@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/locket/models"
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type FakeLocketClient struct {
@@ -41,6 +41,17 @@ type FakeLocketClient struct {
 	}
 	releaseReturns struct {
 		result1 *models.ReleaseResponse
+		result2 error
+	}
+	FetchAllStub        func(ctx context.Context, in *models.FetchAllRequest, opts ...grpc.CallOption) (*models.FetchAllResponse, error)
+	fetchAllMutex       sync.RWMutex
+	fetchAllArgsForCall []struct {
+		ctx  context.Context
+		in   *models.FetchAllRequest
+		opts []grpc.CallOption
+	}
+	fetchAllReturns struct {
+		result1 *models.FetchAllResponse
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -155,6 +166,42 @@ func (fake *FakeLocketClient) ReleaseReturns(result1 *models.ReleaseResponse, re
 	}{result1, result2}
 }
 
+func (fake *FakeLocketClient) FetchAll(ctx context.Context, in *models.FetchAllRequest, opts ...grpc.CallOption) (*models.FetchAllResponse, error) {
+	fake.fetchAllMutex.Lock()
+	fake.fetchAllArgsForCall = append(fake.fetchAllArgsForCall, struct {
+		ctx  context.Context
+		in   *models.FetchAllRequest
+		opts []grpc.CallOption
+	}{ctx, in, opts})
+	fake.recordInvocation("FetchAll", []interface{}{ctx, in, opts})
+	fake.fetchAllMutex.Unlock()
+	if fake.FetchAllStub != nil {
+		return fake.FetchAllStub(ctx, in, opts...)
+	} else {
+		return fake.fetchAllReturns.result1, fake.fetchAllReturns.result2
+	}
+}
+
+func (fake *FakeLocketClient) FetchAllCallCount() int {
+	fake.fetchAllMutex.RLock()
+	defer fake.fetchAllMutex.RUnlock()
+	return len(fake.fetchAllArgsForCall)
+}
+
+func (fake *FakeLocketClient) FetchAllArgsForCall(i int) (context.Context, *models.FetchAllRequest, []grpc.CallOption) {
+	fake.fetchAllMutex.RLock()
+	defer fake.fetchAllMutex.RUnlock()
+	return fake.fetchAllArgsForCall[i].ctx, fake.fetchAllArgsForCall[i].in, fake.fetchAllArgsForCall[i].opts
+}
+
+func (fake *FakeLocketClient) FetchAllReturns(result1 *models.FetchAllResponse, result2 error) {
+	fake.FetchAllStub = nil
+	fake.fetchAllReturns = struct {
+		result1 *models.FetchAllResponse
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeLocketClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -164,6 +211,8 @@ func (fake *FakeLocketClient) Invocations() map[string][][]interface{} {
 	defer fake.fetchMutex.RUnlock()
 	fake.releaseMutex.RLock()
 	defer fake.releaseMutex.RUnlock()
+	fake.fetchAllMutex.RLock()
+	defer fake.fetchAllMutex.RUnlock()
 	return fake.invocations
 }
 

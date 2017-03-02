@@ -6,6 +6,7 @@ service Locket {
   rpc Lock(LockRequest) returns (LockResponse) {}
   rpc Fetch(FetchRequest) returns (FetchResponse) {}
   rpc Release(ReleaseRequest) returns (ReleaseResponse) {}
+  rpc FetchAll(FetchAllRequest) returns (FetchAllResponse) {}
 }
 
 message Resource {
@@ -27,10 +28,16 @@ message FetchRequest {
   string key = 1;
 }
 
+message FetchAllRequest {}
+
 message LockResponse {}
 
 message ReleaseResponse {}
 
 message FetchResponse {
   Resource resource = 1;
+}
+
+message FetchAllResponse {
+  repeated Resource resources = 1;
 }

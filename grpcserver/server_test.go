@@ -50,6 +50,9 @@ var _ = Describe("GRPCServer", func() {
 
 		_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{})
 		Expect(err).NotTo(HaveOccurred())
+
+		_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("when the server fails to listen", func() {
@@ -78,4 +81,7 @@ func (h *testHandler) Release(ctx context.Context, req *models.ReleaseRequest) (
 }
 func (h *testHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
 	return &models.FetchResponse{}, nil
+}
+func (h *testHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+	return &models.FetchAllResponse{}, nil
 }

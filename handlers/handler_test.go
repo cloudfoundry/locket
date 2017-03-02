@@ -151,4 +151,39 @@ var _ = Describe("Lock", func() {
 			})
 		})
 	})
+
+	Context("FetchAll", func() {
+		var expectedResources []*models.Resource
+		BeforeEach(func() {
+			expectedResources = []*models.Resource{
+				resource,
+				&models.Resource{Key: "cell", Owner: "cell-1", Value: "{}"},
+			}
+
+			var locks []*db.Lock
+			for _, r := range expectedResources {
+				locks = append(locks, &db.Lock{Resource: r})
+			}
+			fakeLockDB.FetchAllReturns(locks, nil)
+		})
+
+		It("fetches all the locks in the database", func() {
+			fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fetchResp.Resources).To(Equal(expectedResources))
+
+			Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+		})
+
+		Context("when fetching errors", func() {
+			BeforeEach(func() {
+				fakeLockDB.FetchAllReturns(nil, errors.New("boom"))
+			})
+
+			It("returns the error", func() {
+				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
 })
