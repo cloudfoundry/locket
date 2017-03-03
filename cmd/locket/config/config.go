@@ -11,8 +11,14 @@ import (
 type LocketConfig struct {
 	DatabaseConnectionString string `json:"database_connection_string"`
 	DatabaseDriver           string `json:"database_driver,omitempty"`
-	ListenAddress            string `json:"listen_address"`
-	ConsulCluster            string `json:"consul_cluster,omitempty"`
+
+	ListenAddress string `json:"listen_address"`
+	CaFile        string `json:"ca_file"`
+	CertFile      string `json:"cert_file"`
+	KeyFile       string `json:"key_file"`
+
+	ConsulCluster string `json:"consul_cluster,omitempty"`
+
 	lagerflags.LagerConfig
 	debugserver.DebugServerConfig
 }

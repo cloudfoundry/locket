@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -15,6 +14,7 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
@@ -37,47 +37,39 @@ var configFilePath = flag.String(
 func main() {
 	flag.Parse()
 
-	var sqlDB *db.SQLDB
-
 	cfg, err := config.NewLocketConfig(*configFilePath)
 	if err != nil {
-		panic(err)
+		logger, _ := lagerflags.New("locket")
+		logger.Fatal("invalid-config-file", err)
 	}
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
+
 	clock := clock.NewClock()
 
-	if cfg.DatabaseDriver != "" && cfg.DatabaseConnectionString != "" {
-		var err error
-
-		if cfg.DatabaseDriver == "postgres" && !strings.Contains(cfg.DatabaseConnectionString, "sslmode") {
-			cfg.DatabaseConnectionString = fmt.Sprintf("%s?sslmode=disable", cfg.DatabaseConnectionString)
-		}
-
-		sqlConn, err := sql.Open(cfg.DatabaseDriver, cfg.DatabaseConnectionString)
-		if err != nil {
-			logger.Fatal("failed-to-open-sql", err)
-		}
-		defer sqlConn.Close()
-
-		err = sqlConn.Ping()
-		if err != nil {
-			logger.Fatal("sql-failed-to-connect", err)
-		}
-
-		sqlDB = db.NewSQLDB(
-			sqlConn,
-			cfg.DatabaseDriver,
-		)
-
-		err = sqlDB.SetIsolationLevel(logger, helpers.IsolationLevelReadCommitted)
-		if err != nil {
-			logger.Fatal("sql-failed-to-set-isolation-level", err)
-		}
+	if cfg.DatabaseDriver == "postgres" && !strings.Contains(cfg.DatabaseConnectionString, "sslmode") {
+		cfg.DatabaseConnectionString = fmt.Sprintf("%s?sslmode=disable", cfg.DatabaseConnectionString)
 	}
 
-	if sqlDB == nil {
-		logger.Fatal("no-database-configured", errors.New("no database configured"))
+	sqlConn, err := sql.Open(cfg.DatabaseDriver, cfg.DatabaseConnectionString)
+	if err != nil {
+		logger.Fatal("failed-to-open-sql", err)
+	}
+	defer sqlConn.Close()
+
+	err = sqlConn.Ping()
+	if err != nil {
+		logger.Fatal("sql-failed-to-connect", err)
+	}
+
+	sqlDB := db.NewSQLDB(
+		sqlConn,
+		cfg.DatabaseDriver,
+	)
+
+	err = sqlDB.SetIsolationLevel(logger, helpers.IsolationLevelReadCommitted)
+	if err != nil {
+		logger.Fatal("sql-failed-to-set-isolation-level", err)
 	}
 
 	err = sqlDB.CreateLockTable(logger)
@@ -94,15 +86,21 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed-invalid-listen-address", err)
 	}
+
 	portNum, err := net.LookupPort("tcp", portString)
 	if err != nil {
 		logger.Fatal("failed-invalid-listen-port", err)
 	}
 
+	tlsConfig, err := cfhttp.NewTLSConfig(cfg.CertFile, cfg.KeyFile, cfg.CaFile)
+	if err != nil {
+		logger.Fatal("invalid-tls-config", err)
+	}
+
 	lockPick := expiration.NewLockPick(sqlDB, clock)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick)
-	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, handler)
+	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)
 	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
 	members := grouper.Members{
 		{"server", server},

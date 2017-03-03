@@ -1,10 +1,13 @@
 package grpcserver_test
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/models"
@@ -21,12 +24,25 @@ var _ = Describe("GRPCServer", func() {
 		listenAddress string
 		runner        ifrit.Runner
 		serverProcess ifrit.Process
+		tlsConfig     *tls.Config
+
+		certFixture, keyFixture, caCertFixture string
 	)
 
 	BeforeEach(func() {
+		var err error
+
+		certFixture = "fixtures/cert.crt"
+		keyFixture = "fixtures/key.key"
+		caCertFixture = "fixtures/ca.crt"
+
+		tlsConfig, err = cfhttp.NewTLSConfig(certFixture, keyFixture, caCertFixture)
+		Expect(err).NotTo(HaveOccurred())
+
 		logger = lagertest.NewTestLogger("grpc-server")
 		listenAddress = fmt.Sprintf("localhost:%d", 10000+GinkgoParallelNode())
-		runner = grpcserver.NewGRPCServer(logger, listenAddress, &testHandler{})
+
+		runner = grpcserver.NewGRPCServer(logger, listenAddress, tlsConfig, &testHandler{})
 	})
 
 	JustBeforeEach(func() {
@@ -38,10 +54,10 @@ var _ = Describe("GRPCServer", func() {
 	})
 
 	It("serves on the listen address", func() {
-		conn, err := grpc.Dial(listenAddress, grpc.WithInsecure())
+		conn, err := grpc.Dial(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		Expect(err).NotTo(HaveOccurred())
-		locketClient := models.NewLocketClient(conn)
 
+		locketClient := models.NewLocketClient(conn)
 		_, err = locketClient.Lock(context.Background(), &models.LockRequest{})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -59,7 +75,7 @@ var _ = Describe("GRPCServer", func() {
 		var alternateRunner ifrit.Runner
 
 		BeforeEach(func() {
-			alternateRunner = grpcserver.NewGRPCServer(logger, listenAddress, &testHandler{})
+			alternateRunner = grpcserver.NewGRPCServer(logger, listenAddress, tlsConfig, &testHandler{})
 		})
 
 		It("exits with an error", func() {

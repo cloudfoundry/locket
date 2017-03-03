@@ -23,7 +23,10 @@ var _ = Describe("LocketConfig", func() {
 			"database_driver": "mysql",
 			"database_connection_string": "stuff",
 			"debug_address": "some-more-stuff",
-			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345"
+			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
+			"ca_file": "i am a ca file",
+			"cert_file": "i am a cert file",
+			"key_file": "i am a key file"
 		}`
 	})
 
@@ -58,6 +61,9 @@ var _ = Describe("LocketConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "some-more-stuff",
 			},
+			CaFile:   "i am a ca file",
+			CertFile: "i am a cert file",
+			KeyFile:  "i am a key file",
 		}
 
 		Expect(locketConfig).To(Equal(config))

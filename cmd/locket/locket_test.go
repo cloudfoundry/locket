@@ -2,15 +2,18 @@ package main_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"time"
 
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
@@ -28,21 +31,36 @@ var _ = Describe("Locket", func() {
 		locketProcess ifrit.Process
 		locketPort    uint16
 		locketRunner  ifrit.Runner
-		cfg           config.LocketConfig
+
+		caCertFile, certFile, keyFile string
+		tlsConfig                     *tls.Config
+
+		cfg config.LocketConfig
 	)
 
 	BeforeEach(func() {
 		var err error
+
 		locketPort, err = localip.LocalPort()
 		Expect(err).NotTo(HaveOccurred())
 
 		locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
+
+		caCertFile = "fixtures/ca.crt"
+		certFile = "fixtures/cert.crt"
+		keyFile = "fixtures/key.key"
+
+		tlsConfig, err = cfhttp.NewTLSConfig(certFile, keyFile, caCertFile)
+		Expect(err).NotTo(HaveOccurred())
 
 		cfg = config.LocketConfig{
 			ListenAddress:            locketAddress,
 			ConsulCluster:            consulRunner.ConsulCluster(),
 			DatabaseDriver:           sqlRunner.DriverName(),
 			DatabaseConnectionString: sqlRunner.ConnectionString(),
+			CaFile:   caCertFile,
+			CertFile: certFile,
+			KeyFile:  keyFile,
 		}
 	})
 
@@ -51,7 +69,7 @@ var _ = Describe("Locket", func() {
 		locketRunner = testrunner.NewLocketRunner(locketBinPath, cfg)
 		locketProcess = ginkgomon.Invoke(locketRunner)
 
-		conn, err = grpc.Dial(locketAddress, grpc.WithInsecure())
+		conn, err = grpc.Dial(locketAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		Expect(err).NotTo(HaveOccurred())
 
 		locketClient = models.NewLocketClient(conn)
@@ -161,7 +179,7 @@ var _ = Describe("Locket", func() {
 				locketProcess = ginkgomon.Invoke(locketRunner)
 
 				// Recreate the grpc client to avoid default backoff
-				conn, err = grpc.Dial(locketAddress, grpc.WithInsecure())
+				conn, err = grpc.Dial(locketAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 				Expect(err).NotTo(HaveOccurred())
 				locketClient = models.NewLocketClient(conn)
 
