@@ -2,18 +2,20 @@ package main_test
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
+	"google.golang.org/grpc/grpclog"
+
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
+	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
@@ -24,18 +26,15 @@ import (
 
 var _ = Describe("Locket", func() {
 	var (
-		conn *grpc.ClientConn
-
 		locketAddress string
 		locketClient  models.LocketClient
 		locketProcess ifrit.Process
 		locketPort    uint16
 		locketRunner  ifrit.Runner
 
-		caCertFile, certFile, keyFile string
-		tlsConfig                     *tls.Config
+		logger *lagertest.TestLogger
 
-		cfg config.LocketConfig
+		configOverrides []func(*config.LocketConfig)
 	)
 
 	BeforeEach(func() {
@@ -46,38 +45,33 @@ var _ = Describe("Locket", func() {
 
 		locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
 
-		caCertFile = "fixtures/ca.crt"
-		certFile = "fixtures/cert.crt"
-		keyFile = "fixtures/key.key"
+		logger = lagertest.NewTestLogger("locket")
 
-		tlsConfig, err = cfhttp.NewTLSConfig(certFile, keyFile, caCertFile)
-		Expect(err).NotTo(HaveOccurred())
-
-		cfg = config.LocketConfig{
-			ListenAddress:            locketAddress,
-			ConsulCluster:            consulRunner.ConsulCluster(),
-			DatabaseDriver:           sqlRunner.DriverName(),
-			DatabaseConnectionString: sqlRunner.ConnectionString(),
-			CaFile:   caCertFile,
-			CertFile: certFile,
-			KeyFile:  keyFile,
+		configOverrides = []func(cfg *config.LocketConfig){
+			func(cfg *config.LocketConfig) {
+				cfg.ListenAddress = locketAddress
+				cfg.ConsulCluster = consulRunner.ConsulCluster()
+				cfg.DatabaseDriver = sqlRunner.DriverName()
+				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
+			},
 		}
 	})
 
 	JustBeforeEach(func() {
 		var err error
-		locketRunner = testrunner.NewLocketRunner(locketBinPath, cfg)
+
+		locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
 		locketProcess = ginkgomon.Invoke(locketRunner)
 
-		conn, err = grpc.Dial(locketAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+		config := testrunner.ClientLocketConfig()
+		config.LocketAddress = locketAddress
+		locketClient, err = locket.NewClient(logger, config)
+		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 		Expect(err).NotTo(HaveOccurred())
-
-		locketClient = models.NewLocketClient(conn)
 	})
 
 	AfterEach(func() {
-		Expect(conn.Close()).To(Succeed())
-		ginkgomon.Kill(locketProcess)
+		ginkgomon.Interrupt(locketProcess)
 		sqlRunner.ResetTables(TruncateTableList)
 	})
 
@@ -89,7 +83,9 @@ var _ = Describe("Locket", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			debugAddress = fmt.Sprintf("127.0.0.1:%d", port)
-			cfg.DebugAddress = debugAddress
+			configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+				cfg.DebugAddress = debugAddress
+			})
 		})
 
 		It("listens on the debug address specified", func() {
@@ -175,13 +171,9 @@ var _ = Describe("Locket", func() {
 
 				ginkgomon.Kill(locketProcess)
 
-				locketRunner = testrunner.NewLocketRunner(locketBinPath, cfg)
+				// cannot reuse the runner otherwise a `exec: already started` error will occur
+				locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
 				locketProcess = ginkgomon.Invoke(locketRunner)
-
-				// Recreate the grpc client to avoid default backoff
-				conn, err = grpc.Dial(locketAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-				Expect(err).NotTo(HaveOccurred())
-				locketClient = models.NewLocketClient(conn)
 
 				Eventually(func() error {
 					_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
