@@ -9,14 +9,14 @@ import (
 )
 
 type ClientLocketConfig struct {
-	LocketAddress    string `json:"locket_address,omitempty"`
-	LocketCACert     string `json:"locket_ca_cert,omitempty"`
-	LocketClientCert string `json:"locket_client_cert,omitempty"`
-	LocketClientKey  string `json:"locket_client_key,omitempty"`
+	LocketAddress        string `json:"locket_address,omitempty"`
+	LocketCACertFile     string `json:"locket_ca_cert_file,omitempty"`
+	LocketClientCertFile string `json:"locket_client_cert_file,omitempty"`
+	LocketClientKeyFile  string `json:"locket_client_key_file,omitempty"`
 }
 
 func NewClient(logger lager.Logger, config ClientLocketConfig) (models.LocketClient, error) {
-	locketTLSConfig, err := cfhttp.NewTLSConfig(config.LocketClientCert, config.LocketClientKey, config.LocketCACert)
+	locketTLSConfig, err := cfhttp.NewTLSConfig(config.LocketClientCertFile, config.LocketClientKeyFile, config.LocketCACertFile)
 	if err != nil {
 		return nil, err
 	}

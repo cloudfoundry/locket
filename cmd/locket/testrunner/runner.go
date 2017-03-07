@@ -65,8 +65,8 @@ func LocketClientTLSConfig() *tls.Config {
 
 func ClientLocketConfig() locket.ClientLocketConfig {
 	return locket.ClientLocketConfig{
-		LocketCACert:     caCertFile,
-		LocketClientCert: certFile,
-		LocketClientKey:  keyFile,
+		LocketCACertFile:     caCertFile,
+		LocketClientCertFile: certFile,
+		LocketClientKeyFile:  keyFile,
 	}
 }
