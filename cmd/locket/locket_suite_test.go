@@ -2,7 +2,11 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"time"
+
+	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
@@ -39,6 +43,8 @@ var _ = SynchronizedBeforeSuite(
 		return []byte(locketBinPathData)
 	},
 	func(locketBinPathData []byte) {
+		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+
 		locketBinPath = string(locketBinPathData)
 		SetDefaultEventuallyTimeout(15 * time.Second)
 

@@ -3,12 +3,8 @@ package main_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net"
 	"time"
-
-	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
@@ -66,7 +62,6 @@ var _ = Describe("Locket", func() {
 		config := testrunner.ClientLocketConfig()
 		config.LocketAddress = locketAddress
 		locketClient, err = locket.NewClient(logger, config)
-		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 		Expect(err).NotTo(HaveOccurred())
 	})
 
