@@ -13,7 +13,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
@@ -66,11 +65,6 @@ func main() {
 		sqlConn,
 		cfg.DatabaseDriver,
 	)
-
-	err = sqlDB.SetIsolationLevel(logger, helpers.IsolationLevelReadCommitted)
-	if err != nil {
-		logger.Fatal("sql-failed-to-set-isolation-level", err)
-	}
 
 	err = sqlDB.CreateLockTable(logger)
 	if err != nil {

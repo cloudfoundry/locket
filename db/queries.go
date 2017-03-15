@@ -19,7 +19,3 @@ func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
 
 	return nil
 }
-
-func (db *SQLDB) SetIsolationLevel(logger lager.Logger, level string) error {
-	return db.helper.SetIsolationLevel(logger, db.db, level)
-}
