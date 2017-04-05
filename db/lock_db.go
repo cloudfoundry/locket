@@ -8,11 +8,21 @@ import (
 	"code.cloudfoundry.org/locket/models"
 )
 
+func lagerDataFromLock(resource *models.Resource) lager.Data {
+	return lager.Data{
+		"key":   resource.GetKey(),
+		"owner": resource.GetOwner(),
+		"type":  resource.GetType(),
+	}
+}
+
 func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error) {
-	logger = logger.Session("lock")
+	logger = logger.Session("lock", lagerDataFromLock(resource))
 	var lock *Lock
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+		newLock := false
+
 		res, index, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
@@ -20,9 +30,9 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 				logger.Error("failed-to-fetch-lock", err)
 				return err
 			}
-			logger.Info("lock-does-not-exist")
+			newLock = true
 		} else if res.Owner != resource.Owner {
-			logger.Error("lock-already-exists", err)
+			logger.Debug("lock-already-exists")
 			return models.ErrLockCollision
 		}
 
@@ -48,16 +58,20 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 		)
 		if err != nil {
 			logger.Error("failed-updating-lock", err)
+			return err
 		}
+		if newLock {
+			logger.Info("acquired-lock")
+		}
+		return nil
 
-		return err
 	})
 
 	return lock, err
 }
 
 func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
-	logger = logger.Session("release-lock")
+	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
 	return db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
 		res, index, _, err := db.fetchLock(logger, tx, resource.Key)
@@ -83,8 +97,10 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 		)
 		if err != nil {
 			logger.Error("failed-to-release-lock", err)
+			return err
 		}
-		return err
+		logger.Info("released-lock")
+		return nil
 	})
 }
 

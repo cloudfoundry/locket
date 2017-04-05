@@ -36,7 +36,9 @@ func NewLockPick(lockDB db.LockDB, clock clock.Clock) lockPick {
 }
 
 func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
-	logger = logger.Session("register-ttl", lager.Data{"lock": lock})
+	logger = logger.Session("register-ttl", lager.Data{"key": lock.Key, "modified-index": lock.ModifiedIndex})
+	logger.Debug("starting")
+	logger.Debug("completed")
 
 	l.lockMutex.Lock()
 	defer l.lockMutex.Unlock()
@@ -48,7 +50,6 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 
 	_, ok := l.lockTTLs[key]
 	if !ok {
-		logger.Info("registering-ttl-for-lock")
 		go l.checkExpiration(logger, lock)
 		l.lockTTLs[key] = struct{}{}
 	}
@@ -70,7 +71,6 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock) {
 	case <-l.clock.NewTimer(time.Duration(lock.TtlInSeconds) * time.Second).C():
 		fetchedLock, err := l.lockDB.Fetch(logger, lock.Key)
 		if err != nil {
-			logger.Error("failed-to-fetch-lock", err)
 			return
 		}
 
@@ -78,7 +78,6 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock) {
 			logger.Info("lock-expired")
 			err = l.lockDB.Release(logger, lock.Resource)
 			if err != nil {
-				logger.Error("failed-to-release-lock", err)
 				return
 			}
 		}

@@ -13,7 +13,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("LockPick", func() {
@@ -108,8 +107,6 @@ var _ = Describe("LockPick", func() {
 				fakeClock.WaitForWatcherAndIncrement(ttl)
 
 				Eventually(fakeLockDB.FetchCallCount).Should(Equal(1))
-
-				Eventually(logger).Should(gbytes.Say("failed-to-fetch-lock"))
 				Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(0))
 			})
 		})
@@ -125,7 +122,6 @@ var _ = Describe("LockPick", func() {
 				fakeClock.WaitForWatcherAndIncrement(ttl)
 
 				Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
-				Eventually(logger).Should(gbytes.Say("failed-to-release-lock"))
 			})
 		})
 
