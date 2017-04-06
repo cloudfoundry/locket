@@ -9,10 +9,10 @@ import (
 )
 
 type ClientLocketConfig struct {
-	LocketAddress        string `json:"locket_address,omitempty"`
-	LocketCACertFile     string `json:"locket_ca_cert_file,omitempty"`
-	LocketClientCertFile string `json:"locket_client_cert_file,omitempty"`
-	LocketClientKeyFile  string `json:"locket_client_key_file,omitempty"`
+	LocketAddress        string `json:"locket_address,omitempty" yaml:"locket_address,omitempty"`
+	LocketCACertFile     string `json:"locket_ca_cert_file,omitempty" yaml:"locket_ca_cert_file,omitempty"`
+	LocketClientCertFile string `json:"locket_ca_cert_file,omitempty" yaml:"locket_client_cert_file,omitempty"`
+	LocketClientKeyFile  string `json:"locket_client_key_file,omitempty" yaml:"locket_client_key_file,omitempty"`
 }
 
 func NewClient(logger lager.Logger, config ClientLocketConfig) (models.LocketClient, error) {
