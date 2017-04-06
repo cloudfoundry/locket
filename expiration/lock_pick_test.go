@@ -195,7 +195,8 @@ var _ = Describe("LockPick", func() {
 				})
 
 				It("does nothing", func() {
-					lockPick.RegisterTTL(logger, &oldLock)
+					l := oldLock
+					lockPick.RegisterTTL(logger, &l)
 					Eventually(logger).Should(gbytes.Say("found-newer-expiration-goroutine"))
 				})
 
@@ -206,13 +207,14 @@ var _ = Describe("LockPick", func() {
 					})
 
 					It("checks the expiration of the lock", func() {
-						lockPick.RegisterTTL(logger, &oldLock)
+						l := oldLock
+						lockPick.RegisterTTL(logger, &l)
 						Eventually(fakeClock.WatcherCount).Should(Equal(1))
 						fakeClock.WaitForWatcherAndIncrement(ttl)
 
 						Eventually(fakeLockDB.FetchCallCount).Should(Equal(2))
 						_, key := fakeLockDB.FetchArgsForCall(0)
-						Expect(key).To(Equal(oldLock.Key))
+						Expect(key).To(Equal(l.Key))
 					})
 				})
 			})
