@@ -17,20 +17,20 @@ type LockPick interface {
 type lockPick struct {
 	lockDB    db.LockDB
 	clock     clock.Clock
-	lockTTLs  map[ttlKey]struct{}
+	lockTTLs  map[string]chanAndIndex
 	lockMutex *sync.Mutex
 }
 
-type ttlKey struct {
-	key   string
-	index int64
+type chanAndIndex struct {
+	channel chan struct{}
+	index   int64
 }
 
 func NewLockPick(lockDB db.LockDB, clock clock.Clock) lockPick {
 	return lockPick{
 		lockDB:    lockDB,
 		clock:     clock,
-		lockTTLs:  make(map[ttlKey]struct{}),
+		lockTTLs:  make(map[string]chanAndIndex),
 		lockMutex: &sync.Mutex{},
 	}
 }
@@ -40,46 +40,60 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 	logger.Debug("starting")
 	logger.Debug("completed")
 
+	newChanIndex := chanAndIndex{
+		channel: make(chan struct{}),
+		index:   lock.ModifiedIndex,
+	}
+
 	l.lockMutex.Lock()
 	defer l.lockMutex.Unlock()
 
-	key := ttlKey{
-		lock.Key,
-		lock.ModifiedIndex,
+	channelIndex, ok := l.lockTTLs[lock.Key]
+	if ok && channelIndex.index > newChanIndex.index {
+		logger.Debug("found-newer-expiration-goroutine")
+		return
 	}
 
-	_, ok := l.lockTTLs[key]
-	if !ok {
-		go l.checkExpiration(logger, lock)
-		l.lockTTLs[key] = struct{}{}
+	if ok && channelIndex.index <= newChanIndex.index {
+		close(channelIndex.channel)
 	}
+
+	l.lockTTLs[lock.Key] = newChanIndex
+	go l.checkExpiration(logger, lock, newChanIndex.channel)
 }
 
-func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock) {
-	defer func() {
-		key := ttlKey{
-			lock.Key,
-			lock.ModifiedIndex,
-		}
+func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan chan struct{}) {
+	lockTimer := l.clock.NewTimer(time.Duration(lock.TtlInSeconds) * time.Second)
 
-		l.lockMutex.Lock()
-		delete(l.lockTTLs, key)
-		l.lockMutex.Unlock()
-	}()
-
-	select {
-	case <-l.clock.NewTimer(time.Duration(lock.TtlInSeconds) * time.Second).C():
-		fetchedLock, err := l.lockDB.Fetch(logger, lock.Key)
-		if err != nil {
+	for {
+		select {
+		case <-closeChan:
+			logger.Debug("cancelling-old-check-goroutine")
 			return
-		}
+		case <-lockTimer.C():
+			defer func() {
+				l.lockMutex.Lock()
+				chanIndex := l.lockTTLs[lock.Key]
+				if chanIndex.index == lock.ModifiedIndex {
+					delete(l.lockTTLs, lock.Key)
+				}
+				l.lockMutex.Unlock()
+			}()
 
-		if fetchedLock.ModifiedIndex == lock.ModifiedIndex {
-			logger.Info("lock-expired")
-			err = l.lockDB.Release(logger, lock.Resource)
+			fetchedLock, err := l.lockDB.Fetch(logger, lock.Key)
 			if err != nil {
 				return
 			}
+
+			if fetchedLock.ModifiedIndex == lock.ModifiedIndex {
+				logger.Info("lock-expired")
+				err = l.lockDB.Release(logger, lock.Resource)
+				if err != nil {
+					logger.Error("failed-to-release-lock", err)
+					return
+				}
+			}
+			return
 		}
 	}
 }
