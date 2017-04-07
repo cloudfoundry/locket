@@ -9,13 +9,14 @@ import (
 )
 
 type LocketConfig struct {
-	CaFile                   string `json:"ca_file"`
-	CertFile                 string `json:"cert_file"`
-	ConsulCluster            string `json:"consul_cluster,omitempty"`
-	DatabaseConnectionString string `json:"database_connection_string"`
-	DatabaseDriver           string `json:"database_driver,omitempty"`
-	KeyFile                  string `json:"key_file"`
-	ListenAddress            string `json:"listen_address"`
+	CaFile                     string `json:"ca_file"`
+	CertFile                   string `json:"cert_file"`
+	ConsulCluster              string `json:"consul_cluster,omitempty"`
+	DatabaseConnectionString   string `json:"database_connection_string"`
+	MaxOpenDatabaseConnections int    `json:"max_open_database_connections,omitempty"`
+	DatabaseDriver             string `json:"database_driver,omitempty"`
+	KeyFile                    string `json:"key_file"`
+	ListenAddress              string `json:"listen_address"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
 }

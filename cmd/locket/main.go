@@ -56,6 +56,9 @@ func main() {
 	}
 	defer sqlConn.Close()
 
+	sqlConn.SetMaxIdleConns(cfg.MaxOpenDatabaseConnections)
+	sqlConn.SetMaxOpenConns(cfg.MaxOpenDatabaseConnections)
+
 	err = sqlConn.Ping()
 	if err != nil {
 		logger.Fatal("sql-failed-to-connect", err)

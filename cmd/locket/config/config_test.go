@@ -21,6 +21,7 @@ var _ = Describe("LocketConfig", func() {
 			"log_level": "debug",
 			"listen_address": "1.2.3.4:9090",
 			"database_driver": "mysql",
+			"max_open_database_connections": 1000,
 			"database_connection_string": "stuff",
 			"debug_address": "some-more-stuff",
 			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
@@ -51,10 +52,11 @@ var _ = Describe("LocketConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config := config.LocketConfig{
-			DatabaseDriver:           "mysql",
-			ListenAddress:            "1.2.3.4:9090",
-			DatabaseConnectionString: "stuff",
-			ConsulCluster:            "http://127.0.0.1:1234,http://127.0.0.1:12345",
+			DatabaseDriver:             "mysql",
+			ListenAddress:              "1.2.3.4:9090",
+			DatabaseConnectionString:   "stuff",
+			MaxOpenDatabaseConnections: 1000,
+			ConsulCluster:              "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},
