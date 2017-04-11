@@ -182,6 +182,20 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 	return locks, err
 }
 
+func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
+	whereBindings := make([]interface{}, 0)
+	wheres := "owner <> ?"
+	whereBindings = append(whereBindings, "")
+
+	if lockType != "" {
+		wheres += " AND type = ?"
+		whereBindings = append(whereBindings, lockType)
+	}
+
+	logger = logger.Session("count-locks")
+	return db.helper.Count(logger, db.db, "locks", wheres, whereBindings...)
+}
+
 func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, int64, error) {
 	row := db.helper.One(logger, q, "locks",
 		helpers.ColumnList{"owner", "value", "type", "modified_index", "ttl"},

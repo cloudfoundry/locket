@@ -14,6 +14,7 @@ type LockDB interface {
 	Release(logger lager.Logger, resource *models.Resource) error
 	Fetch(logger lager.Logger, key string) (*Lock, error)
 	FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
+	Count(logger lager.Logger, lockType string) (int, error)
 }
 
 type Lock struct {

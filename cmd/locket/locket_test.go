@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/lager/lagertest"
@@ -13,6 +15,8 @@ import (
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
 
+	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,6 +72,44 @@ var _ = Describe("Locket", func() {
 	AfterEach(func() {
 		ginkgomon.Interrupt(locketProcess)
 		sqlRunner.ResetTables(TruncateTableList)
+	})
+
+	Context("metrics", func() {
+		var (
+			testMetricsListener net.PacketConn
+			testMetricsChan     chan *events.Envelope
+		)
+
+		BeforeEach(func() {
+			testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
+			testMetricsChan = make(chan *events.Envelope, 1)
+			go func() {
+				defer GinkgoRecover()
+				for {
+					buffer := make([]byte, 1024)
+					n, _, err := testMetricsListener.ReadFrom(buffer)
+					if err != nil {
+						close(testMetricsChan)
+						return
+					}
+
+					var envelope events.Envelope
+					err = proto.Unmarshal(buffer[:n], &envelope)
+					Expect(err).NotTo(HaveOccurred())
+					testMetricsChan <- &envelope
+				}
+			}()
+			port, err := strconv.Atoi(strings.TrimPrefix(testMetricsListener.LocalAddr().String(), "127.0.0.1:"))
+			Expect(err).NotTo(HaveOccurred())
+
+			configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+				cfg.DropsondePort = port
+			})
+		})
+
+		It("emits metrics", func() {
+			Eventually(testMetricsChan).Should(Receive())
+		})
 	})
 
 	Context("debug address", func() {

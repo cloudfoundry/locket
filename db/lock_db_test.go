@@ -315,4 +315,53 @@ var _ = Describe("Lock", func() {
 			})
 		})
 	})
+
+	Context("Count", func() {
+		BeforeEach(func() {
+			query := helpers.RebindForFlavor(
+				`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
+				dbFlavor,
+			)
+			result, err := rawDB.Exec(query, "test1", "jake", "thedog", "dog", 10, 20)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+
+			result, err = rawDB.Exec(query, "test2", "", "", "", 10, 20)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+
+			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "human", 10, 20)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+		})
+
+		It("retrieves a count of the locks", func() {
+			count, err := sqlDB.Count(logger, "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(2))
+		})
+
+		It("filters based on lock type", func() {
+			count, err := sqlDB.Count(logger, "dog")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(1))
+		})
+
+		Context("when the database errors", func() {
+			BeforeEach(func() {
+				_, err := rawDB.Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := sqlDB.CreateLockTable(logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				_, err := sqlDB.Count(logger, "")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
 })

@@ -7,6 +7,11 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
+	"code.cloudfoundry.org/runtimeschema/metric"
+)
+
+const (
+	locksExpired = metric.Counter("LocksExpired")
 )
 
 //go:generate counterfeiter . LockPick
@@ -87,6 +92,8 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 
 			if fetchedLock.ModifiedIndex == lock.ModifiedIndex {
 				logger.Info("lock-expired")
+				locksExpired.Increment()
+
 				err = l.lockDB.Release(logger, lock.Resource)
 				if err != nil {
 					logger.Error("failed-to-release-lock", err)

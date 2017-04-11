@@ -7,7 +7,9 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/cloudfoundry/dropsonde"
 	"github.com/hashicorp/consul/api"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -25,6 +27,12 @@ import (
 	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
+	"code.cloudfoundry.org/locket/metrics"
+)
+
+const (
+	dropsondeOrigin = "locket"
+	metricsInterval = 10 * time.Second
 )
 
 var configFilePath = flag.String(
@@ -43,6 +51,8 @@ func main() {
 	}
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
+
+	initializeDropsonde(logger, cfg.DropsondePort)
 
 	clock := clock.NewClock()
 
@@ -94,6 +104,7 @@ func main() {
 		logger.Fatal("invalid-tls-config", err)
 	}
 
+	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metricsInterval, sqlDB)
 	lockPick := expiration.NewLockPick(sqlDB, clock)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick)
@@ -102,6 +113,7 @@ func main() {
 	members := grouper.Members{
 		{"server", server},
 		{"burglar", burglar},
+		{"metrics-notifier", metricsNotifier},
 		{"registration-runner", registrationRunner},
 	}
 
@@ -137,4 +149,12 @@ func initializeRegistrationRunner(
 		},
 	}
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
+}
+
+func initializeDropsonde(logger lager.Logger, dropsondePort int) {
+	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
+	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
+	if err != nil {
+		logger.Error("failed to initialize dropsonde: %v", err)
+	}
 }

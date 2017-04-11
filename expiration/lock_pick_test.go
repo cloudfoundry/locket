@@ -13,6 +13,8 @@ import (
 	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/models"
 
+	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
+	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -28,7 +30,8 @@ var _ = Describe("LockPick", func() {
 
 		ttl time.Duration
 
-		lock *db.Lock
+		sender *fake.FakeMetricSender
+		lock   *db.Lock
 	)
 
 	BeforeEach(func() {
@@ -47,6 +50,9 @@ var _ = Describe("LockPick", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		logger = lagertest.NewTestLogger("lock-pick")
 		fakeLockDB = &dbfakes.FakeLockDB{}
+
+		sender = fake.NewFakeMetricSender()
+		metrics.Initialize(sender, nil)
 
 		lockPick = expiration.NewLockPick(fakeLockDB, fakeClock)
 	})
@@ -68,6 +74,16 @@ var _ = Describe("LockPick", func() {
 			Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 			_, resource := fakeLockDB.ReleaseArgsForCall(0)
 			Expect(resource).To(Equal(lock.Resource))
+		})
+
+		It("emits a counter metric for every expiration", func() {
+			lockPick.RegisterTTL(logger, lock)
+
+			fakeClock.WaitForWatcherAndIncrement(ttl)
+
+			Eventually(func() uint64 {
+				return sender.GetCounter("LocksExpired")
+			}).Should(BeEquivalentTo(1))
 		})
 
 		Context("when the modified index has been incremented", func() {
