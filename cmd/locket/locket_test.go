@@ -145,14 +145,14 @@ var _ = Describe("Locket", func() {
 			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
 			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
 				Resource:     requestedResource,
-				TtlInSeconds: 1,
+				TtlInSeconds: 6,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
 				_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 				return err
-			}, 2*time.Second).Should(HaveOccurred())
+			}, 10*time.Second).Should(HaveOccurred())
 		})
 
 		Context("when the lock server disappears unexpectedly", func() {

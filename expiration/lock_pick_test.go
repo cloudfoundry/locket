@@ -2,6 +2,7 @@ package expiration_test
 
 import (
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -133,36 +134,60 @@ var _ = Describe("LockPick", func() {
 				Eventually(fakeClock.WatcherCount).Should(Equal(1))
 			})
 
-			It("does not add a new check process", func() {
-				lockPick.RegisterTTL(logger, lock)
+			Context("when the lock is incremented", func() {
+				var returnedLock *db.Lock
+				BeforeEach(func() {
+					returnedLock = &db.Lock{
+						Resource: &models.Resource{
+							Key:   "funky",
+							Owner: "town",
+							Value: "won't you take me to",
+						},
+						TtlInSeconds:  lock.TtlInSeconds,
+						ModifiedIndex: 7,
+					}
 
-				Eventually(fakeClock.WatcherCount).Should(Equal(2))
-				Consistently(fakeClock.WatcherCount).Should(Equal(2))
-				fakeClock.WaitForWatcherAndIncrement(ttl)
+					fakeLockDB.FetchReturns(returnedLock, nil)
+				})
 
-				Eventually(fakeLockDB.FetchCallCount).Should(Equal(1))
-				_, key := fakeLockDB.FetchArgsForCall(0)
-				Expect(key).To(Equal(lock.Key))
+				It("does not add a new check process", func() {
+					lockPick.RegisterTTL(logger, returnedLock)
 
-				Eventually(logger).Should(gbytes.Say("cancelling-old-check"))
-				Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
-				Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(1))
+					Eventually(fakeClock.WatcherCount).Should(Equal(2))
+					Consistently(fakeClock.WatcherCount).Should(Equal(2))
+					fakeClock.WaitForWatcherAndIncrement(ttl)
+
+					Eventually(logger).Should(gbytes.Say("cancelling-old-check"))
+
+					Eventually(fakeLockDB.FetchCallCount).Should(Equal(1))
+					_, key := fakeLockDB.FetchArgsForCall(0)
+					Expect(key).To(Equal(returnedLock.Key))
+
+					Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
+					Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(1))
+				})
 			})
 
 			Context("and competes with a newer lock on checking expiry", func() {
-				var newLock db.Lock
+				var thirdLock db.Lock
+				var trigger uint32
+
 				BeforeEach(func() {
-					newLock = *lock
+					newLock := *lock
 					newLock.ModifiedIndex += 1
 
-					trigger := true
+					thirdLock = newLock
+					thirdLock.ModifiedIndex += 1
+
+					trigger = 1
 					fakeLockDB.FetchStub = func(logger lager.Logger, key string) (*db.Lock, error) {
-						if trigger {
+						if atomic.LoadUint32(&trigger) != 0 {
 							// second expiry goroutine
 							lockPick.RegisterTTL(logger, &newLock)
 						}
-						trigger = false
-						return &newLock, nil
+						atomic.StoreUint32(&trigger, 0)
+
+						return &thirdLock, nil
 					}
 				})
 
@@ -170,9 +195,12 @@ var _ = Describe("LockPick", func() {
 					// first expiry goroutine proceeds into timer case statement
 					fakeClock.WaitForWatcherAndIncrement(ttl)
 					Eventually(fakeLockDB.FetchCallCount).Should(Equal(1))
+					Eventually(func() uint32 {
+						return atomic.LoadUint32(&trigger)
+					}).Should(BeEquivalentTo(0))
 
 					// third expiry goroutine, cancels the second expiry goroutine
-					lockPick.RegisterTTL(logger, &newLock)
+					lockPick.RegisterTTL(logger, &thirdLock)
 
 					Eventually(fakeClock.WatcherCount).Should(Equal(2))
 					fakeClock.WaitForWatcherAndIncrement(ttl)
@@ -182,7 +210,14 @@ var _ = Describe("LockPick", func() {
 
 					Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1))
 					_, resource := fakeLockDB.ReleaseArgsForCall(0)
-					Expect(resource).To(Equal(newLock.Resource))
+					Expect(resource).To(Equal(thirdLock.Resource))
+				})
+			})
+
+			Context("when the same lock is registered", func() {
+				It("does nothing", func() {
+					lockPick.RegisterTTL(logger, lock)
+					Eventually(logger).Should(gbytes.Say("found-expiration-goroutine"))
 				})
 			})
 
@@ -197,7 +232,7 @@ var _ = Describe("LockPick", func() {
 				It("does nothing", func() {
 					l := oldLock
 					lockPick.RegisterTTL(logger, &l)
-					Eventually(logger).Should(gbytes.Say("found-newer-expiration-goroutine"))
+					Eventually(logger).Should(gbytes.Say("found-expiration-goroutine"))
 				})
 
 				Context("and the previous lock has already expired", func() {
@@ -220,9 +255,9 @@ var _ = Describe("LockPick", func() {
 			})
 
 			Context("when another lock is registered", func() {
-				var newLock *db.Lock
+				var anotherLock, newLock db.Lock
 				BeforeEach(func() {
-					newLock = &db.Lock{
+					anotherLock = db.Lock{
 						Resource: &models.Resource{
 							Key:   "another",
 							Owner: "myself",
@@ -232,12 +267,15 @@ var _ = Describe("LockPick", func() {
 						ModifiedIndex: 9,
 					}
 
+					newLock = *lock
+					newLock.ModifiedIndex += 1
+
 					fakeLockDB.FetchStub = func(logger lager.Logger, key string) (*db.Lock, error) {
 						switch {
-						case key == lock.Key:
-							return lock, nil
 						case key == newLock.Key:
-							return newLock, nil
+							return &newLock, nil
+						case key == anotherLock.Key:
+							return &anotherLock, nil
 						default:
 							return nil, errors.New("unknown lock")
 						}
@@ -245,12 +283,12 @@ var _ = Describe("LockPick", func() {
 				})
 
 				It("does not effect the other check goroutines", func() {
-					lockPick.RegisterTTL(logger, newLock)
+					lockPick.RegisterTTL(logger, &anotherLock)
 
 					Eventually(fakeClock.WatcherCount).Should(Equal(2))
 					Consistently(fakeClock.WatcherCount).Should(Equal(2))
 
-					lockPick.RegisterTTL(logger, lock)
+					lockPick.RegisterTTL(logger, &newLock)
 
 					Eventually(fakeClock.WatcherCount).Should(Equal(3))
 					fakeClock.WaitForWatcherAndIncrement(ttl)
@@ -258,8 +296,8 @@ var _ = Describe("LockPick", func() {
 					Eventually(fakeLockDB.FetchCallCount).Should(Equal(2))
 					_, key1 := fakeLockDB.FetchArgsForCall(0)
 					_, key2 := fakeLockDB.FetchArgsForCall(1)
-					Expect([]string{key1, key2}).To(ContainElement(lock.Key))
 					Expect([]string{key1, key2}).To(ContainElement(newLock.Key))
+					Expect([]string{key1, key2}).To(ContainElement(anotherLock.Key))
 
 					Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(2))
 					Consistently(fakeLockDB.ReleaseCallCount).Should(Equal(2))

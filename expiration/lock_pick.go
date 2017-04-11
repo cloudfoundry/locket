@@ -49,12 +49,12 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 	defer l.lockMutex.Unlock()
 
 	channelIndex, ok := l.lockTTLs[lock.Key]
-	if ok && channelIndex.index > newChanIndex.index {
-		logger.Debug("found-newer-expiration-goroutine")
+	if ok && channelIndex.index >= newChanIndex.index {
+		logger.Debug("found-expiration-goroutine-for-index", lager.Data{"index": channelIndex.index})
 		return
 	}
 
-	if ok && channelIndex.index <= newChanIndex.index {
+	if ok && channelIndex.index < newChanIndex.index {
 		close(channelIndex.channel)
 	}
 
