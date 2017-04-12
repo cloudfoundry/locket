@@ -32,7 +32,7 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 		return nil, models.ErrInvalidTTL
 	}
 
-	lock, err := h.db.Lock(h.logger, req.Resource, req.TtlInSeconds)
+	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	err := h.db.Release(h.logger, req.Resource)
+	err := h.db.Release(logger, req.Resource)
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +55,11 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 }
 
 func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
-	logger := h.logger.Session("fetch", lager.Data{"request": req})
+	logger := h.logger.Session("fetch")
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	lock, err := h.db.Fetch(h.logger, req.Key)
+	lock, err := h.db.Fetch(logger, req.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +69,11 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 }
 
 func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
-	logger := h.logger.Session("fetch-all", lager.Data{"request": req})
+	logger := h.logger.Session("fetch-all")
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	locks, err := h.db.FetchAll(h.logger, req.Type)
+	locks, err := h.db.FetchAll(logger, req.Type)
 	if err != nil {
 		return nil, err
 	}

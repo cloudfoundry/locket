@@ -105,7 +105,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 }
 
 func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
-	logger = logger.Session("fetch-lock")
+	logger = logger.Session("fetch-lock", lager.Data{"key": key})
 	var lock *Lock
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
@@ -128,7 +128,7 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 }
 
 func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error) {
-	logger = logger.Session("fetch-all-locks")
+	logger = logger.Session("fetch-all-locks", lager.Data{"type": lockType})
 	var locks []*Lock
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
