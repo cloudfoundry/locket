@@ -22,7 +22,7 @@ type LockPick interface {
 type lockPick struct {
 	lockDB    db.LockDB
 	clock     clock.Clock
-	lockTTLs  map[string]chanAndIndex
+	lockTTLs  map[checkKey]chanAndIndex
 	lockMutex *sync.Mutex
 }
 
@@ -31,11 +31,16 @@ type chanAndIndex struct {
 	index   int64
 }
 
+type checkKey struct {
+	key string
+	id  string
+}
+
 func NewLockPick(lockDB db.LockDB, clock clock.Clock) lockPick {
 	return lockPick{
 		lockDB:    lockDB,
 		clock:     clock,
-		lockTTLs:  make(map[string]chanAndIndex),
+		lockTTLs:  make(map[checkKey]chanAndIndex),
 		lockMutex: &sync.Mutex{},
 	}
 }
@@ -49,11 +54,10 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 		channel: make(chan struct{}),
 		index:   lock.ModifiedIndex,
 	}
-
 	l.lockMutex.Lock()
 	defer l.lockMutex.Unlock()
 
-	channelIndex, ok := l.lockTTLs[lock.Key]
+	channelIndex, ok := l.lockTTLs[checkKeyFromLock(lock)]
 	if ok && channelIndex.index >= newChanIndex.index {
 		logger.Debug("found-expiration-goroutine-for-index", lager.Data{"index": channelIndex.index})
 		return
@@ -63,7 +67,7 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 		close(channelIndex.channel)
 	}
 
-	l.lockTTLs[lock.Key] = newChanIndex
+	l.lockTTLs[checkKeyFromLock(lock)] = newChanIndex
 	go l.checkExpiration(logger, lock, newChanIndex.channel)
 }
 
@@ -78,9 +82,9 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 		case <-lockTimer.C():
 			defer func() {
 				l.lockMutex.Lock()
-				chanIndex := l.lockTTLs[lock.Key]
+				chanIndex := l.lockTTLs[checkKeyFromLock(lock)]
 				if chanIndex.index == lock.ModifiedIndex {
-					delete(l.lockTTLs, lock.Key)
+					delete(l.lockTTLs, checkKeyFromLock(lock))
 				}
 				l.lockMutex.Unlock()
 			}()
@@ -90,7 +94,7 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 				return
 			}
 
-			if fetchedLock.ModifiedIndex == lock.ModifiedIndex {
+			if fetchedLock.ModifiedIndex == lock.ModifiedIndex && fetchedLock.ModifiedId == lock.ModifiedId {
 				logger.Info("lock-expired")
 				locksExpired.Increment()
 
@@ -102,5 +106,12 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 			}
 			return
 		}
+	}
+}
+
+func checkKeyFromLock(lock *db.Lock) checkKey {
+	return checkKey{
+		key: lock.Key,
+		id:  lock.ModifiedId,
 	}
 }

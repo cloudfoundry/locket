@@ -23,7 +23,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
 		newLock := false
 
-		res, index, _, err := db.fetchLock(logger, tx, resource.Key)
+		res, index, id, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
 			if sqlErr != helpers.ErrResourceNotFound {
@@ -38,9 +38,19 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 
 		index++
 
+		modifiedId := id
+		if modifiedId == "" {
+			modifiedId, err = db.guidProvider.NextGUID()
+			if err != nil {
+				logger.Error("failed-to-generate-guid", err)
+				return err
+			}
+		}
+
 		lock = &Lock{
 			Resource:      resource,
 			ModifiedIndex: index,
+			ModifiedId:    modifiedId,
 			TtlInSeconds:  ttl,
 		}
 
@@ -53,6 +63,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 				"value":          lock.Value,
 				"type":           lock.Type,
 				"modified_index": lock.ModifiedIndex,
+				"modified_id":    lock.ModifiedId,
 				"ttl":            lock.TtlInSeconds,
 			},
 		)
@@ -74,7 +85,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
 	return db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
-		res, index, _, err := db.fetchLock(logger, tx, resource.Key)
+		res, _, _, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
 			return err
@@ -85,14 +96,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 			return models.ErrLockCollision
 		}
 
-		index++
-		_, err = db.helper.Update(logger, tx, "locks",
-			helpers.SQLAttributes{
-				"value":          "",
-				"owner":          "",
-				"type":           "",
-				"modified_index": index,
-			},
+		_, err = db.helper.Delete(logger, tx, "locks",
 			"path = ?", resource.Key,
 		)
 		if err != nil {
@@ -109,7 +113,7 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 	var lock *Lock
 
 	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
-		res, index, ttl, err := db.fetchLock(logger, tx, key)
+		res, index, id, ttl, err := db.fetchLock(logger, tx, key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
 			sqlErr := db.helper.ConvertSQLError(err)
@@ -119,7 +123,7 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 			return sqlErr
 		}
 
-		lock = &Lock{Resource: res, ModifiedIndex: index, TtlInSeconds: ttl}
+		lock = &Lock{Resource: res, ModifiedIndex: index, ModifiedId: id, TtlInSeconds: ttl}
 
 		return nil
 	})
@@ -141,7 +145,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 		}
 
 		rows, err := db.helper.All(logger, tx, "locks",
-			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "ttl"},
+			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "modified_id", "ttl"},
 			helpers.LockRow, where, whereBindings...,
 		)
 		if err != nil {
@@ -151,10 +155,10 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 		defer rows.Close()
 
 		for rows.Next() {
-			var key, owner, value, lockType string
+			var key, owner, value, lockType, id string
 			var index, ttl int64
 
-			err := rows.Scan(&key, &owner, &value, &lockType, &index, &ttl)
+			err := rows.Scan(&key, &owner, &value, &lockType, &index, &id, &ttl)
 			if err != nil {
 				logger.Error("failed-to-scan-lock", err)
 				continue
@@ -172,6 +176,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 					Type:  lockType,
 				},
 				ModifiedIndex: index,
+				ModifiedId:    id,
 				TtlInSeconds:  ttl,
 			})
 		}
@@ -196,22 +201,22 @@ func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
 	return db.helper.Count(logger, db.db, "locks", wheres, whereBindings...)
 }
 
-func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, int64, error) {
+func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, string, int64, error) {
 	row := db.helper.One(logger, q, "locks",
-		helpers.ColumnList{"owner", "value", "type", "modified_index", "ttl"},
+		helpers.ColumnList{"owner", "value", "type", "modified_index", "modified_id", "ttl"},
 		helpers.LockRow,
 		"path = ?", key,
 	)
 
-	var owner, value, lockType string
+	var owner, value, lockType, id string
 	var index, ttl int64
-	err := row.Scan(&owner, &value, &lockType, &index, &ttl)
+	err := row.Scan(&owner, &value, &lockType, &index, &id, &ttl)
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, 0, "", 0, err
 	}
 
 	if owner == "" {
-		return nil, index, 0, helpers.ErrResourceNotFound
+		return nil, index, "", 0, helpers.ErrResourceNotFound
 	}
 
 	return &models.Resource{
@@ -219,5 +224,5 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 		Owner: owner,
 		Value: value,
 		Type:  lockType,
-	}, index, ttl, nil
+	}, index, id, ttl, nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 
+	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
@@ -77,6 +78,7 @@ func main() {
 	sqlDB := db.NewSQLDB(
 		sqlConn,
 		cfg.DatabaseDriver,
+		guidprovider.DefaultGuidProvider,
 	)
 
 	err = sqlDB.CreateLockTable(logger)

@@ -81,7 +81,7 @@ var _ = Describe("Lock", func() {
 	})
 
 	AfterEach(func() {
-		ginkgomon.Kill(lockProcess)
+		ginkgomon.Interrupt(lockProcess)
 	})
 
 	var shouldEventuallyHaveNumSessions = func(numSessions int) {

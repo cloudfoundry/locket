@@ -10,6 +10,7 @@ func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
 			value VARCHAR(4096),
 			type VARCHAR(255) DEFAULT '',
 			modified_index BIGINT DEFAULT 0,
+			modified_id varchar(255) DEFAULT '',
 			ttl BIGINT DEFAULT 0
 		);
 	`)

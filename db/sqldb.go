@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
 )
@@ -21,22 +22,26 @@ type Lock struct {
 	*models.Resource
 	TtlInSeconds  int64
 	ModifiedIndex int64
+	ModifiedId    string
 }
 
 type SQLDB struct {
-	db     *sql.DB
-	flavor string
-	helper helpers.SQLHelper
+	db           *sql.DB
+	flavor       string
+	helper       helpers.SQLHelper
+	guidProvider guidprovider.GUIDProvider
 }
 
 func NewSQLDB(
 	db *sql.DB,
 	flavor string,
+	guidProvider guidprovider.GUIDProvider,
 ) *SQLDB {
 	helper := helpers.NewSQLHelper(flavor)
 	return &SQLDB{
-		db:     db,
-		flavor: flavor,
-		helper: helper,
+		db:           db,
+		flavor:       flavor,
+		helper:       helper,
+		guidProvider: guidProvider,
 	}
 }

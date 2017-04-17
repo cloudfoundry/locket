@@ -12,17 +12,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expectedTTL int64) error {
-	var key, owner, value, lockType string
+func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expectedTTL int64, expectedModifiedId string) error {
+	var key, owner, value, lockType, modifiedId string
 	var index, ttl int64
 
 	lockQuery := helpers.RebindForFlavor(
-		"SELECT path, owner, value, type, modified_index, ttl FROM locks WHERE path = ?",
+		"SELECT path, owner, value, type, modified_index, ttl, modified_id FROM locks WHERE path = ?",
 		dbFlavor,
 	)
 
 	row := rawDB.QueryRow(lockQuery, res.Key)
-	Expect(row.Scan(&key, &owner, &value, &lockType, &index, &ttl)).To(Succeed())
+	Expect(row.Scan(&key, &owner, &value, &lockType, &index, &ttl, &modifiedId)).To(Succeed())
 	errMsg := ""
 	if res.Key != key {
 		errMsg += fmt.Sprintf("mismatch key (%s, %s),", res.Key, key)
@@ -40,7 +40,10 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 		errMsg += fmt.Sprintf("mismatch index (%d, %d),", expectedIndex, index)
 	}
 	if expectedTTL != ttl {
-		errMsg += fmt.Sprintf("mismatch index (%d, %d),", expectedIndex, index)
+		errMsg += fmt.Sprintf("mismatch ttl (%d, %d),", expectedTTL, ttl)
+	}
+	if expectedModifiedId != modifiedId {
+		errMsg += fmt.Sprintf("mismatch modified_id (%d, %d),", expectedModifiedId, modifiedId)
 	}
 
 	if errMsg != "" {
@@ -48,6 +51,25 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 	}
 
 	return nil
+}
+
+func validateLockNotInDB(rawDB *sql.DB, res *models.Resource) error {
+	lockQuery := helpers.RebindForFlavor(
+		"SELECT owner FROM locks WHERE path = ?",
+		dbFlavor,
+	)
+	var owner string
+	row := rawDB.QueryRow(lockQuery, res.Key)
+	err := row.Scan(&owner)
+	if err != nil {
+		err = sqlHelper.ConvertSQLError(err)
+		if err == helpers.ErrResourceNotFound {
+			return nil
+		}
+		return err
+	}
+
+	return fmt.Errorf("lock exists with path (%s) and owner (%s)", res.Key, owner)
 }
 
 var _ = Describe("Lock", func() {
@@ -62,6 +84,7 @@ var _ = Describe("Lock", func() {
 		}
 
 		emptyResource = &models.Resource{Key: "quack"}
+		fakeGUIDProvider.NextGUIDReturns("new-guid", nil)
 	})
 
 	Context("Lock", func() {
@@ -73,9 +96,21 @@ var _ = Describe("Lock", func() {
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      resource,
 						ModifiedIndex: 1,
+						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
 					}))
-					Expect(validateLockInDB(rawDB, resource, 1, 10)).To(Succeed())
+					Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
+				})
+
+				Context("when generating a random guid fails", func() {
+					BeforeEach(func() {
+						fakeGUIDProvider.NextGUIDReturns("", errors.New("boom!"))
+					})
+
+					It("returns an error", func() {
+						_, err := sqlDB.Lock(logger, resource, 10)
+						Expect(err).To(HaveOccurred())
+					})
 				})
 			})
 
@@ -96,9 +131,10 @@ var _ = Describe("Lock", func() {
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      resource,
 						ModifiedIndex: 301,
+						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
 					}))
-					Expect(validateLockInDB(rawDB, resource, 301, 10)).To(Succeed())
+					Expect(validateLockInDB(rawDB, resource, 301, 10, "new-guid")).To(Succeed())
 				})
 			})
 		})
@@ -107,7 +143,9 @@ var _ = Describe("Lock", func() {
 			BeforeEach(func() {
 				_, err := sqlDB.Lock(logger, resource, 10)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(validateLockInDB(rawDB, resource, 1, 10)).To(Succeed())
+				Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
+
+				fakeGUIDProvider.NextGUIDReturns("another-new-guid", nil)
 			})
 
 			Context("and the desired owner is different", func() {
@@ -120,7 +158,7 @@ var _ = Describe("Lock", func() {
 
 					_, err := sqlDB.Lock(logger, newResource, 10)
 					Expect(err).To(Equal(models.ErrLockCollision))
-					Expect(validateLockInDB(rawDB, resource, 1, 10)).To(Succeed())
+					Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
 				})
 			})
 
@@ -131,9 +169,10 @@ var _ = Describe("Lock", func() {
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      resource,
 						ModifiedIndex: 2,
+						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
 					}))
-					Expect(validateLockInDB(rawDB, resource, 2, 10)).To(Succeed())
+					Expect(validateLockInDB(rawDB, resource, 2, 10, "new-guid")).To(Succeed())
 				})
 			})
 		})
@@ -155,10 +194,10 @@ var _ = Describe("Lock", func() {
 				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 			})
 
-			It("empties out the lock from the lock table", func() {
+			It("removes the lock from the lock table", func() {
 				err := sqlDB.Release(logger, resource)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(validateLockInDB(rawDB, emptyResource, 501, currentTTL)).To(Succeed())
+				Expect(validateLockNotInDB(rawDB, resource)).To(Succeed())
 			})
 
 			Context("when the lock is owned by another owner", func() {
@@ -196,10 +235,10 @@ var _ = Describe("Lock", func() {
 		Context("when the lock exists", func() {
 			BeforeEach(func() {
 				query := helpers.RebindForFlavor(
-					`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
+					`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 					dbFlavor,
 				)
-				result, err := rawDB.Exec(query, lock.Key, lock.Owner, lock.Value, lock.Type, 434, 5)
+				result, err := rawDB.Exec(query, lock.Key, lock.Owner, lock.Value, lock.Type, 434, "modified-id", 5)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 			})
@@ -210,6 +249,7 @@ var _ = Describe("Lock", func() {
 				Expect(resource).To(Equal(&db.Lock{
 					Resource:      lock,
 					ModifiedIndex: 434,
+					ModifiedId:    "modified-id",
 					TtlInSeconds:  5,
 				}))
 			})
@@ -247,18 +287,18 @@ var _ = Describe("Lock", func() {
 
 		BeforeEach(func() {
 			query := helpers.RebindForFlavor(
-				`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
+				`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 				dbFlavor,
 			)
-			result, err := rawDB.Exec(query, "test1", "jake", "thedog", "dog", 10, 20)
+			result, err := rawDB.Exec(query, "test1", "jake", "thedog", "dog", 10, "roof", 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			result, err = rawDB.Exec(query, "test2", "", "", "", 10, 20)
+			result, err = rawDB.Exec(query, "test2", "", "", "", 10, "", 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "human", 10, 20)
+			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "human", 10, "hello", 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
@@ -270,6 +310,7 @@ var _ = Describe("Lock", func() {
 					Type:  "dog",
 				},
 				ModifiedIndex: 10,
+				ModifiedId:    "roof",
 				TtlInSeconds:  20,
 			}
 			humanLock = &db.Lock{
@@ -280,6 +321,7 @@ var _ = Describe("Lock", func() {
 					Type:  "human",
 				},
 				ModifiedIndex: 10,
+				ModifiedId:    "hello",
 				TtlInSeconds:  20,
 			}
 		})

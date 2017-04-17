@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/bbs/guidprovider/fakes"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
@@ -20,8 +21,10 @@ var (
 	rawDB                                *sql.DB
 	sqlDB                                *sqldb.SQLDB
 	logger                               *lagertest.TestLogger
+	fakeGUIDProvider                     *fakes.FakeGUIDProvider
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
+	sqlHelper                            helpers.SQLHelper
 )
 
 func TestSql(t *testing.T) {
@@ -60,9 +63,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
-	sqlDB = sqldb.NewSQLDB(rawDB, dbFlavor)
+	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
+	sqlDB = sqldb.NewSQLDB(rawDB, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())
+
+	sqlHelper = helpers.NewSQLHelper(dbFlavor)
 
 	// ensures sqlDB matches the db.DB interface
 	var _ sqldb.LockDB = sqlDB
