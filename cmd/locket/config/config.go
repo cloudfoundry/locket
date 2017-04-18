@@ -35,6 +35,9 @@ func NewLocketConfig(configPath string) (LocketConfig, error) {
 	if err != nil {
 		return LocketConfig{}, err
 	}
+
+	defer configFile.Close()
+
 	decoder := json.NewDecoder(configFile)
 
 	err = decoder.Decode(&locketConfig)
