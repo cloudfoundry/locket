@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
@@ -93,7 +95,8 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			return nil
 
 		case <-retry.C():
-			_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds})
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(l.ttlInSeconds)*time.Second)
+			_, err := l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
 			if err != nil {
 				if acquired {
 					logger.Error("lost-lock", err)
