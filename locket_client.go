@@ -15,12 +15,21 @@ type ClientLocketConfig struct {
 	LocketClientKeyFile  string `json:"locket_client_key_file,omitempty" yaml:"locket_client_key_file,omitempty"`
 }
 
+func NewClientSkipCertVerify(logger lager.Logger, config ClientLocketConfig) (models.LocketClient, error) {
+	return newClientInternal(logger, config, true)
+}
+
 func NewClient(logger lager.Logger, config ClientLocketConfig) (models.LocketClient, error) {
+	return newClientInternal(logger, config, false)
+}
+
+func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertVerify bool) (models.LocketClient, error) {
 	locketTLSConfig, err := cfhttp.NewTLSConfig(config.LocketClientCertFile, config.LocketClientKeyFile, config.LocketCACertFile)
 	if err != nil {
 		logger.Error("failed-to-open-tls-config", err, lager.Data{"keypath": config.LocketClientKeyFile, "certpath": config.LocketClientCertFile, "capath": config.LocketCACertFile})
 		return nil, err
 	}
+	locketTLSConfig.InsecureSkipVerify = skipCertVerify
 
 	conn, err := grpc.Dial(config.LocketAddress, grpc.WithTransportCredentials(credentials.NewTLS(locketTLSConfig)))
 	if err != nil {
