@@ -1,15 +1,14 @@
 package lock
 
 import (
-	"context"
 	"os"
 	"time"
-
-	"google.golang.org/grpc"
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type lockRunner struct {
@@ -95,7 +94,9 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			return nil
 
 		case <-retry.C():
-			ctx, _ := context.WithTimeout(context.Background(), time.Duration(l.ttlInSeconds)*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(l.ttlInSeconds)*time.Second)
+			defer cancel()
+
 			_, err := l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
 			if err != nil {
 				if acquired {
