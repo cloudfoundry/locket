@@ -87,9 +87,12 @@ var _ = Describe("Lock", func() {
 				fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
 
 				Eventually(fakeLocker.LockCallCount).Should(Equal(2))
-				_, lockReq, _ = fakeLocker.LockArgsForCall(1)
+				ctx, lockReq, options := fakeLocker.LockArgsForCall(1)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
 				Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
+				_, ok := ctx.Deadline()
+				Expect(ok).To(BeTrue(), "no deadline set")
+				Expect(options).To(HaveLen(1))
 
 				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 			})

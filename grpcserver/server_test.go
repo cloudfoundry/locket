@@ -3,10 +3,8 @@ package grpcserver_test
 import (
 	"crypto/tls"
 	"fmt"
-	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
 	"code.cloudfoundry.org/cfhttp"
@@ -86,58 +84,6 @@ var _ = Describe("GRPCServer", func() {
 			Eventually(process.Wait()).Should(Receive(&err))
 			Expect(err).To(HaveOccurred())
 		})
-	})
-
-	Context("when the server stops listening after coming up", func() {
-		var (
-			locketClient models.LocketClient
-			errChan      chan error
-		)
-		JustBeforeEach(func() {
-			errChan = make(chan error)
-
-			conn, err := grpc.Dial(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-			Expect(err).NotTo(HaveOccurred())
-
-			locketClient = models.NewLocketClient(conn)
-			_, err = locketClient.Lock(context.Background(), &models.LockRequest{})
-			Expect(err).NotTo(HaveOccurred())
-
-			ginkgomon.Kill(serverProcess)
-		})
-
-		AfterEach(func() {
-			close(errChan)
-			Eventually(errChan).Should(BeClosed())
-		})
-
-		It("client waits for the supplied timeout before exiting", func() {
-			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-
-			go func() {
-				_, err := locketClient.Lock(ctx, &models.LockRequest{}, grpc.FailFast(false))
-				errChan <- err
-			}()
-			Consistently(errChan, "5s").ShouldNot(Receive())
-			var err error
-			Eventually(errChan).Should(Receive(&err))
-			Expect(grpc.Code(err)).To(Equal(codes.DeadlineExceeded))
-		})
-
-		It("client reconnects if server comes up within the supplied timeout", func() {
-			ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-
-			go func() {
-				_, err := locketClient.Lock(ctx, &models.LockRequest{}, grpc.FailFast(false))
-				if err != nil {
-					errChan <- err
-				}
-			}()
-			time.Sleep(1 * time.Second) //wait a bit before restarting server
-			serverProcess = ginkgomon.Invoke(runner)
-			Consistently(errChan, "5s").ShouldNot(Receive())
-		})
-
 	})
 })
 

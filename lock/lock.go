@@ -95,9 +95,8 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 
 		case <-retry.C():
 			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(l.ttlInSeconds)*time.Second)
-			defer cancel()
-
 			_, err := l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
+			cancel()
 			if err != nil {
 				if acquired {
 					logger.Error("lost-lock", err)
