@@ -146,7 +146,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 
 		rows, err := db.helper.All(logger, tx, "locks",
 			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "modified_id", "ttl"},
-			helpers.LockRow, where, whereBindings...,
+			helpers.NoLockRow, where, whereBindings...,
 		)
 		if err != nil {
 			logger.Error("failed-to-fetch-locks", err)
