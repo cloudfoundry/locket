@@ -91,6 +91,18 @@ var _ = Describe("Lock", func() {
 			})
 		})
 
+		Context("when the request does not have an owner", func() {
+			BeforeEach(func() {
+				resource.Owner = ""
+			})
+
+			It("returns a validation error", func() {
+				_, err := locketHandler.Lock(context.Background(), request)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(models.ErrInvalidOwner))
+			})
+		})
+
 		Context("when locking errors", func() {
 			BeforeEach(func() {
 				fakeLockDB.LockReturns(nil, errors.New("Boom."))

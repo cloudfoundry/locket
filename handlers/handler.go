@@ -32,6 +32,10 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 		return nil, models.ErrInvalidTTL
 	}
 
+	if req.Resource.Owner == "" {
+		return nil, models.ErrInvalidOwner
+	}
+
 	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		return nil, err

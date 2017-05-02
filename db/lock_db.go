@@ -31,7 +31,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 				return err
 			}
 			newLock = true
-		} else if res.Owner != resource.Owner {
+		} else if res.Owner != resource.Owner && res.Owner != "" {
 			logger.Debug("lock-already-exists")
 			return models.ErrLockCollision
 		}
@@ -54,28 +54,42 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 			TtlInSeconds:  ttl,
 		}
 
-		_, err = db.helper.Upsert(logger, tx, "locks",
-			helpers.SQLAttributes{
-				"path": lock.Key,
-			},
-			helpers.SQLAttributes{
-				"owner":          lock.Owner,
-				"value":          lock.Value,
-				"type":           lock.Type,
-				"modified_index": lock.ModifiedIndex,
-				"modified_id":    lock.ModifiedId,
-				"ttl":            lock.TtlInSeconds,
-			},
-		)
+		if newLock {
+			_, err = db.helper.Insert(logger, tx, "locks",
+				helpers.SQLAttributes{
+					"path":           lock.Key,
+					"owner":          lock.Owner,
+					"value":          lock.Value,
+					"type":           lock.Type,
+					"modified_index": lock.ModifiedIndex,
+					"modified_id":    lock.ModifiedId,
+					"ttl":            lock.TtlInSeconds,
+				},
+			)
+		} else {
+			_, err = db.helper.Update(logger, tx, "locks",
+				helpers.SQLAttributes{
+					"owner":          lock.Owner,
+					"value":          lock.Value,
+					"type":           lock.Type,
+					"modified_index": lock.ModifiedIndex,
+					"modified_id":    lock.ModifiedId,
+					"ttl":            lock.TtlInSeconds,
+				},
+				"path = ?", lock.Key,
+			)
+		}
+
 		if err != nil {
 			logger.Error("failed-updating-lock", err)
 			return err
 		}
+
 		if newLock {
 			logger.Info("acquired-lock")
 		}
-		return nil
 
+		return nil
 	})
 
 	return lock, err
@@ -121,6 +135,10 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 				return models.ErrResourceNotFound
 			}
 			return sqlErr
+		}
+
+		if res.Owner == "" {
+			return models.ErrResourceNotFound
 		}
 
 		lock = &Lock{Resource: res, ModifiedIndex: index, ModifiedId: id, TtlInSeconds: ttl}
@@ -213,10 +231,6 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 	err := row.Scan(&owner, &value, &lockType, &index, &id, &ttl)
 	if err != nil {
 		return nil, 0, "", 0, err
-	}
-
-	if owner == "" {
-		return nil, index, "", 0, helpers.ErrResourceNotFound
 	}
 
 	return &models.Resource{
