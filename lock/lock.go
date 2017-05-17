@@ -61,7 +61,7 @@ func NewPresenceRunner(
 }
 
 func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	logger := l.logger.Session("sql-lock", lager.Data{"lock": l.lock, "ttl_in_seconds": l.ttlInSeconds})
+	logger := l.logger.Session("locket-lock", lager.Data{"lock": l.lock, "ttl_in_seconds": l.ttlInSeconds})
 
 	logger.Info("started")
 	defer logger.Info("completed")
