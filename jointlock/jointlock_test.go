@@ -99,12 +99,6 @@ var _ = Describe("Jointlock", func() {
 			fakeClock.Increment(timeout)
 			Consistently(jointLockProcess.Wait()).ShouldNot(Receive())
 		})
-
-		Context("and the process is signalled", func() {
-			It("propagates the signal to the first runner and exits", func() {
-
-			})
-		})
 	})
 
 	Context("when the second runner never becomes ready", func() {
