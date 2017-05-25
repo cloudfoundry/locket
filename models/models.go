@@ -1,6 +1,9 @@
 package models
 
-import "errors"
+import (
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+)
 
 //go:generate bash ../scripts/generate_protos.sh
 //go:generate counterfeiter . LocketClient
@@ -8,7 +11,7 @@ import "errors"
 const PresenceType = "presence"
 const LockType = "lock"
 
-var ErrLockCollision = errors.New("lock-collision")
-var ErrInvalidTTL = errors.New("invalid-ttl")
-var ErrInvalidOwner = errors.New("invalid-owner")
-var ErrResourceNotFound = errors.New("resource-not-found")
+var ErrLockCollision = grpc.Errorf(codes.AlreadyExists, "lock-collision")
+var ErrInvalidTTL = grpc.Errorf(codes.InvalidArgument, "invalid-ttl")
+var ErrInvalidOwner = grpc.Errorf(codes.InvalidArgument, "invalid-owner")
+var ErrResourceNotFound = grpc.Errorf(codes.NotFound, "resource-not-found")
