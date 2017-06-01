@@ -109,7 +109,8 @@ func main() {
 	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metricsInterval, sqlDB)
 	lockPick := expiration.NewLockPick(sqlDB, clock)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
-	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick)
+	exitCh := make(chan struct{})
+	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, exitCh)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)
 	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
 	members := grouper.Members{
@@ -129,6 +130,12 @@ func main() {
 	monitor := ifrit.Invoke(sigmon.New(group))
 
 	logger.Info("started")
+
+	go func() {
+		<-exitCh
+		logger.Info("shutting-down-due-to-unrecoverable-error")
+		monitor.Signal(os.Interrupt)
+	}()
 
 	err = <-monitor.Wait()
 	if err != nil {

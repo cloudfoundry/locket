@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -30,7 +31,7 @@ var _ = Describe("Locket", func() {
 		locketClient  models.LocketClient
 		locketProcess ifrit.Process
 		locketPort    uint16
-		locketRunner  ifrit.Runner
+		locketRunner  *ginkgomon.Runner
 
 		logger *lagertest.TestLogger
 
@@ -297,6 +298,25 @@ var _ = Describe("Locket", func() {
 			response, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(response.Resources).To(ConsistOf(resource2))
+		})
+
+		Context("if the table disappears", func() {
+			JustBeforeEach(func() {
+				_, err := sqlRunner.DB().Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+				_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+				Expect(err).To(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				sqlRunner.DB().Close()
+				sqlProcess = ginkgomon.Invoke(sqlRunner)
+			})
+
+			It("exits", func() {
+				Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
+				Eventually(locketProcess.Wait()).Should(Receive())
+			})
 		})
 	})
 })

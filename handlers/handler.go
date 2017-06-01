@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration"
@@ -12,14 +13,29 @@ type locketHandler struct {
 	logger lager.Logger
 
 	db       db.LockDB
+	exitCh   chan<- struct{}
 	lockPick expiration.LockPick
 }
 
-func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick) *locketHandler {
+func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, exitCh chan<- struct{}) *locketHandler {
 	return &locketHandler{
 		logger:   logger,
 		db:       db,
 		lockPick: lockPick,
+		exitCh:   exitCh,
+	}
+}
+
+func (h *locketHandler) exitIfUnrecoverable(err error) {
+	if err != helpers.ErrUnrecoverableError {
+		return
+	}
+
+	h.logger.Error("unrecoverable-error", err)
+
+	select {
+	case h.exitCh <- struct{}{}:
+	default:
 	}
 }
 
@@ -38,6 +54,7 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 
 	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
+		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
 
@@ -53,6 +70,7 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 
 	err := h.db.Release(logger, req.Resource)
 	if err != nil {
+		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
 	return &models.ReleaseResponse{}, nil
@@ -65,6 +83,7 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 
 	lock, err := h.db.Fetch(logger, req.Key)
 	if err != nil {
+		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
 	return &models.FetchResponse{
@@ -79,6 +98,7 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 
 	locks, err := h.db.FetchAll(logger, req.Type)
 	if err != nil {
+		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
 

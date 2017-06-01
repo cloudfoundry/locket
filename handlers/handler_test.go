@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
@@ -12,6 +13,7 @@ import (
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Lock", func() {
@@ -21,12 +23,14 @@ var _ = Describe("Lock", func() {
 		logger        *lagertest.TestLogger
 		locketHandler models.LocketServer
 		resource      *models.Resource
+		exitCh        chan struct{}
 	)
 
 	BeforeEach(func() {
 		fakeLockDB = &dbfakes.FakeLockDB{}
 		fakeLockPick = &expirationfakes.FakeLockPick{}
 		logger = lagertest.NewTestLogger("locket-handler")
+		exitCh = make(chan struct{}, 1)
 
 		resource = &models.Resource{
 			Key:   "test",
@@ -34,7 +38,7 @@ var _ = Describe("Lock", func() {
 			Owner: "myself",
 		}
 
-		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB, fakeLockPick)
+		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB, fakeLockPick, exitCh)
 	})
 
 	Context("Lock", func() {
@@ -113,6 +117,18 @@ var _ = Describe("Lock", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
+
+		Context("when an unrecoverable error is returned", func() {
+			BeforeEach(func() {
+				fakeLockDB.LockReturns(nil, helpers.ErrUnrecoverableError)
+			})
+
+			It("logs and writes to the exit channel", func() {
+				locketHandler.Lock(context.Background(), request)
+				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+				Expect(exitCh).To(Receive())
+			})
+		})
 	})
 
 	Context("Release", func() {
@@ -133,6 +149,18 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
 				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when an unrecoverable error is returned", func() {
+			BeforeEach(func() {
+				fakeLockDB.ReleaseReturns(helpers.ErrUnrecoverableError)
+			})
+
+			It("logs and writes to the exit channel", func() {
+				locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
+				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+				Expect(exitCh).To(Receive())
 			})
 		})
 	})
@@ -160,6 +188,18 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.Fetch(context.Background(), &models.FetchRequest{Key: "test-fetch"})
 				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when an unrecoverable error is returned", func() {
+			BeforeEach(func() {
+				fakeLockDB.FetchReturns(nil, helpers.ErrUnrecoverableError)
+			})
+
+			It("logs and writes to the exit channel", func() {
+				locketHandler.Fetch(context.Background(), &models.FetchRequest{Key: "test-fetch"})
+				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+				Expect(exitCh).To(Receive())
 			})
 		})
 	})
@@ -196,6 +236,18 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
 				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when an unrecoverable error is returned", func() {
+			BeforeEach(func() {
+				fakeLockDB.FetchAllReturns(nil, helpers.ErrUnrecoverableError)
+			})
+
+			It("logs and writes to the exit channel", func() {
+				locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+				Expect(exitCh).To(Receive())
 			})
 		})
 	})

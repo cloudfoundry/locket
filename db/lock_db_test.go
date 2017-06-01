@@ -212,6 +212,23 @@ var _ = Describe("Lock", func() {
 			})
 		})
 
+		Context("when the lock table disappear", func() {
+			BeforeEach(func() {
+				_, err := rawDB.Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := sqlDB.CreateLockTable(logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				err := sqlDB.Release(logger, resource)
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+			})
+		})
+
 		Context("when the lock does not exist", func() {
 			It("returns an error", func() {
 				err := sqlDB.Release(logger, resource)
@@ -252,6 +269,23 @@ var _ = Describe("Lock", func() {
 					ModifiedId:    "modified-id",
 					TtlInSeconds:  5,
 				}))
+			})
+		})
+
+		Context("when the lock table disappear", func() {
+			BeforeEach(func() {
+				_, err := rawDB.Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := sqlDB.CreateLockTable(logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				_, err := sqlDB.Fetch(logger, "test")
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
 
@@ -340,7 +374,7 @@ var _ = Describe("Lock", func() {
 			})
 		})
 
-		Context("when fetching the locks fail", func() {
+		Context("when the lock table disappear", func() {
 			BeforeEach(func() {
 				_, err := rawDB.Exec("DROP TABLE locks")
 				Expect(err).NotTo(HaveOccurred())
@@ -351,9 +385,9 @@ var _ = Describe("Lock", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns an error", func() {
+			It("returns an unrecoverable error", func() {
 				_, err := sqlDB.FetchAll(logger, "")
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
 	})
@@ -389,7 +423,7 @@ var _ = Describe("Lock", func() {
 			Expect(count).To(Equal(1))
 		})
 
-		Context("when the database errors", func() {
+		Context("when the lock table disappear", func() {
 			BeforeEach(func() {
 				_, err := rawDB.Exec("DROP TABLE locks")
 				Expect(err).NotTo(HaveOccurred())
@@ -402,7 +436,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an error", func() {
 				_, err := sqlDB.Count(logger, "")
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
 	})

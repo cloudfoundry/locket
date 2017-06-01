@@ -98,7 +98,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
-	return db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
 		res, _, _, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
@@ -120,6 +120,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 		logger.Info("released-lock")
 		return nil
 	})
+	return db.helper.ConvertSQLError(err)
 }
 
 func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
@@ -202,7 +203,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 		return nil
 	})
 
-	return locks, err
+	return locks, db.helper.ConvertSQLError(err)
 }
 
 func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
@@ -216,7 +217,8 @@ func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
 	}
 
 	logger = logger.Session("count-locks")
-	return db.helper.Count(logger, db.db, "locks", wheres, whereBindings...)
+	count, err := db.helper.Count(logger, db.db, "locks", wheres, whereBindings...)
+	return count, db.helper.ConvertSQLError(err)
 }
 
 func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, string, int64, error) {

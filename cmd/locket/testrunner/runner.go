@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	. "github.com/onsi/gomega"
-	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
@@ -25,7 +24,7 @@ var (
 	keyFile    = filepath.Join(fixturesPath, "key.key")
 )
 
-func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) ifrit.Runner {
+func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) *ginkgomon.Runner {
 	cfg := &config.LocketConfig{
 		CaFile:   caCertFile,
 		CertFile: certFile,
