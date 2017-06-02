@@ -164,6 +164,29 @@ var _ = Describe("Locket", func() {
 	})
 
 	Context("Lock", func() {
+		Context("if the table disappears", func() {
+			AfterEach(func() {
+				sqlRunner.DB().Close()
+				sqlProcess = ginkgomon.Invoke(sqlRunner)
+			})
+
+			JustBeforeEach(func() {
+				_, err := sqlRunner.DB().Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+				_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+					Resource:     requestedResource,
+					TtlInSeconds: 10,
+				})
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("exits", func() {
+				Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
+				Eventually(locketProcess.Wait()).Should(Receive())
+			})
+		})
+
 		It("locks the key with the corresponding value", func() {
 			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
 			_, err := locketClient.Lock(context.Background(), &models.LockRequest{

@@ -176,6 +176,23 @@ var _ = Describe("Lock", func() {
 				})
 			})
 		})
+
+		Context("when the lock table disappear", func() {
+			BeforeEach(func() {
+				_, err := rawDB.Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := sqlDB.CreateLockTable(logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an unrecoverable error", func() {
+				_, err := sqlDB.Lock(logger, resource, 10)
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+			})
+		})
 	})
 
 	Context("Release", func() {

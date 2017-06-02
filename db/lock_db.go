@@ -92,7 +92,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 		return nil
 	})
 
-	return lock, err
+	return lock, db.helper.ConvertSQLError(err)
 }
 
 func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
