@@ -1,6 +1,8 @@
 package locket
 
 import (
+	"time"
+
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
@@ -31,7 +33,12 @@ func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertV
 	}
 	locketTLSConfig.InsecureSkipVerify = skipCertVerify
 
-	conn, err := grpc.Dial(config.LocketAddress, grpc.WithTransportCredentials(credentials.NewTLS(locketTLSConfig)))
+	conn, err := grpc.Dial(
+		config.LocketAddress,
+		grpc.WithTransportCredentials(credentials.NewTLS(locketTLSConfig)),
+		grpc.WithBlock(),
+		grpc.WithTimeout(1*time.Second),
+	)
 	if err != nil {
 		return nil, err
 	}
