@@ -17,7 +17,7 @@ The [PresenceRunner](https://godoc.org/code.cloudfoundry.org/locket/lock#NewPres
 
 ## RPC Calls
 
-Ifrit runners are the most convenient way to use the locket service. For more advanced you can use the RPC calls which are documented below
+Ifrit runners are the most convenient way to use the locket service. For more advanced use cases please refer to the RPC calls documented below
 
 ### LockRequest
 
