@@ -7,11 +7,13 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
+	"code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/runtimeschema/metric"
 )
 
 const (
-	locksExpired = metric.Counter("LocksExpired")
+	locksExpired    = metric.Counter("LocksExpired")
+	presenceExpired = metric.Counter("PresenceExpired")
 )
 
 //go:generate counterfeiter . LockPick
@@ -46,7 +48,7 @@ func NewLockPick(lockDB db.LockDB, clock clock.Clock) lockPick {
 }
 
 func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
-	logger = logger.Session("register-ttl", lager.Data{"key": lock.Key, "modified-index": lock.ModifiedIndex})
+	logger = logger.Session("register-ttl", lager.Data{"key": lock.Key, "modified-index": lock.ModifiedIndex, "type": lock.Type})
 	logger.Debug("starting")
 	logger.Debug("completed")
 
@@ -96,7 +98,15 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 
 			if fetchedLock.ModifiedIndex == lock.ModifiedIndex && fetchedLock.ModifiedId == lock.ModifiedId {
 				logger.Info("lock-expired")
-				locksExpired.Increment()
+
+				switch lock.Type {
+				case models.LockType:
+					locksExpired.Increment()
+				case models.PresenceType:
+					presenceExpired.Increment()
+				default:
+					logger.Debug("unknown-logger-type")
+				}
 
 				err = l.lockDB.Release(logger, lock.Resource)
 				if err != nil {

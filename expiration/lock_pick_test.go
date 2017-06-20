@@ -30,8 +30,8 @@ var _ = Describe("LockPick", func() {
 
 		ttl time.Duration
 
-		sender *fake.FakeMetricSender
-		lock   *db.Lock
+		sender         *fake.FakeMetricSender
+		lock, presence *db.Lock
 	)
 
 	BeforeEach(func() {
@@ -40,6 +40,19 @@ var _ = Describe("LockPick", func() {
 				Key:   "funky",
 				Owner: "town",
 				Value: "won't you take me to",
+				Type:  models.LockType,
+			},
+			TtlInSeconds:  25,
+			ModifiedIndex: 6,
+			ModifiedId:    "guid",
+		}
+
+		presence = &db.Lock{
+			Resource: &models.Resource{
+				Key:   "funky-presence",
+				Owner: "town-presence",
+				Value: "please dont take me",
+				Type:  models.PresenceType,
 			},
 			TtlInSeconds:  25,
 			ModifiedIndex: 6,
@@ -77,14 +90,36 @@ var _ = Describe("LockPick", func() {
 			Expect(resource).To(Equal(lock.Resource))
 		})
 
-		It("emits a counter metric for every expiration", func() {
+		It("emits a counter metric for lock expiration", func() {
 			lockPick.RegisterTTL(logger, lock)
+			lockPick.RegisterTTL(logger, presence)
 
-			fakeClock.WaitForWatcherAndIncrement(ttl)
+			fakeClock.WaitForNWatchersAndIncrement(ttl, 2)
 
 			Eventually(func() uint64 {
 				return sender.GetCounter("LocksExpired")
 			}).Should(BeEquivalentTo(1))
+		})
+
+		It("emits a counter metric for presence expiration", func() {
+			lockPick.RegisterTTL(logger, lock)
+			lockPick.RegisterTTL(logger, presence)
+
+			fakeClock.WaitForNWatchersAndIncrement(ttl, 2)
+
+			Eventually(func() uint64 {
+				return sender.GetCounter("PresenceExpired")
+			}).Should(BeEquivalentTo(1))
+		})
+
+		It("logs the type of the lock", func() {
+			lockPick.RegisterTTL(logger, lock)
+			Eventually(logger.Buffer()).Should(gbytes.Say("\"type\":\"lock\""))
+		})
+
+		It("logs the type of the presence", func() {
+			lockPick.RegisterTTL(logger, presence)
+			Eventually(logger.Buffer()).Should(gbytes.Say("\"type\":\"presence\""))
 		})
 
 		Context("when the modified index has been incremented", func() {
