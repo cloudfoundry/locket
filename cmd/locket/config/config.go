@@ -18,6 +18,7 @@ type LocketConfig struct {
 	DropsondePort              int    `json:"dropsonde_port,omitempty"`
 	KeyFile                    string `json:"key_file"`
 	ListenAddress              string `json:"listen_address"`
+	SQLCACertFile              string `json:"sql_ca_cert_file,omitempty"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
 }

@@ -27,7 +27,8 @@ var _ = Describe("LocketConfig", func() {
 			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			"ca_file": "i am a ca file",
 			"cert_file": "i am a cert file",
-			"key_file": "i am a key file"
+			"key_file": "i am a key file",
+			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca"
 		}`
 	})
 
@@ -63,9 +64,10 @@ var _ = Describe("LocketConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "some-more-stuff",
 			},
-			CaFile:   "i am a ca file",
-			CertFile: "i am a cert file",
-			KeyFile:  "i am a key file",
+			CaFile:        "i am a ca file",
+			CertFile:      "i am a cert file",
+			KeyFile:       "i am a key file",
+			SQLCACertFile: "/var/vcap/jobs/locket/config/sql.ca",
 		}
 
 		Expect(locketConfig).To(Equal(config))
