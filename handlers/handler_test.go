@@ -108,13 +108,34 @@ var _ = Describe("Lock", func() {
 		})
 
 		Context("when locking errors", func() {
+			var (
+				err error
+			)
+
 			BeforeEach(func() {
 				fakeLockDB.LockReturns(nil, errors.New("Boom."))
 			})
 
+			JustBeforeEach(func() {
+				_, err = locketHandler.Lock(context.Background(), request)
+			})
+
 			It("returns the error", func() {
-				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
+			})
+
+			It("logs the error", func() {
+				Expect(logger).To(gbytes.Say("Boom."))
+			})
+
+			Context("when lock collision error occurs", func() {
+				BeforeEach(func() {
+					fakeLockDB.LockReturns(nil, models.ErrLockCollision)
+				})
+
+				It("does not log the error", func() {
+					Expect(logger).NotTo(gbytes.Say("lock-collision"))
+				})
 			})
 		})
 

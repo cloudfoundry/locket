@@ -55,6 +55,9 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		h.exitIfUnrecoverable(err)
+		if err != models.ErrLockCollision {
+			h.logger.Error("failed-locking-lock", err)
+		}
 		return nil, err
 	}
 
