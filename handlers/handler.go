@@ -45,10 +45,18 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	defer logger.Debug("complete")
 
 	if req.TtlInSeconds <= 0 {
+		logger.Error("failed-locking-lock", models.ErrInvalidTTL, lager.Data{
+			"key":   req.Resource.Key,
+			"owner": req.Resource.Owner,
+		})
 		return nil, models.ErrInvalidTTL
 	}
 
 	if req.Resource.Owner == "" {
+		logger.Error("failed-locking-lock", models.ErrInvalidOwner, lager.Data{
+			"key":   req.Resource.Key,
+			"owner": req.Resource.Owner,
+		})
 		return nil, models.ErrInvalidOwner
 	}
 
@@ -56,7 +64,10 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	if err != nil {
 		h.exitIfUnrecoverable(err)
 		if err != models.ErrLockCollision {
-			h.logger.Error("failed-locking-lock", err)
+			logger.Error("failed-locking-lock", err, lager.Data{
+				"key":   req.Resource.Key,
+				"owner": req.Resource.Owner,
+			})
 		}
 		return nil, err
 	}

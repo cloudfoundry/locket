@@ -92,6 +92,9 @@ var _ = Describe("Lock", func() {
 				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(models.ErrInvalidTTL))
+				Expect(logger).To(gbytes.Say(models.ErrInvalidTTL.Error()))
+				Expect(logger).To(gbytes.Say("\"key\":"))
+				Expect(logger).To(gbytes.Say("\"owner\":"))
 			})
 		})
 
@@ -104,6 +107,9 @@ var _ = Describe("Lock", func() {
 				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(models.ErrInvalidOwner))
+				Expect(logger).To(gbytes.Say(models.ErrInvalidOwner.Error()))
+				Expect(logger).To(gbytes.Say("\"key\":"))
+				Expect(logger).To(gbytes.Say("\"owner\":"))
 			})
 		})
 
@@ -124,8 +130,10 @@ var _ = Describe("Lock", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("logs the error", func() {
+			It("logs the error with identifying information", func() {
 				Expect(logger).To(gbytes.Say("Boom."))
+				Expect(logger).To(gbytes.Say("\"key\":"))
+				Expect(logger).To(gbytes.Say("\"owner\":"))
 			})
 
 			Context("when lock collision error occurs", func() {
