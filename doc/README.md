@@ -28,7 +28,8 @@ Lock request is used to acquire a lock. A lock can be held by **one owner only**
    1. `Key`   [**required**] the name of the lock. this can be any arbitrary name
    2. `Owner` [**required**] a unique identifier of the owner. A claimed lock can only be acquired by the same owner. Other owners will get an error
    3. `Value` [**optional**] Arbitrary metadata that can be stored with the lock
-   4. `Type`  [**optional**] a value that can be later used to fetch all locks by type. Diego currently use `lock` and `presence`
+   4. `TypeCode`  [**optional**] an enum integer value that can be later used to fetch all locks by type. The [TypeCode](https://godoc.org/code.cloudfoundry.org/locket/models#TypeCode) enum currently specifies `UNKNOWN (0)`, `LOCK (1)` and `PRESENCE (2)`.
+   5. `Type`  [**deprecated; optional**] a value that can be later used to fetch all locks by type. Diego currently uses `"lock"` and `"presence"`. `Type` will go away in favor of `TypeCode` in the next major release of Diego.
 
 Returns a `LockResponse`
 
@@ -52,7 +53,8 @@ Release a previously acquired lock. A [ReleaseRequest](https://godoc.org/code.cl
    1. `Key`   [**required**] the name of the lock. it must match the same value used when the lock was acquired
    2. `Owner` [**required**] a unique identifier of the owner. it must match the same value used when the lock was acquired
    3. `Value` [**not used**]
-   4. `Type`  [**not used**]
+   4. `TypeCode`  [**not used**]
+   5. `Type`  [**deprecated; not used**]
 
 Returns a `ReleaseResponse`
 
@@ -67,9 +69,10 @@ The release response is currently empty. The client will have to use the returne
 
 ### FetchAllRequest
 
-Fetch all acquired locks by lock type. the lock type is optional, if omitted all locks will be returned. A [FetchAllRequest](https://godoc.org/code.cloudfoundry.org/locket/models#FetchAllRequest) is composed of the following field:
+Fetch all acquired locks by lock type. The lock type is mandatory.  A [FetchAllRequest](https://godoc.org/code.cloudfoundry.org/locket/models#FetchAllRequest) should be passed a type field. It can be either a `TypeCode` of value `LOCK (1)` or `PRESENCE (2)`, or a `Type` string of value `lock` or `presence`. Other values of `Type` or `TypeCode` are invalid and will return an error. `Type` is deprecated and will be removed in the next major version of Diego.
 
-1. `Type`: [**optional**] only locks with this type will be returned in the response
+1. `Type`: [**deprecated; optional**] only locks with this type will be returned in the response
+2. `TypeCode`: [**optional**] only locks with this type will be returned in the response
 
 Returns `FetchAllResponse`
 
@@ -79,11 +82,7 @@ Only grpc or sql errors can be returned for this request
 
 A [FetchAllResponse](https://godoc.org/code.cloudfoundry.org/locket/models#FetchAllResponse) will include the following field:
 
-1. `Resources` an array of resources
-   1. `Key`   the name of the lock
-   2. `Owner` the current owner of the lock
-   3. `Value` the opaque value that was passed when the lock was acquire
-   4. `Type`  the type of the lock
+1. `Resources`: an array of `Resource` objects corresponding to locks that match the `Type` or `TypeCode` specified in the `FetchAllRequest`.
 
 ### FetchRequest
 

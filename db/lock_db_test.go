@@ -73,14 +73,21 @@ func validateLockNotInDB(rawDB *sql.DB, res *models.Resource) error {
 }
 
 var _ = Describe("Lock", func() {
-	var resource, emptyResource *models.Resource
+	var resource, emptyResource, expectedResource *models.Resource
 
 	BeforeEach(func() {
 		resource = &models.Resource{
 			Key:   "quack",
 			Owner: "iamthelizardking",
 			Value: "i can do anything",
-			Type:  "fooooobar",
+			Type:  "lock",
+		}
+		expectedResource = &models.Resource{
+			Key:      resource.Key,
+			Owner:    resource.Owner,
+			Value:    resource.Value,
+			Type:     resource.Type,
+			TypeCode: models.LOCK,
 		}
 
 		emptyResource = &models.Resource{Key: "quack"}
@@ -90,11 +97,31 @@ var _ = Describe("Lock", func() {
 	Context("Lock", func() {
 		Context("when the lock does not exist", func() {
 			Context("because the row does not exist", func() {
+				Context("when the resource only has a type code", func() {
+					It("inserts the lock for the owner", func() {
+						typeCodeResource := &models.Resource{
+							Key:      "quack",
+							Owner:    "iamthelizardking",
+							Value:    "i can do anything",
+							TypeCode: models.LOCK,
+						}
+						lock, err := sqlDB.Lock(logger, typeCodeResource, 10)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(lock).To(Equal(&db.Lock{
+							Resource:      expectedResource,
+							ModifiedIndex: 1,
+							ModifiedId:    "new-guid",
+							TtlInSeconds:  10,
+						}))
+						Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
+					})
+				})
+
 				It("inserts the lock for the owner", func() {
 					lock, err := sqlDB.Lock(logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
-						Resource:      resource,
+						Resource:      expectedResource,
 						ModifiedIndex: 1,
 						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
@@ -129,7 +156,7 @@ var _ = Describe("Lock", func() {
 					lock, err := sqlDB.Lock(logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
-						Resource:      resource,
+						Resource:      expectedResource,
 						ModifiedIndex: 301,
 						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
@@ -167,7 +194,7 @@ var _ = Describe("Lock", func() {
 					lock, err := sqlDB.Lock(logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
-						Resource:      resource,
+						Resource:      expectedResource,
 						ModifiedIndex: 2,
 						ModifiedId:    "new-guid",
 						TtlInSeconds:  10,
@@ -255,19 +282,10 @@ var _ = Describe("Lock", func() {
 	})
 
 	Context("Fetch", func() {
-		var lock *models.Resource
-
-		BeforeEach(func() {
-			lock = &models.Resource{
-				Key:   "test",
-				Owner: "jim",
-				Value: "locks stuff for days",
-				Type:  "FOR DAYS",
-			}
-		})
+		var lock, expectedLock *models.Resource
 
 		Context("when the lock exists", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				query := helpers.RebindForFlavor(
 					`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 					dbFlavor,
@@ -277,15 +295,126 @@ var _ = Describe("Lock", func() {
 				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 			})
 
-			It("returns the lock from the database", func() {
-				resource, err := sqlDB.Fetch(logger, "test")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resource).To(Equal(&db.Lock{
-					Resource:      lock,
-					ModifiedIndex: 434,
-					ModifiedId:    "modified-id",
-					TtlInSeconds:  5,
-				}))
+			Context("with different types", func() {
+				Context("when type unknown", func() {
+					BeforeEach(func() {
+						lock = &models.Resource{
+							Key:   "test",
+							Owner: "jim",
+							Value: "locks stuff for days",
+							Type:  "For Days",
+						}
+						expectedLock = lock
+						expectedLock.TypeCode = 0
+					})
+
+					It("returns the lock from the database", func() {
+						resource, err := sqlDB.Fetch(logger, "test")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resource).To(Equal(&db.Lock{
+							Resource:      expectedLock,
+							ModifiedIndex: 434,
+							ModifiedId:    "modified-id",
+							TtlInSeconds:  5,
+						}))
+					})
+				})
+
+				Context("when type known to be lock", func() {
+					BeforeEach(func() {
+						lock = &models.Resource{
+							Key:   "test",
+							Owner: "jim",
+							Value: "locks stuff for days",
+							Type:  "lock",
+						}
+						expectedLock = lock
+						expectedLock.TypeCode = models.LOCK
+					})
+
+					It("returns the lock from the database", func() {
+						resource, err := sqlDB.Fetch(logger, "test")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resource).To(Equal(&db.Lock{
+							Resource:      expectedLock,
+							ModifiedIndex: 434,
+							ModifiedId:    "modified-id",
+							TtlInSeconds:  5,
+						}))
+					})
+				})
+
+				Context("when type known to be presence", func() {
+					BeforeEach(func() {
+						lock = &models.Resource{
+							Key:   "test",
+							Owner: "jim",
+							Value: "locks stuff for days",
+							Type:  "presence",
+						}
+						expectedLock = lock
+						expectedLock.TypeCode = models.PRESENCE
+					})
+
+					It("returns the lock from the database", func() {
+						resource, err := sqlDB.Fetch(logger, "test")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resource).To(Equal(&db.Lock{
+							Resource:      expectedLock,
+							ModifiedIndex: 434,
+							ModifiedId:    "modified-id",
+							TtlInSeconds:  5,
+						}))
+					})
+				})
+
+				Context("when type code known to be lock", func() {
+					BeforeEach(func() {
+						lock = &models.Resource{
+							Key:      "test",
+							Owner:    "jim",
+							Value:    "locks stuff for days",
+							TypeCode: models.LOCK,
+						}
+						expectedLock = lock
+						expectedLock.Type = models.LockType
+					})
+
+					It("returns the lock from the database", func() {
+						resource, err := sqlDB.Fetch(logger, "test")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resource).To(Equal(&db.Lock{
+							Resource:      expectedLock,
+							ModifiedIndex: 434,
+							ModifiedId:    "modified-id",
+							TtlInSeconds:  5,
+						}))
+					})
+				})
+
+				Context("when type code known to be presence", func() {
+					BeforeEach(func() {
+						lock = &models.Resource{
+							Key:      "test",
+							Owner:    "jim",
+							Value:    "locks stuff for days",
+							TypeCode: models.PRESENCE,
+						}
+						expectedLock = lock
+						expectedLock.Type = models.PresenceType
+					})
+
+					It("returns the lock from the database", func() {
+						resource, err := sqlDB.Fetch(logger, "test")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resource).To(Equal(&db.Lock{
+							Resource:      expectedLock,
+							ModifiedIndex: 434,
+							ModifiedId:    "modified-id",
+							TtlInSeconds:  5,
+						}))
+					})
+				})
 			})
 		})
 
@@ -349,7 +478,7 @@ var _ = Describe("Lock", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "human", 10, "hello", 20)
+			result, err = rawDB.Exec(query, "test3", "finn", "thehuman", "presence", 10, "hello", 20)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
@@ -366,10 +495,11 @@ var _ = Describe("Lock", func() {
 			}
 			humanLock = &db.Lock{
 				Resource: &models.Resource{
-					Key:   "test3",
-					Owner: "finn",
-					Value: "thehuman",
-					Type:  "human",
+					Key:      "test3",
+					Owner:    "finn",
+					Value:    "thehuman",
+					Type:     "presence",
+					TypeCode: models.PRESENCE,
 				},
 				ModifiedIndex: 10,
 				ModifiedId:    "hello",
@@ -385,7 +515,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when a type is specified", func() {
 			It("filters the locks returned by that type", func() {
-				locks, err := sqlDB.FetchAll(logger, "human")
+				locks, err := sqlDB.FetchAll(logger, "presence")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(locks).To(ConsistOf(humanLock))
 			})

@@ -44,6 +44,12 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
+	err := validate(req)
+	if err != nil {
+		logger.Error("invalid-request", err, lager.Data{"type": req.Resource.GetType(), "typeCode": req.Resource.GetTypeCode()})
+		return nil, err
+	}
+
 	if req.TtlInSeconds <= 0 {
 		logger.Error("failed-locking-lock", models.ErrInvalidTTL, lager.Data{
 			"key":   req.Resource.Key,
@@ -110,7 +116,13 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	locks, err := h.db.FetchAll(logger, req.Type)
+	err := validate(req)
+	if err != nil {
+		logger.Error("invalid-request", err, lager.Data{"type": req.GetType(), "typeCode": req.GetTypeCode()})
+		return nil, err
+	}
+
+	locks, err := h.db.FetchAll(logger, models.GetType(&models.Resource{Type: req.Type, TypeCode: req.TypeCode}))
 	if err != nil {
 		h.exitIfUnrecoverable(err)
 		return nil, err
@@ -124,4 +136,40 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 	return &models.FetchAllResponse{
 		Resources: responses,
 	}, nil
+}
+
+func validate(req interface{}) error {
+	var reqType string
+	var reqTypeCode models.TypeCode
+
+	switch incomingReq := req.(type) {
+	case *models.LockRequest:
+		reqType = incomingReq.Resource.GetType()
+		reqTypeCode = incomingReq.Resource.GetTypeCode()
+	case *models.FetchAllRequest:
+		reqType = incomingReq.GetType()
+		reqTypeCode = incomingReq.GetTypeCode()
+	default:
+		return nil
+	}
+
+	if reqTypeCode == models.UNKNOWN {
+		if reqType != models.PresenceType && reqType != models.LockType {
+			return models.ErrInvalidType
+		} else {
+			return nil
+		}
+	}
+
+	if reqType != "" {
+		if reqTypeCode == models.LOCK && reqType != models.LockType {
+			return models.ErrInvalidType
+		}
+
+		if reqTypeCode == models.PRESENCE && reqType != models.PresenceType {
+			return models.ErrInvalidType
+		}
+	}
+
+	return nil
 }

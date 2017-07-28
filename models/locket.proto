@@ -9,11 +9,18 @@ service Locket {
   rpc FetchAll(FetchAllRequest) returns (FetchAllResponse) {}
 }
 
+enum TypeCode {
+  UNKNOWN = 0;
+  LOCK = 1;
+  PRESENCE = 2;
+}
+
 message Resource {
   string key = 1;
   string owner = 2;
   string value = 3;
-  string type = 4;
+  string type = 4 [deprecated=true];
+  TypeCode type_code = 5;
 }
 
 message LockRequest {
@@ -38,7 +45,8 @@ message FetchResponse {
 }
 
 message FetchAllRequest {
-  string type = 1;
+  string type = 1 [deprecated=true];
+  TypeCode type_code = 2;
 }
 
 message FetchAllResponse {

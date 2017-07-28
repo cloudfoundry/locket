@@ -189,6 +189,7 @@ var _ = Describe("Locket", func() {
 
 		It("locks the key with the corresponding value", func() {
 			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+			expectedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
 			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
 				Resource:     requestedResource,
 				TtlInSeconds: 10,
@@ -197,7 +198,7 @@ var _ = Describe("Locket", func() {
 
 			resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
+			Expect(resp.Resource).To(BeEquivalentTo(expectedResource))
 
 			requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima", Type: "lock"}
 			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
@@ -257,7 +258,7 @@ var _ = Describe("Locket", func() {
 
 		Context("when the lock exists", func() {
 			JustBeforeEach(func() {
-				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
 				_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource, TtlInSeconds: 10})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -286,14 +287,10 @@ var _ = Describe("Locket", func() {
 
 	Context("FetchAll", func() {
 		var (
-			resource1, resource2, resource3 *models.Resource
+			resource1, resource2, resource3, resource4 *models.Resource
 		)
 
 		JustBeforeEach(func() {
-			resource1 = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-			resource2 = &models.Resource{Key: "iamakey", Value: "test-data", Owner: "jim", Type: "presence"}
-			resource3 = &models.Resource{Key: "newkey", Value: "test-data", Owner: "jim", Type: ""}
-
 			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
 				Resource:     resource1,
 				TtlInSeconds: 10,
@@ -311,23 +308,80 @@ var _ = Describe("Locket", func() {
 				TtlInSeconds: 10,
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource4,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("fetches all the locks", func() {
-			response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Resources).To(ConsistOf(resource1, resource2, resource3))
+		Context("when using type strings", func() {
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
+			})
 
-			response, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence"})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Resources).To(ConsistOf(resource2))
+			It("fetches all the locks corresponding to type code", func() {
+				_, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("fetches all the locks corresponding to type code", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(resource1, resource2))
+			})
+
+			It("fetches all the presences corresponding to type", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(resource3, resource4))
+			})
+		})
+
+		Context("when using type code", func() {
+			var expectedResource1, expectedResource2, expectedResource3, expectedResource4 *models.Resource
+
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+
+				expectedResource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
+				expectedResource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
+				expectedResource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
+				expectedResource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
+			})
+
+			It("fetches all the locks corresponding to type code", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(expectedResource1, expectedResource2))
+			})
+
+			It("fetches all the presences corresponding to type", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(expectedResource3, expectedResource4))
+			})
 		})
 
 		Context("if the table disappears", func() {
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+			})
+
 			JustBeforeEach(func() {
 				_, err := sqlRunner.DB().Exec("DROP TABLE locks")
 				Expect(err).NotTo(HaveOccurred())
-				_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+				_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
 				Expect(err).To(HaveOccurred())
 			})
 

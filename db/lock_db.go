@@ -10,9 +10,10 @@ import (
 
 func lagerDataFromLock(resource *models.Resource) lager.Data {
 	return lager.Data{
-		"key":   resource.GetKey(),
-		"owner": resource.GetOwner(),
-		"type":  resource.GetType(),
+		"key":       resource.GetKey(),
+		"owner":     resource.GetOwner(),
+		"type":      resource.GetType(),
+		"type-code": resource.GetTypeCode(),
 	}
 }
 
@@ -48,7 +49,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 		}
 
 		lock = &Lock{
-			Resource:      resource,
+			Resource:      models.GetResource(resource),
 			ModifiedIndex: index,
 			ModifiedId:    modifiedId,
 			TtlInSeconds:  ttl,
@@ -189,10 +190,11 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 
 			locks = append(locks, &Lock{
 				Resource: &models.Resource{
-					Key:   key,
-					Owner: owner,
-					Value: value,
-					Type:  lockType,
+					Key:      key,
+					Owner:    owner,
+					Value:    value,
+					Type:     lockType,
+					TypeCode: models.GetTypeCode(lockType),
 				},
 				ModifiedIndex: index,
 				ModifiedId:    id,
@@ -236,9 +238,10 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 	}
 
 	return &models.Resource{
-		Key:   key,
-		Owner: owner,
-		Value: value,
-		Type:  lockType,
+		Key:      key,
+		Owner:    owner,
+		Value:    value,
+		Type:     lockType,
+		TypeCode: models.GetTypeCode(lockType),
 	}, index, id, ttl, nil
 }

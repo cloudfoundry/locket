@@ -36,6 +36,7 @@ var _ = Describe("Lock", func() {
 			Key:   "test",
 			Value: "test-value",
 			Owner: "myself",
+			Type:  "lock",
 		}
 
 		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB, fakeLockPick, exitCh)
@@ -79,6 +80,68 @@ var _ = Describe("Lock", func() {
 			Expect(fakeLockPick.RegisterTTLCallCount()).To(Equal(1))
 			_, lock := fakeLockPick.RegisterTTLArgsForCall(0)
 			Expect(lock).To(Equal(expectedLock))
+		})
+
+		Context("validate lock type", func() {
+			Context("when type string is set", func() {
+				It("should be invalid with type not set to presence/lock", func() {
+					request.Resource.Type = "random"
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).To(HaveOccurred())
+				})
+
+				It("should be valid with type set to presence", func() {
+					request.Resource.Type = "presence"
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be valid with type set to lock", func() {
+					request.Resource.Type = "lock"
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when type_code is set", func() {
+				It("should ba invalid when mismatching non-empty type", func() {
+					request.Resource.Type = "lock"
+					request.Resource.TypeCode = models.PRESENCE
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).To(HaveOccurred())
+
+					request.Resource.Type = "presence"
+					request.Resource.TypeCode = models.LOCK
+					_, err = locketHandler.Lock(context.Background(), request)
+					Expect(err).To(HaveOccurred())
+				})
+
+				It("should be valid when type and type code match", func() {
+					request.Resource.Type = "lock"
+					request.Resource.TypeCode = models.LOCK
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).NotTo(HaveOccurred())
+
+					request.Resource.Type = "presence"
+					request.Resource.TypeCode = models.PRESENCE
+					_, err = locketHandler.Lock(context.Background(), request)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be valid on a valid type code and empty type", func() {
+					request.Resource.Type = ""
+					request.Resource.TypeCode = models.LOCK
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be invalid on an UNKNOWN type code and empty type", func() {
+					request.Resource.Type = ""
+					request.Resource.TypeCode = models.UNKNOWN
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).To(HaveOccurred())
+				})
+			})
 		})
 
 		Context("when request does not have TTL", func() {
@@ -248,13 +311,106 @@ var _ = Describe("Lock", func() {
 			fakeLockDB.FetchAllReturns(locks, nil)
 		})
 
-		It("fetches all the locks in the database", func() {
-			fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "dawg"})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fetchResp.Resources).To(Equal(expectedResources))
-			Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
-			_, lockType := fakeLockDB.FetchAllArgsForCall(0)
-			Expect(lockType).To(Equal("dawg"))
+		Context("validate lock type", func() {
+			Context("when type string is set and the type code is not set", func() {
+				It("should be invalid with type not set to presence/lock", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "random"})
+					Expect(err).To(HaveOccurred())
+				})
+
+				It("should be valid with type set to presence", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence"})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be valid with type set to lock", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock"})
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when type_code is set", func() {
+				It("should be invalid when mismatching a non-empty type", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock", TypeCode: models.PRESENCE})
+					Expect(err).To(HaveOccurred())
+
+					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence", TypeCode: models.LOCK})
+					Expect(err).To(HaveOccurred())
+				})
+
+				It("should be valid when type and type code match", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock", TypeCode: models.LOCK})
+					Expect(err).NotTo(HaveOccurred())
+
+					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence", TypeCode: models.PRESENCE})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be valid on a valid type code and empty type", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
+					Expect(err).NotTo(HaveOccurred())
+
+					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should be invalid on an UNKNOWN type code and empty type", func() {
+					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+
+		Context("when the type is valid", func() {
+			It("fetches all the presence locks in the database by type", func() {
+				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fetchResp.Resources).To(Equal(expectedResources))
+				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				Expect(lockType).To(Equal("presence"))
+			})
+
+			It("fetches all the lock locks in the database by type", func() {
+				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fetchResp.Resources).To(Equal(expectedResources))
+				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				Expect(lockType).To(Equal("lock"))
+			})
+
+			It("fetches all the presence locks in the database by type code", func() {
+				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fetchResp.Resources).To(Equal(expectedResources))
+				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				Expect(lockType).To(Equal("presence"))
+			})
+
+			It("fetches all the lock locks in the database by type code", func() {
+				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fetchResp.Resources).To(Equal(expectedResources))
+				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
+				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				Expect(lockType).To(Equal("lock"))
+			})
+		})
+
+		Context("when the type is invalid", func() {
+			It("returns an invalid type error", func() {
+				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "dawg"})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when the type code is UNKNOWN", func() {
+			It("returns an invalid type error", func() {
+				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.UNKNOWN})
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		Context("when fetching errors", func() {
@@ -274,7 +430,7 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("logs and writes to the exit channel", func() {
-				locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
+				locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
 				Expect(exitCh).To(Receive())
 			})
