@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
+	"code.cloudfoundry.org/go-loggregator/testhelpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
@@ -76,40 +78,77 @@ var _ = Describe("Locket", func() {
 	})
 
 	Context("metrics", func() {
+
 		var (
-			testMetricsListener net.PacketConn
-			testMetricsChan     chan *events.Envelope
+			testIngressServer *testhelpers.TestIngressServer
+			testMetricsChan   chan loggregator_v2.Ingress_BatchSenderServer
+			err               error
 		)
 
-		BeforeEach(func() {
-			testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
-			testMetricsChan = make(chan *events.Envelope, 1)
-			go func() {
-				defer GinkgoRecover()
-				for {
-					buffer := make([]byte, 1024)
-					n, _, err := testMetricsListener.ReadFrom(buffer)
-					if err != nil {
-						close(testMetricsChan)
-						return
-					}
+		Context("when using the v2 api", func() {
+			BeforeEach(func() {
+				testIngressServer, err = testhelpers.NewTestIngressServer("fixtures/metron/metron.crt", "fixtures/metron/metron.key", "fixtures/metron/CA.crt")
+				Expect(err).NotTo(HaveOccurred())
+				testMetricsChan = testIngressServer.Receivers()
+				testIngressServer.Start()
+				port, err := strconv.Atoi(strings.TrimPrefix(testIngressServer.Addr(), "127.0.0.1:"))
+				Expect(err).NotTo(HaveOccurred())
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.LoggregatorConfig.UseV2API = true
+					cfg.LoggregatorConfig.APIPort = port
+					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
+					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
+					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+				})
+			})
 
-					var envelope events.Envelope
-					err = proto.Unmarshal(buffer[:n], &envelope)
-					Expect(err).NotTo(HaveOccurred())
-					testMetricsChan <- &envelope
-				}
-			}()
-			port, err := strconv.Atoi(strings.TrimPrefix(testMetricsListener.LocalAddr().String(), "127.0.0.1:"))
-			Expect(err).NotTo(HaveOccurred())
-
-			configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-				cfg.DropsondePort = port
+			AfterEach(func() {
+				testIngressServer.Stop()
+			})
+			It("emits metrics", func() {
+				Eventually(testMetricsChan).Should(Receive())
 			})
 		})
+		Context("when using the v1 api", func() {
+			var (
+				testMetricsListener net.PacketConn
+				testMetricsChan     chan *events.Envelope
+			)
 
-		It("emits metrics", func() {
-			Eventually(testMetricsChan).Should(Receive())
+			BeforeEach(func() {
+				testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
+				testMetricsChan = make(chan *events.Envelope, 1)
+				go func() {
+					defer GinkgoRecover()
+					for {
+						buffer := make([]byte, 1024)
+						n, _, err := testMetricsListener.ReadFrom(buffer)
+						if err != nil {
+							close(testMetricsChan)
+							return
+						}
+
+						var envelope events.Envelope
+						err = proto.Unmarshal(buffer[:n], &envelope)
+						Expect(err).NotTo(HaveOccurred())
+						testMetricsChan <- &envelope
+					}
+				}()
+				port, err := strconv.Atoi(strings.TrimPrefix(testMetricsListener.LocalAddr().String(), "127.0.0.1:"))
+				Expect(err).NotTo(HaveOccurred())
+
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.DropsondePort = port
+					cfg.LoggregatorConfig.UseV2API = false
+					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
+					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
+					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+				})
+			})
+
+			It("emits metrics", func() {
+				Eventually(testMetricsChan).Should(Receive())
+			})
 		})
 	})
 

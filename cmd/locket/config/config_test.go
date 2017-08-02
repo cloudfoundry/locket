@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/debugserver"
+	loggregator "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 
@@ -28,7 +29,19 @@ var _ = Describe("LocketConfig", func() {
 			"ca_file": "i am a ca file",
 			"cert_file": "i am a cert file",
 			"key_file": "i am a key file",
-			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca"
+			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
+			"loggregator": {
+			  "loggregator_use_v2_api": true,
+			  "loggregator_api_port": 1234,
+			  "loggregator_ca_path": "/var/ca_cert",
+			  "loggregator_cert_path": "/var/cert_path",
+			  "loggregator_key_path": "/var/key_path",
+				"loggregator_job_deployment": "job1",
+				"loggregator_job_name": "myjob",
+				"loggregator_job_index": "1",
+				"loggregator_job_ip": "1.1.1.1",
+				"loggregator_job_origin": "Earth"
+		  }
 		}`
 	})
 
@@ -68,6 +81,18 @@ var _ = Describe("LocketConfig", func() {
 			CertFile:      "i am a cert file",
 			KeyFile:       "i am a key file",
 			SQLCACertFile: "/var/vcap/jobs/locket/config/sql.ca",
+			LoggregatorConfig: loggregator.Config{
+				UseV2API:      true,
+				APIPort:       1234,
+				CACertPath:    "/var/ca_cert",
+				CertPath:      "/var/cert_path",
+				KeyPath:       "/var/key_path",
+				JobDeployment: "job1",
+				JobName:       "myjob",
+				JobIndex:      "1",
+				JobIP:         "1.1.1.1",
+				JobOrigin:     "Earth",
+			},
 		}
 
 		Expect(locketConfig).To(Equal(config))

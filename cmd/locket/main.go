@@ -11,6 +11,8 @@ import (
 	"os"
 	"time"
 
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/consul/api"
@@ -57,7 +59,11 @@ func main() {
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
 
-	initializeDropsonde(logger, cfg.DropsondePort)
+	metronClient, err := initializeMetron(logger, cfg)
+	if err != nil {
+		logger.Error("failed-to-initialize-metron-client", err)
+		os.Exit(1)
+	}
 
 	clock := clock.NewClock()
 
@@ -113,7 +119,7 @@ func main() {
 		logger.Fatal("invalid-tls-config", err)
 	}
 
-	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metricsInterval, sqlDB)
+	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metronClient, metricsInterval, sqlDB)
 	lockPick := expiration.NewLockPick(sqlDB, clock)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	exitCh := make(chan struct{})
@@ -149,6 +155,30 @@ func main() {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
 	}
+}
+
+func initializeDropsonde(logger lager.Logger, dropsondePort int) {
+	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
+	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
+	if err != nil {
+		logger.Error("failed to initialize dropsonde: %v", err)
+	}
+}
+
+func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggregator_v2.IngressClient, error) {
+	client, err := loggregator_v2.NewIngressClient(locketConfig.LoggregatorConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if locketConfig.LoggregatorConfig.UseV2API {
+		emitter := runtimeemitter.NewV1(client)
+		go emitter.Run()
+	} else {
+		initializeDropsonde(logger, locketConfig.DropsondePort)
+	}
+
+	return client, nil
 }
 
 func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseConnectionString, sqlCACertFile string) string {
@@ -212,12 +242,4 @@ func initializeRegistrationRunner(
 		},
 	}
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
-}
-
-func initializeDropsonde(logger lager.Logger, dropsondePort int) {
-	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
-	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
-	if err != nil {
-		logger.Error("failed to initialize dropsonde: %v", err)
-	}
 }

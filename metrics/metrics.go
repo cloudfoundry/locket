@@ -5,16 +5,16 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
-	"code.cloudfoundry.org/runtimeschema/metric"
 	"github.com/tedsuo/ifrit"
 )
 
 const (
-	activeLocks     = metric.Metric("ActiveLocks")
-	activePresences = metric.Metric("ActivePresences")
+	activeLocks     = "ActiveLocks"
+	activePresences = "ActivePresences"
 )
 
 type metricsNotifier struct {
@@ -22,14 +22,16 @@ type metricsNotifier struct {
 	ticker          clock.Clock
 	metricsInterval time.Duration
 	lockDB          db.LockDB
+	metronClient    loggregator_v2.IngressClient
 }
 
-func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metricsInterval time.Duration, lockDB db.LockDB) ifrit.Runner {
+func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggregator_v2.IngressClient, metricsInterval time.Duration, lockDB db.LockDB) ifrit.Runner {
 	return &metricsNotifier{
 		logger:          logger,
 		ticker:          ticker,
 		metricsInterval: metricsInterval,
 		lockDB:          lockDB,
+		metronClient:    metronClient,
 	}
 }
 
@@ -56,8 +58,15 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 				continue
 			}
 
-			activeLocks.Send(locks)
-			activePresences.Send(presences)
+			err = notifier.metronClient.SendMetric(activeLocks, locks)
+			if err != nil {
+				logger.Error("failed-sending-lock-count", err)
+			}
+
+			err = notifier.metronClient.SendMetric(activePresences, presences)
+			if err != nil {
+				logger.Error("failed-sending-presences-count", err)
+			}
 		}
 	}
 	return nil
