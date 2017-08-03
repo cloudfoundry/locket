@@ -141,6 +141,13 @@ var _ = Describe("Lock", func() {
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
 				})
+
+				It("should be invalid on an non-existent type code", func() {
+					request.Resource.Type = ""
+					request.Resource.TypeCode = 4
+					_, err := locketHandler.Lock(context.Background(), request)
+					Expect(err).To(HaveOccurred())
+				})
 			})
 		})
 

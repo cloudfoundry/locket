@@ -153,6 +153,10 @@ func validate(req interface{}) error {
 		return nil
 	}
 
+	if _, found := models.TypeCode_name[int32(reqTypeCode)]; !found {
+		return models.ErrInvalidType
+	}
+
 	if reqTypeCode == models.UNKNOWN {
 		if reqType != models.PresenceType && reqType != models.LockType {
 			return models.ErrInvalidType
