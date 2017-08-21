@@ -5,22 +5,22 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/debugserver"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager/lagerflags"
 )
 
 type LocketConfig struct {
-	CaFile                     string                `json:"ca_file"`
-	CertFile                   string                `json:"cert_file"`
-	ConsulCluster              string                `json:"consul_cluster,omitempty"`
-	DatabaseConnectionString   string                `json:"database_connection_string"`
-	MaxOpenDatabaseConnections int                   `json:"max_open_database_connections,omitempty"`
-	DatabaseDriver             string                `json:"database_driver,omitempty"`
-	DropsondePort              int                   `json:"dropsonde_port,omitempty"`
-	KeyFile                    string                `json:"key_file"`
-	ListenAddress              string                `json:"listen_address"`
-	SQLCACertFile              string                `json:"sql_ca_cert_file,omitempty"`
-	LoggregatorConfig          loggregator_v2.Config `json:"loggregator"`
+	CaFile                     string               `json:"ca_file"`
+	CertFile                   string               `json:"cert_file"`
+	ConsulCluster              string               `json:"consul_cluster,omitempty"`
+	DatabaseConnectionString   string               `json:"database_connection_string"`
+	MaxOpenDatabaseConnections int                  `json:"max_open_database_connections,omitempty"`
+	DatabaseDriver             string               `json:"database_driver,omitempty"`
+	DropsondePort              int                  `json:"dropsonde_port,omitempty"`
+	KeyFile                    string               `json:"key_file"`
+	ListenAddress              string               `json:"listen_address"`
+	SQLCACertFile              string               `json:"sql_ca_cert_file,omitempty"`
+	LoggregatorConfig          loggingclient.Config `json:"loggregator"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
 }

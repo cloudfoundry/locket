@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/debugserver"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 
@@ -81,7 +81,7 @@ var _ = Describe("LocketConfig", func() {
 			CertFile:      "i am a cert file",
 			KeyFile:       "i am a key file",
 			SQLCACertFile: "/var/vcap/jobs/locket/config/sql.ca",
-			LoggregatorConfig: loggregator_v2.Config{
+			LoggregatorConfig: loggingclient.Config{
 				UseV2API:      true,
 				APIPort:       1234,
 				CACertPath:    "/var/ca_cert",
