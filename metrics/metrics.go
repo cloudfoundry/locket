@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
@@ -22,10 +22,10 @@ type metricsNotifier struct {
 	ticker          clock.Clock
 	metricsInterval time.Duration
 	lockDB          db.LockDB
-	metronClient    loggregator_v2.IngressClient
+	metronClient    loggingclient.IngressClient
 }
 
-func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggregator_v2.IngressClient, metricsInterval time.Duration, lockDB db.LockDB) ifrit.Runner {
+func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB db.LockDB) ifrit.Runner {
 	return &metricsNotifier{
 		logger:          logger,
 		ticker:          ticker,

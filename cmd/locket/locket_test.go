@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
-	"code.cloudfoundry.org/go-loggregator/testhelpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"

@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/go-sql-driver/mysql"
@@ -165,8 +165,8 @@ func initializeDropsonde(logger lager.Logger, dropsondePort int) {
 	}
 }
 
-func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggregator_v2.IngressClient, error) {
-	client, err := loggregator_v2.NewIngressClient(locketConfig.LoggregatorConfig)
+func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggingclient.IngressClient, error) {
+	client, err := loggingclient.NewIngressClient(locketConfig.LoggregatorConfig)
 	if err != nil {
 		return nil, err
 	}
