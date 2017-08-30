@@ -13,8 +13,6 @@ import (
 	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/models"
 
-	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
-	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -30,7 +28,6 @@ var _ = Describe("LockPick", func() {
 
 		ttl time.Duration
 
-		sender         *fake.FakeMetricSender
 		lock, presence *db.Lock
 	)
 
@@ -65,9 +62,7 @@ var _ = Describe("LockPick", func() {
 		logger = lagertest.NewTestLogger("lock-pick")
 		fakeLockDB = &dbfakes.FakeLockDB{}
 
-		sender = fake.NewFakeMetricSender()
-		metrics.Initialize(sender, nil)
-
+		sender.Reset()
 		lockPick = expiration.NewLockPick(fakeLockDB, fakeClock)
 	})
 
