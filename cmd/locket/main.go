@@ -99,11 +99,6 @@ func main() {
 		logger.Fatal("failed-to-create-lock-table", err)
 	}
 
-	consulClient, err := consuladapter.NewClientFromUrl(cfg.ConsulCluster)
-	if err != nil {
-		logger.Fatal("new-consul-client-failed", err)
-	}
-
 	_, portString, err := net.SplitHostPort(cfg.ListenAddress)
 	if err != nil {
 		logger.Fatal("failed-invalid-listen-address", err)
@@ -125,12 +120,19 @@ func main() {
 	exitCh := make(chan struct{})
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, exitCh)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)
-	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
 	members := grouper.Members{
 		{"server", server},
 		{"burglar", burglar},
 		{"metrics-notifier", metricsNotifier},
-		{"registration-runner", registrationRunner},
+	}
+
+	if cfg.EnableConsulServiceRegistration {
+		consulClient, err := consuladapter.NewClientFromUrl(cfg.ConsulCluster)
+		if err != nil {
+			logger.Fatal("new-consul-client-failed", err)
+		}
+		registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
+		members = append(members, grouper.Member{"registration-runner", registrationRunner})
 	}
 
 	if cfg.DebugAddress != "" {

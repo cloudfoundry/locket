@@ -10,17 +10,18 @@ import (
 )
 
 type LocketConfig struct {
-	CaFile                     string               `json:"ca_file"`
-	CertFile                   string               `json:"cert_file"`
-	ConsulCluster              string               `json:"consul_cluster,omitempty"`
-	DatabaseConnectionString   string               `json:"database_connection_string"`
-	MaxOpenDatabaseConnections int                  `json:"max_open_database_connections,omitempty"`
-	DatabaseDriver             string               `json:"database_driver,omitempty"`
-	DropsondePort              int                  `json:"dropsonde_port,omitempty"`
-	KeyFile                    string               `json:"key_file"`
-	ListenAddress              string               `json:"listen_address"`
-	SQLCACertFile              string               `json:"sql_ca_cert_file,omitempty"`
-	LoggregatorConfig          loggingclient.Config `json:"loggregator"`
+	CaFile                          string               `json:"ca_file"`
+	CertFile                        string               `json:"cert_file"`
+	ConsulCluster                   string               `json:"consul_cluster,omitempty"`
+	EnableConsulServiceRegistration bool                 `json:"enable_consul_service_registration,omitempty"`
+	DatabaseConnectionString        string               `json:"database_connection_string"`
+	MaxOpenDatabaseConnections      int                  `json:"max_open_database_connections,omitempty"`
+	DatabaseDriver                  string               `json:"database_driver,omitempty"`
+	DropsondePort                   int                  `json:"dropsonde_port,omitempty"`
+	KeyFile                         string               `json:"key_file"`
+	ListenAddress                   string               `json:"listen_address"`
+	SQLCACertFile                   string               `json:"sql_ca_cert_file,omitempty"`
+	LoggregatorConfig               loggingclient.Config `json:"loggregator"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
 }

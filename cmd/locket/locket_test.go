@@ -172,33 +172,57 @@ var _ = Describe("Locket", func() {
 	})
 
 	Context("ServiceRegistration", func() {
-		It("registers itself with consul", func() {
-			consulClient := consulRunner.NewClient()
-			services, err := consulClient.Agent().Services()
-			Expect(err).ToNot(HaveOccurred())
+		Context("with EnableConsulServiceRegistration set to false", func() {
+			BeforeEach(func() {
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.EnableConsulServiceRegistration = false
+				})
+			})
 
-			Expect(services).To(HaveKeyWithValue("locket",
-				&api.AgentService{
-					Service: "locket",
-					ID:      "locket",
-					Port:    int(locketPort),
-				}))
+			It("does not register itself with consul", func() {
+				consulClient := consulRunner.NewClient()
+				services, err := consulClient.Agent().Services()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(services).NotTo(HaveKey("locket"))
+			})
 		})
 
-		It("registers a TTL healthcheck", func() {
-			consulClient := consulRunner.NewClient()
-			checks, err := consulClient.Agent().Checks()
-			Expect(err).ToNot(HaveOccurred())
+		Context("with EnableConsulServiceRegistration set to true", func() {
+			BeforeEach(func() {
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.EnableConsulServiceRegistration = true
+				})
+			})
 
-			Expect(checks).To(HaveKeyWithValue("service:locket",
-				&api.AgentCheck{
-					Node:        "0",
-					CheckID:     "service:locket",
-					Name:        "Service 'locket' check",
-					Status:      "passing",
-					ServiceID:   "locket",
-					ServiceName: "locket",
-				}))
+			It("registers itself with consul", func() {
+				consulClient := consulRunner.NewClient()
+				services, err := consulClient.Agent().Services()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(services).To(HaveKeyWithValue("locket",
+					&api.AgentService{
+						Service: "locket",
+						ID:      "locket",
+						Port:    int(locketPort),
+					}))
+			})
+
+			It("registers a TTL healthcheck", func() {
+				consulClient := consulRunner.NewClient()
+				checks, err := consulClient.Agent().Checks()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(checks).To(HaveKeyWithValue("service:locket",
+					&api.AgentCheck{
+						Node:        "0",
+						CheckID:     "service:locket",
+						Name:        "Service 'locket' check",
+						Status:      "passing",
+						ServiceID:   "locket",
+						ServiceName: "locket",
+					}))
+			})
 		})
 	})
 

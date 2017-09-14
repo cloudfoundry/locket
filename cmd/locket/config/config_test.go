@@ -28,6 +28,7 @@ var _ = Describe("LocketConfig", func() {
 			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			"ca_file": "i am a ca file",
 			"cert_file": "i am a cert file",
+			"enable_consul_service_registration": false,
 			"key_file": "i am a key file",
 			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
 			"loggregator": {
@@ -66,11 +67,12 @@ var _ = Describe("LocketConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config := config.LocketConfig{
-			DatabaseDriver:             "mysql",
-			ListenAddress:              "1.2.3.4:9090",
-			DatabaseConnectionString:   "stuff",
-			MaxOpenDatabaseConnections: 1000,
-			ConsulCluster:              "http://127.0.0.1:1234,http://127.0.0.1:12345",
+			DatabaseDriver:                  "mysql",
+			ListenAddress:                   "1.2.3.4:9090",
+			DatabaseConnectionString:        "stuff",
+			MaxOpenDatabaseConnections:      1000,
+			ConsulCluster:                   "http://127.0.0.1:1234,http://127.0.0.1:12345",
+			EnableConsulServiceRegistration: false,
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},
@@ -130,18 +132,37 @@ var _ = Describe("LocketConfig", func() {
 		})
 
 		Context("when serialized from LocketConfig", func() {
-			BeforeEach(func() {
-				locketConfig := config.LocketConfig{}
-				bytes, err := json.Marshal(locketConfig)
-				Expect(err).NotTo(HaveOccurred())
-				configData = string(bytes)
+			Context("when no values are specified", func() {
+				BeforeEach(func() {
+					locketConfig := config.LocketConfig{}
+					bytes, err := json.Marshal(locketConfig)
+					Expect(err).NotTo(HaveOccurred())
+					configData = string(bytes)
+				})
+
+				It("uses default values when they are not specified", func() {
+					locketConfig, err := config.NewLocketConfig(configFilePath)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(locketConfig).To(Equal(config.DefaultLocketConfig()))
+				})
 			})
 
-			It("uses default values when they are not specified", func() {
-				locketConfig, err := config.NewLocketConfig(configFilePath)
-				Expect(err).NotTo(HaveOccurred())
+			Context("when some values are specified", func() {
+				BeforeEach(func() {
+					locketConfig := config.LocketConfig{
+						EnableConsulServiceRegistration: false,
+					}
+					bytes, err := json.Marshal(locketConfig)
+					Expect(err).NotTo(HaveOccurred())
+					configData = string(bytes)
+				})
 
-				Expect(locketConfig).To(Equal(config.DefaultLocketConfig()))
+				It("does not overwrite specified values with default values", func() {
+					locketConfig, err := config.NewLocketConfig(configFilePath)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(locketConfig.EnableConsulServiceRegistration).To(Equal(false))
+				})
 			})
 		})
 	})
