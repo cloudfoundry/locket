@@ -5,15 +5,15 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
-	"code.cloudfoundry.org/runtimeschema/metric"
 )
 
 const (
-	locksExpired    = metric.Counter("LocksExpired")
-	presenceExpired = metric.Counter("PresenceExpired")
+	locksExpired    = "LocksExpired"
+	presenceExpired = "PresenceExpired"
 )
 
 //go:generate counterfeiter . LockPick
@@ -22,10 +22,11 @@ type LockPick interface {
 }
 
 type lockPick struct {
-	lockDB    db.LockDB
-	clock     clock.Clock
-	lockTTLs  map[checkKey]chanAndIndex
-	lockMutex *sync.Mutex
+	lockDB       db.LockDB
+	clock        clock.Clock
+	metronClient loggingclient.IngressClient
+	lockTTLs     map[checkKey]chanAndIndex
+	lockMutex    *sync.Mutex
 }
 
 type chanAndIndex struct {
@@ -38,12 +39,13 @@ type checkKey struct {
 	id  string
 }
 
-func NewLockPick(lockDB db.LockDB, clock clock.Clock) lockPick {
+func NewLockPick(lockDB db.LockDB, clock clock.Clock, metronClient loggingclient.IngressClient) lockPick {
 	return lockPick{
-		lockDB:    lockDB,
-		clock:     clock,
-		lockTTLs:  make(map[checkKey]chanAndIndex),
-		lockMutex: &sync.Mutex{},
+		lockDB:       lockDB,
+		clock:        clock,
+		metronClient: metronClient,
+		lockTTLs:     make(map[checkKey]chanAndIndex),
+		lockMutex:    &sync.Mutex{},
 	}
 }
 
@@ -101,9 +103,9 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 
 				switch lock.Type {
 				case models.LockType:
-					locksExpired.Increment()
+					l.metronClient.IncrementCounter(locksExpired)
 				case models.PresenceType:
-					presenceExpired.Increment()
+					l.metronClient.IncrementCounter(presenceExpired)
 				default:
 					logger.Debug("unknown-logger-type")
 				}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
@@ -22,9 +23,10 @@ var _ = Describe("LockPick", func() {
 	var (
 		lockPick expiration.LockPick
 
-		logger     *lagertest.TestLogger
-		fakeLockDB *dbfakes.FakeLockDB
-		fakeClock  *fakeclock.FakeClock
+		logger           *lagertest.TestLogger
+		fakeLockDB       *dbfakes.FakeLockDB
+		fakeClock        *fakeclock.FakeClock
+		fakeMetronClient *mfakes.FakeIngressClient
 
 		ttl time.Duration
 
@@ -61,9 +63,10 @@ var _ = Describe("LockPick", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		logger = lagertest.NewTestLogger("lock-pick")
 		fakeLockDB = &dbfakes.FakeLockDB{}
+		fakeMetronClient = new(mfakes.FakeIngressClient)
 
 		sender.Reset()
-		lockPick = expiration.NewLockPick(fakeLockDB, fakeClock)
+		lockPick = expiration.NewLockPick(fakeLockDB, fakeClock, fakeMetronClient)
 	})
 
 	Context("RegisterTTL", func() {
@@ -87,24 +90,18 @@ var _ = Describe("LockPick", func() {
 
 		It("emits a counter metric for lock expiration", func() {
 			lockPick.RegisterTTL(logger, lock)
-			lockPick.RegisterTTL(logger, presence)
+			fakeClock.WaitForNWatchersAndIncrement(ttl, 1)
 
-			fakeClock.WaitForNWatchersAndIncrement(ttl, 2)
-
-			Eventually(func() uint64 {
-				return sender.GetCounter("LocksExpired")
-			}).Should(BeEquivalentTo(1))
+			Eventually(fakeMetronClient.IncrementCounterCallCount).Should(BeEquivalentTo(1))
+			Eventually(fakeMetronClient.IncrementCounterArgsForCall(0)).Should(BeEquivalentTo("LocksExpired"))
 		})
 
 		It("emits a counter metric for presence expiration", func() {
-			lockPick.RegisterTTL(logger, lock)
 			lockPick.RegisterTTL(logger, presence)
+			fakeClock.WaitForNWatchersAndIncrement(ttl, 1)
 
-			fakeClock.WaitForNWatchersAndIncrement(ttl, 2)
-
-			Eventually(func() uint64 {
-				return sender.GetCounter("PresenceExpired")
-			}).Should(BeEquivalentTo(1))
+			Eventually(fakeMetronClient.IncrementCounterCallCount).Should(BeEquivalentTo(1))
+			Eventually(fakeMetronClient.IncrementCounterArgsForCall(0)).Should(BeEquivalentTo("PresenceExpired"))
 		})
 
 		It("logs the type of the lock", func() {

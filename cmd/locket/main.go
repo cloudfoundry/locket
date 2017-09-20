@@ -115,7 +115,7 @@ func main() {
 	}
 
 	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metronClient, metricsInterval, sqlDB)
-	lockPick := expiration.NewLockPick(sqlDB, clock)
+	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	exitCh := make(chan struct{})
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, exitCh)
