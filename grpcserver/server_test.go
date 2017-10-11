@@ -33,7 +33,7 @@ var _ = Describe("GRPCServer", func() {
 		var err error
 
 		certFixture = "fixtures/cert.crt"
-		keyFixture = "fixtures/key.key"
+		keyFixture = "fixtures/cert.key"
 		caCertFixture = "fixtures/ca.crt"
 
 		tlsConfig, err = cfhttp.NewTLSConfig(certFixture, keyFixture, caCertFixture)
