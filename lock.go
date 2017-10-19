@@ -2,14 +2,15 @@ package locket
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/runtimeschema/metric"
 	"github.com/nu7hatch/gouuid"
 )
 
@@ -27,9 +28,18 @@ type Lock struct {
 
 	logger lager.Logger
 
-	lockAcquiredMetric metric.Metric
-	lockUptimeMetric   metric.Duration
+	lockAcquiredMetric string
+	lockUptimeMetric   string
 	lockAcquiredTime   time.Time
+	metronClient       loggingclient.IngressClient
+}
+
+type MetronConfig func(l *Lock)
+
+func WithMetronClient(metronClient loggingclient.IngressClient) func(l *Lock) {
+	return func(l *Lock) {
+		l.metronClient = metronClient
+	}
 }
 
 func NewLock(
@@ -40,6 +50,7 @@ func NewLock(
 	clock clock.Clock,
 	retryInterval time.Duration,
 	lockTTL time.Duration,
+	configs ...MetronConfig,
 ) Lock {
 	lockMetricName := strings.Replace(lockKey, "/", "-", -1)
 
@@ -53,7 +64,9 @@ func NewLock(
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return Lock{
+	client, _ := loggingclient.NewIngressClient(loggingclient.Config{})
+
+	l := Lock{
 		consul: session,
 		key:    lockKey,
 		value:  lockValue,
@@ -63,9 +76,14 @@ func NewLock(
 
 		logger: logger,
 
-		lockAcquiredMetric: metric.Metric("LockHeld." + lockMetricName),
-		lockUptimeMetric:   metric.Duration("LockHeldDuration." + lockMetricName),
+		lockAcquiredMetric: fmt.Sprintf("LockHeld.%s", lockMetricName),
+		lockUptimeMetric:   fmt.Sprintf("LockHeldDuration.%s", lockMetricName),
+		metronClient:       client,
 	}
+	for _, c := range configs {
+		c(&l)
+	}
+	return l
 }
 
 func (l Lock) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -156,12 +174,12 @@ func (l Lock) emitMetrics(acquired bool) {
 		"uptimeMetricName":       l.lockUptimeMetric,
 		"lockAcquiredMetricName": l.lockAcquiredMetric,
 	})
-	err := l.lockUptimeMetric.Send(uptime)
+	err := l.metronClient.SendDuration(l.lockUptimeMetric, uptime)
 	if err != nil {
 		l.logger.Error("failed-to-send-lock-uptime-metric", err)
 	}
 
-	err = l.lockAcquiredMetric.Send(acqVal)
+	err = l.metronClient.SendMetric(l.lockAcquiredMetric, acqVal)
 	if err != nil {
 		l.logger.Error("failed-to-send-lock-acquired-metric", err)
 	}

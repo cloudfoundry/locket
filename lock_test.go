@@ -11,11 +11,10 @@ import (
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/locket"
-	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
-	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/hashicorp/consul/api"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -27,11 +26,23 @@ import (
 )
 
 var _ = Describe("Lock", func() {
+
+	type durationMetric struct {
+		name  string
+		value time.Duration
+	}
+	type intMetric struct {
+		name  string
+		value int
+	}
 	var (
+		fakeMetronClient     *mfakes.FakeIngressClient
 		lockKey              string
 		lockHeldMetricName   string
 		lockUptimeMetricName string
 		lockValue            []byte
+		fakeMetricChan       chan intMetric
+		fakeDurationChan     chan durationMetric
 
 		consulClient consuladapter.Client
 
@@ -41,8 +52,7 @@ var _ = Describe("Lock", func() {
 		lockTTL       time.Duration
 		logger        lager.Logger
 
-		sender *fake.FakeMetricSender
-		clock  *fakeclock.FakeClock
+		clock *fakeclock.FakeClock
 	)
 
 	getLockValue := func() ([]byte, error) {
@@ -71,13 +81,23 @@ var _ = Describe("Lock", func() {
 		lockTTL = 5 * time.Second
 		logger = lagertest.NewTestLogger("locket")
 
-		sender = fake.NewFakeMetricSender()
-		metrics.Initialize(sender, nil)
+		fakeMetricChan = make(chan intMetric, 5)
+		fakeDurationChan = make(chan durationMetric, 5)
+
+		fakeMetronClient = new(mfakes.FakeIngressClient)
+		fakeMetronClient.SendMetricStub = func(name string, value int) error {
+			fakeMetricChan <- intMetric{name: name, value: value}
+			return nil
+		}
+		fakeMetronClient.SendDurationStub = func(name string, value time.Duration) error {
+			fakeDurationChan <- durationMetric{name: name, value: value}
+			return nil
+		}
 	})
 
 	JustBeforeEach(func() {
 		clock = fakeclock.NewFakeClock(time.Now())
-		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, lockTTL)
+		lockRunner = locket.NewLock(logger, consulClient, lockKey, lockValue, clock, retryInterval, lockTTL, locket.WithMetronClient(fakeMetronClient))
 	})
 
 	AfterEach(func() {
@@ -96,6 +116,8 @@ var _ = Describe("Lock", func() {
 		Context("an error occurs while acquiring the lock", func() {
 			BeforeEach(func() {
 				lockKey = ""
+				lockKeyMetric := strings.Replace(lockKey, "/", "-", -1)
+				lockHeldMetricName = "LockHeld." + lockKeyMetric
 			})
 
 			It("continues to retry", func() {
@@ -107,7 +129,10 @@ var _ = Describe("Lock", func() {
 				clock.WaitForWatcherAndIncrement(retryInterval)
 				Eventually(logger).Should(Say("acquire-lock-failed"))
 				Eventually(logger).Should(Say("retrying-acquiring-lock"))
-				Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(0)))
+				Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+					name:  "LockHeld.",
+					value: 0,
+				})))
 			})
 		})
 
@@ -115,9 +140,15 @@ var _ = Describe("Lock", func() {
 			It("acquires the lock", func() {
 				lockProcess = ifrit.Background(lockRunner)
 				Eventually(lockProcess.Ready()).Should(BeClosed())
-				Expect(sender.GetValue(lockUptimeMetricName).Value).Should(Equal(float64(0)))
+				Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+					name:  lockUptimeMetricName,
+					value: 0 * time.Second,
+				})))
 				Expect(getLockValue()).To(Equal(lockValue))
-				Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(1)))
+				Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+					name:  lockHeldMetricName,
+					value: 1,
+				})))
 			})
 
 			Context("and we have acquired the lock", func() {
@@ -128,17 +159,23 @@ var _ = Describe("Lock", func() {
 
 				It("continues to emit lock metric", func() {
 					clock.WaitForWatcherAndIncrement(30 * time.Second)
-					Eventually(func() float64 {
-						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(30 * time.Second)))
+					Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+						name:  lockUptimeMetricName,
+						value: 30 * time.Second,
+					})))
+
 					clock.WaitForWatcherAndIncrement(30 * time.Second)
-					Eventually(func() float64 {
-						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(60 * time.Second)))
+					Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+						name:  lockUptimeMetricName,
+						value: 60 * time.Second,
+					})))
+
 					clock.WaitForWatcherAndIncrement(30 * time.Second)
-					Eventually(func() float64 {
-						return sender.GetValue(lockUptimeMetricName).Value
-					}, 2).Should(Equal(float64(90 * time.Second)))
+					Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+						name:  lockUptimeMetricName,
+						value: 90 * time.Second,
+					})))
+
 				})
 
 				Context("when consul shuts down", func() {
@@ -155,7 +192,10 @@ var _ = Describe("Lock", func() {
 						var err error
 						Eventually(lockProcess.Wait()).Should(Receive(&err))
 						Expect(err).To(Equal(locket.ErrLockLost))
-						Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(0)))
+						Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+							name:  lockHeldMetricName,
+							value: 0,
+						})))
 					})
 				})
 
@@ -214,9 +254,15 @@ var _ = Describe("Lock", func() {
 
 					Context("for longer than the MonitorRetries * MonitorRetryTime", func() {
 						It("loses lock", func() {
-							Expect(sender.GetValue(lockUptimeMetricName).Value).Should(Equal(float64(0)))
+							Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+								name:  lockUptimeMetricName,
+								value: 0 * time.Second,
+							})))
 							Expect(getLockValue()).To(Equal(lockValue))
-							Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(1)))
+							Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+								name:  lockHeldMetricName,
+								value: 1,
+							})))
 
 							// Serve 500's to simulate a leader election. We know that we need
 							// to serve more than lockTTL / 2 500's to lose the lock.
@@ -232,9 +278,15 @@ var _ = Describe("Lock", func() {
 
 					Context("for less than the MonitorRetries * MonitorRetryTime", func() {
 						It("does not lose the lock", func() {
-							Expect(sender.GetValue(lockUptimeMetricName).Value).Should(Equal(float64(0)))
+							Eventually(fakeDurationChan).Should(Receive(Equal(durationMetric{
+								name:  lockUptimeMetricName,
+								value: 0 * time.Second,
+							})))
 							Expect(getLockValue()).To(Equal(lockValue))
-							Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(1)))
+							Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+								name:  lockHeldMetricName,
+								value: 1,
+							})))
 
 							// Serve 500's to simulate a leader election. We know that if we
 							// serve less than lockTTL / 2 500's, we will not lose the lock.
@@ -261,7 +313,7 @@ var _ = Describe("Lock", func() {
 				otherValue = []byte("doppel-value")
 				otherClock := fakeclock.NewFakeClock(time.Now())
 
-				otherRunner := locket.NewLock(logger, consulClient, lockKey, otherValue, otherClock, retryInterval, 5*time.Second)
+				otherRunner := locket.NewLock(logger, consulClient, lockKey, otherValue, otherClock, retryInterval, 5*time.Second, locket.WithMetronClient(fakeMetronClient))
 				otherProcess = ifrit.Background(otherRunner)
 
 				Eventually(otherProcess.Ready()).Should(BeClosed())
@@ -298,7 +350,10 @@ var _ = Describe("Lock", func() {
 					Eventually(logger).Should(Say("acquire-lock-failed"))
 					clock.WaitForWatcherAndIncrement(retryInterval)
 					Eventually(logger).Should(Say("retrying-acquiring-lock"))
-					Expect(sender.GetValue(lockHeldMetricName).Value).To(Equal(float64(0)))
+					Eventually(fakeMetricChan).Should(Receive(Equal(intMetric{
+						name:  lockHeldMetricName,
+						value: 0,
+					})))
 				})
 			})
 
