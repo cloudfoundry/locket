@@ -73,7 +73,7 @@ func validateLockNotInDB(rawDB *sql.DB, res *models.Resource) error {
 }
 
 var _ = Describe("Lock", func() {
-	var resource, emptyResource, expectedResource *models.Resource
+	var resource, expectedResource *models.Resource
 
 	BeforeEach(func() {
 		resource = &models.Resource{
@@ -90,7 +90,6 @@ var _ = Describe("Lock", func() {
 			TypeCode: models.LOCK,
 		}
 
-		emptyResource = &models.Resource{Key: "quack"}
 		fakeGUIDProvider.NextGUIDReturns("new-guid", nil)
 	})
 

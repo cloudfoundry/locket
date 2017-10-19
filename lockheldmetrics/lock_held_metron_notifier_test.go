@@ -87,7 +87,7 @@ var _ = Describe("PeriodicLockHeldNotifier", func() {
 			ginkgomon.Interrupt(setLockProcess)
 		})
 
-		It("returns an ifrit runner that set's the lock", func() {
+		It("returns an ifrit runner that sets the lock", func() {
 			Eventually(func() int {
 				metricsLock.Lock()
 				defer metricsLock.Unlock()
