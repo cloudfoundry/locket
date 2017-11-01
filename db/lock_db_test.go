@@ -538,6 +538,147 @@ var _ = Describe("Lock", func() {
 		})
 	})
 
+	Context("FetchAndRelease", func() {
+		var currentIndex, currentTTL int64
+		var oldLock *db.Lock
+		var modifiedId string
+
+		BeforeEach(func() {
+			currentIndex = 500
+			currentTTL = 501
+			modifiedId = "new-guid"
+
+			query := helpers.RebindForFlavor(
+				`INSERT INTO locks (path, owner, value, modified_index, ttl, modified_id, type) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+				dbFlavor,
+			)
+
+			result, err := rawDB.Exec(query, resource.Key, resource.Owner, resource.Value, currentIndex, currentTTL, modifiedId, resource.Type)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+
+			oldLock, err = sqlDB.Fetch(logger, resource.Key)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(validateLockInDB(rawDB, resource, currentIndex, currentTTL, modifiedId)).To(Succeed())
+
+		})
+
+		AfterEach(func() {
+			query := helpers.RebindForFlavor(
+				`DELETE FROM locks WHERE path = ?;`,
+				dbFlavor,
+			)
+			_, err := rawDB.Exec(query, resource.Key)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when the lock hasn't changed", func() {
+			It("deletes the lock record", func() {
+				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(released).To(BeTrue())
+				Expect(validateLockNotInDB(rawDB, resource)).To(Succeed())
+			})
+		})
+
+		Context("when the modified index has changed", func() {
+			BeforeEach(func() {
+				query := helpers.RebindForFlavor(
+					`UPDATE locks SET modified_index=? WHERE path = ?;`,
+					dbFlavor,
+				)
+
+				result, err := rawDB.Exec(query, currentIndex+1, resource.Key)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+			})
+
+			It("does not delete the lock record", func() {
+				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				Expect(err).To(MatchError(models.ErrLockCollision))
+
+				Expect(released).NotTo(BeTrue())
+				Expect(validateLockInDB(rawDB, resource, currentIndex+1, currentTTL, modifiedId)).To(Succeed())
+			})
+		})
+
+		Context("when the modified id has changed", func() {
+			BeforeEach(func() {
+				query := helpers.RebindForFlavor(
+					`UPDATE locks SET modified_id=? WHERE path = ?;`,
+					dbFlavor,
+				)
+
+				modifiedId = "nova-guid"
+
+				result, err := rawDB.Exec(query, modifiedId, resource.Key)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+			})
+
+			It("does not delete the lock record", func() {
+				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				Expect(err).To(MatchError(models.ErrLockCollision))
+
+				Expect(released).NotTo(BeTrue())
+				Expect(validateLockInDB(rawDB, resource, currentIndex, currentTTL, modifiedId)).To(Succeed())
+			})
+		})
+
+		Context("when the lock is owned by another owner", func() {
+			BeforeEach(func() {
+				query := helpers.RebindForFlavor(
+					`UPDATE locks SET owner=? WHERE path = ?;`,
+					dbFlavor,
+				)
+
+				result, err := rawDB.Exec(query, "danny", resource.Key)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
+			})
+
+			It("returns an error", func() {
+				newResource := &models.Resource{
+					Key:   resource.Key,
+					Owner: "danny",
+					Value: resource.Value,
+					Type:  resource.Type,
+				}
+
+				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				Expect(err).To(MatchError(models.ErrLockCollision))
+
+				Expect(released).NotTo(BeTrue())
+				Expect(validateLockInDB(rawDB, newResource, currentIndex, currentTTL, modifiedId)).To(Succeed())
+			})
+		})
+
+		Context("when the lock table disappears", func() {
+			BeforeEach(func() {
+				_, err := rawDB.Exec("DROP TABLE locks")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := sqlDB.CreateLockTable(logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				_, err := sqlDB.FetchAndRelease(logger, oldLock)
+				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+			})
+		})
+
+		Context("when the lock does not exist", func() {
+			It("returns an error", func() {
+				_, err := sqlDB.FetchAndRelease(logger, &db.Lock{Resource: &models.Resource{Key: "quack"}})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+
 	Context("Count", func() {
 		BeforeEach(func() {
 			query := helpers.RebindForFlavor(

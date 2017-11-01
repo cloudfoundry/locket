@@ -40,6 +40,16 @@ type FakeLockDB struct {
 		result1 *db.Lock
 		result2 error
 	}
+	FetchAndReleaseStub        func(logger lager.Logger, lock *db.Lock) (bool, error)
+	fetchAndReleaseMutex       sync.RWMutex
+	fetchAndReleaseArgsForCall []struct {
+		logger lager.Logger
+		lock   *db.Lock
+	}
+	fetchAndReleaseReturns struct {
+		result1 bool
+		result2 error
+	}
 	FetchAllStub        func(logger lager.Logger, lockType string) ([]*db.Lock, error)
 	fetchAllMutex       sync.RWMutex
 	fetchAllArgsForCall []struct {
@@ -169,6 +179,41 @@ func (fake *FakeLockDB) FetchReturns(result1 *db.Lock, result2 error) {
 	}{result1, result2}
 }
 
+func (fake *FakeLockDB) FetchAndRelease(logger lager.Logger, lock *db.Lock) (bool, error) {
+	fake.fetchAndReleaseMutex.Lock()
+	fake.fetchAndReleaseArgsForCall = append(fake.fetchAndReleaseArgsForCall, struct {
+		logger lager.Logger
+		lock   *db.Lock
+	}{logger, lock})
+	fake.recordInvocation("FetchAndRelease", []interface{}{logger, lock})
+	fake.fetchAndReleaseMutex.Unlock()
+	if fake.FetchAndReleaseStub != nil {
+		return fake.FetchAndReleaseStub(logger, lock)
+	} else {
+		return fake.fetchAndReleaseReturns.result1, fake.fetchAndReleaseReturns.result2
+	}
+}
+
+func (fake *FakeLockDB) FetchAndReleaseCallCount() int {
+	fake.fetchAndReleaseMutex.RLock()
+	defer fake.fetchAndReleaseMutex.RUnlock()
+	return len(fake.fetchAndReleaseArgsForCall)
+}
+
+func (fake *FakeLockDB) FetchAndReleaseArgsForCall(i int) (lager.Logger, *db.Lock) {
+	fake.fetchAndReleaseMutex.RLock()
+	defer fake.fetchAndReleaseMutex.RUnlock()
+	return fake.fetchAndReleaseArgsForCall[i].logger, fake.fetchAndReleaseArgsForCall[i].lock
+}
+
+func (fake *FakeLockDB) FetchAndReleaseReturns(result1 bool, result2 error) {
+	fake.FetchAndReleaseStub = nil
+	fake.fetchAndReleaseReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeLockDB) FetchAll(logger lager.Logger, lockType string) ([]*db.Lock, error) {
 	fake.fetchAllMutex.Lock()
 	fake.fetchAllArgsForCall = append(fake.fetchAllArgsForCall, struct {
@@ -248,6 +293,8 @@ func (fake *FakeLockDB) Invocations() map[string][][]interface{} {
 	defer fake.releaseMutex.RUnlock()
 	fake.fetchMutex.RLock()
 	defer fake.fetchMutex.RUnlock()
+	fake.fetchAndReleaseMutex.RLock()
+	defer fake.fetchAndReleaseMutex.RUnlock()
 	fake.fetchAllMutex.RLock()
 	defer fake.fetchAllMutex.RUnlock()
 	fake.countMutex.RLock()

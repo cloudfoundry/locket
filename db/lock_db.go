@@ -245,3 +245,62 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 		TypeCode: models.GetTypeCode(lockType),
 	}, index, id, ttl, nil
 }
+
+func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) {
+	logger = logger.Session("fetch-and-release-lock", lagerDataFromLock(lock.Resource))
+
+	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+		res, index, id, ttl, err := db.fetchLock(logger, tx, lock.Resource.Key)
+
+		if err != nil {
+			logger.Error("failed-to-fetch-lock", err)
+			sqlErr := db.helper.ConvertSQLError(err)
+			if sqlErr == helpers.ErrResourceNotFound {
+				return models.ErrResourceNotFound
+			}
+			return sqlErr
+		}
+
+		if res.Owner == "" {
+			return models.ErrResourceNotFound
+		}
+
+		logger.Info("fetched-lock")
+
+		fetchedLock := &Lock{Resource: res, ModifiedIndex: index, ModifiedId: id, TtlInSeconds: ttl}
+
+		if fetchedLock.Resource.Owner != lock.Resource.Owner {
+			logger.Error("fetch-failed-owner-mismatch", models.ErrLockCollision, lager.Data{"fetched-owner": fetchedLock.Owner})
+			return models.ErrLockCollision
+		}
+
+		if fetchedLock.ModifiedId != lock.ModifiedId {
+			logger.Error("release-failed-id-mismatch", models.ErrLockCollision, lager.Data{"lock-modified-id": lock.ModifiedId, "fetched-modified-id": fetchedLock.ModifiedId})
+			return models.ErrLockCollision
+		}
+
+		if fetchedLock.ModifiedIndex != lock.ModifiedIndex {
+			logger.Error("release-failed-index-mismatch", models.ErrLockCollision, lager.Data{"lock-modified-index": lock.ModifiedId, "fetched-modified-id": fetchedLock.ModifiedIndex})
+			return models.ErrLockCollision
+		}
+
+		_, err = db.helper.Delete(logger, tx, "locks",
+			"path = ?", fetchedLock.Resource.Key,
+		)
+
+		if err != nil {
+			logger.Error("failed-to-release-lock", err)
+			return err
+		}
+
+		logger.Info("released-lock")
+
+		return nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

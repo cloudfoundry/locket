@@ -459,4 +459,7 @@ var _ = Describe("Locket", func() {
 			})
 		})
 	})
+
+	Describe("expiration race condition", func() {
+	})
 })

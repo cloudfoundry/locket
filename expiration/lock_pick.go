@@ -93,12 +93,13 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 				l.lockMutex.Unlock()
 			}()
 
-			fetchedLock, err := l.lockDB.Fetch(logger, lock.Key)
+			expired, err := l.lockDB.FetchAndRelease(logger, lock)
 			if err != nil {
+				logger.Error("failed-compare-and-release", err)
 				return
 			}
 
-			if fetchedLock.ModifiedIndex == lock.ModifiedIndex && fetchedLock.ModifiedId == lock.ModifiedId {
+			if expired {
 				logger.Info("lock-expired")
 
 				switch lock.Type {
@@ -108,12 +109,6 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 					l.metronClient.IncrementCounter(presenceExpired)
 				default:
 					logger.Debug("unknown-logger-type")
-				}
-
-				err = l.lockDB.Release(logger, lock.Resource)
-				if err != nil {
-					logger.Error("failed-to-release-lock", err)
-					return
 				}
 			}
 			return
