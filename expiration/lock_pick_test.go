@@ -233,14 +233,14 @@ var _ = Describe("LockPick", func() {
 						})
 
 						It("checks the expiration of the lock", func() {
-							l := &oldLock
-							lockPick.RegisterTTL(logger, l)
+							l := oldLock
+							lockPick.RegisterTTL(logger, &l)
 							Eventually(fakeClock.WatcherCount).Should(Equal(1))
 							fakeClock.WaitForWatcherAndIncrement(ttl)
 
 							Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(2))
 							_, lock := fakeLockDB.FetchAndReleaseArgsForCall(1)
-							Expect(lock).To(Equal(l))
+							Expect(lock).To(Equal(&l))
 						})
 					})
 				})
