@@ -21,6 +21,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
@@ -39,7 +40,6 @@ import (
 
 const (
 	dropsondeOrigin = "locket"
-	metricsInterval = 10 * time.Second
 )
 
 var configFilePath = flag.String(
@@ -88,8 +88,11 @@ func main() {
 		logger.Fatal("sql-failed-to-connect", err)
 	}
 
+	dbMonitor := helpers.NewQueryMonitor()
+	monitoredDB := helpers.NewMonitoredDB(sqlConn, dbMonitor)
+
 	sqlDB := db.NewSQLDB(
-		sqlConn,
+		monitoredDB,
 		cfg.DatabaseDriver,
 		guidprovider.DefaultGuidProvider,
 	)
@@ -114,7 +117,7 @@ func main() {
 		logger.Fatal("invalid-tls-config", err)
 	}
 
-	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metronClient, metricsInterval, sqlDB)
+	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB, dbMonitor)
 	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	exitCh := make(chan struct{})

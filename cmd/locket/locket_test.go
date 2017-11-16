@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
@@ -56,6 +57,7 @@ var _ = Describe("Locket", func() {
 				cfg.ConsulCluster = consulRunner.ConsulCluster()
 				cfg.DatabaseDriver = sqlRunner.DriverName()
 				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
+				cfg.ReportInterval = durationjson.Duration(time.Second)
 			},
 		}
 	})
@@ -109,6 +111,7 @@ var _ = Describe("Locket", func() {
 				Eventually(testMetricsChan).Should(Receive())
 			})
 		})
+
 		Context("when using the v1 api", func() {
 			var (
 				testMetricsListener net.PacketConn
@@ -148,6 +151,25 @@ var _ = Describe("Locket", func() {
 
 			It("emits metrics", func() {
 				Eventually(testMetricsChan).Should(Receive())
+			})
+
+			Context("when a lock is acquired", func() {
+				It("emits DBQueriesSucceeded metric", func() {
+					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+					_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+						Resource:     requestedResource,
+						TtlInSeconds: 10,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() float64 {
+						envelope := <-testMetricsChan
+						value := envelope.GetValueMetric()
+						if value.GetName() != "DBQueriesSucceeded" {
+							return 0
+						}
+						return value.GetValue()
+					}, 15*time.Second).Should(BeNumerically(">", 0))
+				})
 			})
 		})
 	})

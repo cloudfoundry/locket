@@ -4,12 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers/helpersfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/locket/metrics"
+	"code.cloudfoundry.org/locket/metrics/metricsfakes"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,6 +20,11 @@ import (
 )
 
 var _ = Describe("Metrics", func() {
+	type FakeGauge struct {
+		Name  string
+		Value int
+	}
+
 	var (
 		runner           ifrit.Runner
 		process          ifrit.Process
@@ -26,17 +32,23 @@ var _ = Describe("Metrics", func() {
 		logger           *lagertest.TestLogger
 		fakeClock        *fakeclock.FakeClock
 		metricsInterval  time.Duration
-		lockDB           *dbfakes.FakeLockDB
+		lockDBMetrics    *metricsfakes.FakeLockDBMetrics
+		queryMonitor     *helpersfakes.FakeQueryMonitor
+		metricsChan      chan FakeGauge
 	)
+
+	metricsChan = make(chan FakeGauge, 100)
+
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("metrics")
 		fakeMetronClient = new(mfakes.FakeIngressClient)
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		metricsInterval = 10 * time.Second
 
-		lockDB = &dbfakes.FakeLockDB{}
+		lockDBMetrics = &metricsfakes.FakeLockDBMetrics{}
+		queryMonitor = &helpersfakes.FakeQueryMonitor{}
 
-		lockDB.CountStub = func(l lager.Logger, lockType string) (int, error) {
+		lockDBMetrics.CountStub = func(l lager.Logger, lockType string) (int, error) {
 			switch {
 			case lockType == models.LockType:
 				return 3, nil
@@ -46,10 +58,30 @@ var _ = Describe("Metrics", func() {
 				return 0, errors.New("unknown type")
 			}
 		}
+
+		fakeMetronClient.SendMetricStub = func(name string, value int) error {
+			defer GinkgoRecover()
+
+			Eventually(metricsChan).Should(BeSent(FakeGauge{name, value}))
+			return nil
+		}
+		fakeMetronClient.SendDurationStub = func(name string, value time.Duration) error {
+			defer GinkgoRecover()
+
+			Eventually(metricsChan).Should(BeSent(FakeGauge{name, int(value)}))
+			return nil
+		}
 	})
 
 	JustBeforeEach(func() {
-		runner = metrics.NewMetricsNotifier(logger, fakeClock, fakeMetronClient, metricsInterval, lockDB)
+		runner = metrics.NewMetricsNotifier(
+			logger,
+			fakeClock,
+			fakeMetronClient,
+			metricsInterval,
+			lockDBMetrics,
+			queryMonitor,
+		)
 		process = ifrit.Background(runner)
 		Eventually(process.Ready()).Should(BeClosed())
 	})
@@ -59,32 +91,76 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("when there are no errors retrieving counts from database", func() {
-		JustBeforeEach(func() {
-			fakeClock.Increment(15 * time.Second)
+
+		BeforeEach(func() {
+			lockDBMetrics.OpenConnectionsReturns(100)
+			queryMonitor.QueriesInFlightReturns(5)
+			queryMonitor.QueriesStartedReturns(105)
+			queryMonitor.QueriesSucceededReturns(90)
+			queryMonitor.QueriesFailedReturns(10)
+			queryMonitor.ReadAndResetQueryDurationMaxReturns(time.Second)
 		})
 
-		It("emits metric for number of active locks", func() {
-			Eventually(fakeMetronClient.SendMetricCallCount).Should(Equal(2))
-			metric, value := fakeMetronClient.SendMetricArgsForCall(0)
-			Expect(metric).To(Equal("ActiveLocks"))
-			Expect(value).To(Equal(3))
+		JustBeforeEach(func() {
+			fakeClock.Increment(metricsInterval)
+		})
+
+		It("periodically emits metric for number of active locks", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActiveLocks", 3})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActiveLocks", 3})))
 		})
 
 		It("emits metric for number of active presences", func() {
-			Eventually(fakeMetronClient.SendMetricCallCount).Should(Equal(2))
-			metric, value := fakeMetronClient.SendMetricArgsForCall(1)
-			Expect(metric).To(Equal("ActivePresences"))
-			Expect(value).To(Equal(2))
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActivePresences", 2})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActivePresences", 2})))
+		})
+
+		It("emits a metric for the number of open database connections", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
+		})
+
+		It("emits a metric for the number of queries started against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesStarted", 105})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesStarted", 105})))
+		})
+
+		It("emits a metric for the number of queries succeeded against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesSucceeded", 90})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesSucceeded", 90})))
+		})
+
+		It("emits a metric for the number of queries failed against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesFailed", 10})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesFailed", 10})))
+		})
+
+		It("emits a metric for the number of queries in flight against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
+		})
+
+		It("emits a metric for the max duration of queries", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueryDurationMax", int(time.Second)})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueryDurationMax", int(time.Second)})))
 		})
 	})
 
 	Context("when there are errors retrieving counts from database", func() {
 		BeforeEach(func() {
-			lockDB.CountReturns(1, errors.New("DB error"))
+			lockDBMetrics.CountReturns(1, errors.New("DB error"))
 		})
 
 		JustBeforeEach(func() {
-			fakeClock.Increment(15 * time.Second)
+			fakeClock.Increment(metricsInterval)
 		})
 
 		It("does not emit metrics", func() {

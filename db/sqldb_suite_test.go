@@ -64,7 +64,8 @@ var _ = BeforeSuite(func() {
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
 	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
-	sqlDB = sqldb.NewSQLDB(rawDB, dbFlavor, fakeGUIDProvider)
+	db := helpers.NewMonitoredDB(rawDB, helpers.NewQueryMonitor())
+	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())
 

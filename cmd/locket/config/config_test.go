@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 
@@ -31,6 +33,7 @@ var _ = Describe("LocketConfig", func() {
 			"enable_consul_service_registration": false,
 			"key_file": "i am a key file",
 			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
+      "report_interval":"1s",
 			"loggregator": {
 			  "loggregator_use_v2_api": true,
 			  "loggregator_api_port": 1234,
@@ -95,6 +98,7 @@ var _ = Describe("LocketConfig", func() {
 				JobIP:         "1.1.1.1",
 				JobOrigin:     "Earth",
 			},
+			ReportInterval: durationjson.Duration(time.Second),
 		}
 
 		Expect(locketConfig).To(Equal(config))

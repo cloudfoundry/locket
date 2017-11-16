@@ -3,7 +3,7 @@ package db
 import "code.cloudfoundry.org/lager"
 
 func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
-	_, err := db.db.Exec(`
+	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS locks (
 			path VARCHAR(255) PRIMARY KEY,
 			owner VARCHAR(255),

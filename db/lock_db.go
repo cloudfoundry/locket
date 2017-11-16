@@ -1,8 +1,6 @@
 package db
 
 import (
-	"database/sql"
-
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
@@ -21,7 +19,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 	logger = logger.Session("lock", lagerDataFromLock(resource))
 	var lock *Lock
 
-	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		newLock := false
 
 		res, index, id, _, err := db.fetchLock(logger, tx, resource.Key)
@@ -99,7 +97,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
-	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		res, _, _, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
@@ -128,7 +126,7 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 	logger = logger.Session("fetch-lock", lager.Data{"key": key})
 	var lock *Lock
 
-	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		res, index, id, ttl, err := db.fetchLock(logger, tx, key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
@@ -155,7 +153,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 	logger = logger.Session("fetch-all-locks", lager.Data{"type": lockType})
 	var locks []*Lock
 
-	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		var where string
 		whereBindings := make([]interface{}, 0)
 
@@ -219,7 +217,7 @@ func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
 	}
 
 	logger = logger.Session("count-locks")
-	count, err := db.helper.Count(logger, db.db, "locks", wheres, whereBindings...)
+	count, err := db.helper.Count(logger, db, "locks", wheres, whereBindings...)
 	return count, db.helper.ConvertSQLError(err)
 }
 
@@ -249,7 +247,7 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) {
 	logger = logger.Session("fetch-and-release-lock", lagerDataFromLock(lock.Resource))
 
-	err := db.helper.Transact(logger, db.db, func(logger lager.Logger, tx *sql.Tx) error {
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		res, index, id, ttl, err := db.fetchLock(logger, tx, lock.Resource.Key)
 
 		if err != nil {
