@@ -45,8 +45,8 @@ func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient lo
 
 func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := notifier.logger.Session("metrics-notifier")
-	logger.Info("starting")
-	defer logger.Info("compeleted")
+	logger.Info("starting", lager.Data{"interval": notifier.metricsInterval})
+	defer logger.Info("completed")
 	close(ready)
 
 	tick := notifier.ticker.NewTicker(notifier.metricsInterval)
@@ -55,6 +55,7 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 		case <-signals:
 			return nil
 		case <-tick.C():
+			logger.Debug("emitting-metrics")
 			locks, err := notifier.lockDB.Count(logger, models.LockType)
 			if err != nil {
 				logger.Error("failed-to-retrieve-lock-count", err)
@@ -92,6 +93,7 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			queriesFailed := notifier.queryMonitor.QueriesFailed()
 			queryDurationMax := notifier.queryMonitor.ReadAndResetQueryDurationMax()
 
+			logger.Debug("sending-queries-started-metric", lager.Data{"value": queriesStarted})
 			err = notifier.metronClient.SendMetric(dbQueriesStarted, int(queriesStarted))
 			if err != nil {
 				logger.Error("failed-sending-db-queries-started-count", err)
@@ -111,6 +113,7 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			if err != nil {
 				logger.Error("inFlight-sending-db-query-duration-max", err)
 			}
+			logger.Debug("emitted-metrics")
 		}
 	}
 	return nil
