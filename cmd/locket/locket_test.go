@@ -122,11 +122,13 @@ var _ = Describe("Locket", func() {
 				testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
 				testMetricsChan = make(chan *events.Envelope, 1)
 				go func() {
+					logger := logger.Session("fake-metron-agent")
 					defer GinkgoRecover()
 					for {
 						buffer := make([]byte, 1024)
 						n, _, err := testMetricsListener.ReadFrom(buffer)
 						if err != nil {
+							logger.Error("received-an-error", err)
 							close(testMetricsChan)
 							return
 						}
@@ -149,6 +151,11 @@ var _ = Describe("Locket", func() {
 				})
 			})
 
+			AfterEach(func() {
+				testMetricsListener.Close()
+				Eventually(testMetricsChan).Should(BeClosed())
+			})
+
 			It("emits metrics", func() {
 				Eventually(testMetricsChan).Should(Receive())
 			})
@@ -161,14 +168,17 @@ var _ = Describe("Locket", func() {
 						TtlInSeconds: 10,
 					})
 					Expect(err).NotTo(HaveOccurred())
-					Eventually(func() float64 {
-						envelope := <-testMetricsChan
-						value := envelope.GetValueMetric()
-						if value.GetName() != "DBQueriesSucceeded" {
-							return 0
-						}
-						return value.GetValue()
-					}, 15*time.Second).Should(BeNumerically(">", 0))
+					Eventually(testMetricsChan).Should(Receive(And(
+						WithTransform(func(e *events.Envelope) *events.ValueMetric {
+							return e.GetValueMetric()
+						}, Not(BeNil())),
+						WithTransform(func(e *events.Envelope) string {
+							return e.GetValueMetric().GetName()
+						}, Equal("DBQueriesStarted")),
+						WithTransform(func(e *events.Envelope) float64 {
+							return e.GetValueMetric().GetValue()
+						}, BeNumerically(">", 0)),
+					)))
 				})
 			})
 		})
