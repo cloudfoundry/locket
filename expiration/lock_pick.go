@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	locksExpired    = "LocksExpired"
-	presenceExpired = "PresenceExpired"
+	locksExpiredCounter    = "LocksExpired"
+	presenceExpiredCounter = "PresenceExpired"
 )
 
 //go:generate counterfeiter . LockPick
@@ -104,9 +104,9 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 
 				switch lock.Type {
 				case models.LockType:
-					l.metronClient.IncrementCounter(locksExpired)
+					l.metronClient.IncrementCounter(locksExpiredCounter)
 				case models.PresenceType:
-					l.metronClient.IncrementCounter(presenceExpired)
+					l.metronClient.IncrementCounter(presenceExpiredCounter)
 				default:
 					logger.Debug("unknown-logger-type")
 				}

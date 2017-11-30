@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	activeLocks        = "ActiveLocks"
-	activePresences    = "ActivePresences"
-	dbOpenConnections  = "DBOpenConnections"
-	dbQueriesStarted   = "DBQueriesStarted"
-	dbQueriesSucceeded = "DBQueriesSucceeded"
-	dbQueriesFailed    = "DBQueriesFailed"
-	dbQueriesInFlight  = "DBQueriesInFlight"
-	dbQueryDurationMax = "DBQueryDurationMax"
+	activeLocksMetric        = "ActiveLocks"
+	activePresencesMetric    = "ActivePresences"
+	dbOpenConnectionsMetric  = "DBOpenConnections"
+	dbQueriesStartedMetric   = "DBQueriesStarted"
+	dbQueriesSucceededMetric = "DBQueriesSucceeded"
+	dbQueriesFailedMetric    = "DBQueriesFailed"
+	dbQueriesInFlightMetric  = "DBQueriesInFlight"
+	dbQueryDurationMaxMetric = "DBQueryDurationMax"
 )
 
 type metricsNotifier struct {
@@ -68,22 +68,22 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 				continue
 			}
 
-			err = notifier.metronClient.SendMetric(activeLocks, locks)
+			err = notifier.metronClient.SendMetric(activeLocksMetric, locks)
 			if err != nil {
 				logger.Error("failed-sending-lock-count", err)
 			}
 
-			err = notifier.metronClient.SendMetric(activePresences, presences)
+			err = notifier.metronClient.SendMetric(activePresencesMetric, presences)
 			if err != nil {
 				logger.Error("failed-sending-presences-count", err)
 			}
 
-			err = notifier.metronClient.SendMetric(dbOpenConnections, notifier.lockDB.OpenConnections())
+			err = notifier.metronClient.SendMetric(dbOpenConnectionsMetric, notifier.lockDB.OpenConnections())
 			if err != nil {
 				logger.Error("failed-sending-db-open-connections-count", err)
 			}
 
-			err = notifier.metronClient.SendMetric(dbQueriesInFlight, int(notifier.queryMonitor.QueriesInFlight()))
+			err = notifier.metronClient.SendMetric(dbQueriesInFlightMetric, int(notifier.queryMonitor.QueriesInFlight()))
 			if err != nil {
 				logger.Error("inFlight-sending-db-queries-in-flight-count", err)
 			}
@@ -94,22 +94,22 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			queryDurationMax := notifier.queryMonitor.ReadAndResetQueryDurationMax()
 
 			logger.Debug("sending-queries-started-metric", lager.Data{"value": queriesStarted})
-			err = notifier.metronClient.SendMetric(dbQueriesStarted, int(queriesStarted))
+			err = notifier.metronClient.SendMetric(dbQueriesStartedMetric, int(queriesStarted))
 			if err != nil {
 				logger.Error("failed-sending-db-queries-started-count", err)
 			}
 
-			err = notifier.metronClient.SendMetric(dbQueriesSucceeded, int(queriesSucceeded))
+			err = notifier.metronClient.SendMetric(dbQueriesSucceededMetric, int(queriesSucceeded))
 			if err != nil {
 				logger.Error("failed-sending-db-queries-succeeded-count", err)
 			}
 
-			err = notifier.metronClient.SendMetric(dbQueriesFailed, int(queriesFailed))
+			err = notifier.metronClient.SendMetric(dbQueriesFailedMetric, int(queriesFailed))
 			if err != nil {
 				logger.Error("failed-sending-db-queries-failed-count", err)
 			}
 
-			err = notifier.metronClient.SendDuration(dbQueryDurationMax, queryDurationMax)
+			err = notifier.metronClient.SendDuration(dbQueryDurationMaxMetric, queryDurationMax)
 			if err != nil {
 				logger.Error("inFlight-sending-db-query-duration-max", err)
 			}

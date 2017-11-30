@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	lockHeld = "LockHeld"
+	lockHeldMetric = "LockHeld"
 )
 
 type LockHeldMetronNotifier struct {
@@ -51,7 +51,7 @@ func (notifier *LockHeldMetronNotifier) Run(signals <-chan os.Signal, ready chan
 		select {
 		case <-notifier.ticker.C():
 			value := atomic.LoadUint64(notifier.lockHeld)
-			notifier.metronClient.SendMetric(lockHeld, int(value))
+			notifier.metronClient.SendMetric(lockHeldMetric, int(value))
 
 		case <-signals:
 			return nil
