@@ -174,7 +174,7 @@ var _ = Describe("Locket", func() {
 						}, Not(BeNil())),
 						WithTransform(func(e *events.Envelope) string {
 							return e.GetValueMetric().GetName()
-						}, Equal("DBQueriesStarted")),
+						}, Equal("DBQueriesTotal")),
 						WithTransform(func(e *events.Envelope) float64 {
 							return e.GetValueMetric().GetValue()
 						}, BeNumerically(">", 0)),

@@ -95,7 +95,7 @@ var _ = Describe("Metrics", func() {
 		BeforeEach(func() {
 			lockDBMetrics.OpenConnectionsReturns(100)
 			queryMonitor.QueriesInFlightReturns(5)
-			queryMonitor.QueriesStartedReturns(105)
+			queryMonitor.QueriesTotalReturns(105)
 			queryMonitor.QueriesSucceededReturns(90)
 			queryMonitor.QueriesFailedReturns(10)
 			queryMonitor.ReadAndResetQueryDurationMaxReturns(time.Second)
@@ -123,10 +123,10 @@ var _ = Describe("Metrics", func() {
 			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
 		})
 
-		It("emits a metric for the number of queries started against the database", func() {
-			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesStarted", 105})))
+		It("emits a metric for the number of total queries against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesTotal", 105})))
 			fakeClock.Increment(metricsInterval)
-			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesStarted", 105})))
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesTotal", 105})))
 		})
 
 		It("emits a metric for the number of queries succeeded against the database", func() {

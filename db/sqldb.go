@@ -26,10 +26,9 @@ type Lock struct {
 
 type SQLDB struct {
 	helpers.DB
-	flavor         string
-	helper         helpers.SQLHelper
-	guidProvider   guidprovider.GUIDProvider
-	queriesStarted int64
+	flavor       string
+	helper       helpers.SQLHelper
+	guidProvider guidprovider.GUIDProvider
 }
 
 func NewSQLDB(
