@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -29,6 +30,7 @@ var (
 	consulRunner *consulrunner.ClusterRunner
 
 	TruncateTableList = []string{"locks"}
+	portAllocator     portauthority.PortAllocator
 )
 
 func TestLocket(t *testing.T) {
@@ -43,6 +45,15 @@ var _ = SynchronizedBeforeSuite(
 		return []byte(locketBinPathData)
 	},
 	func(locketBinPathData []byte) {
+		node := GinkgoParallelNode()
+		startPort := 1050 * node // make sure we don't conflict with etcd ports 4000+GinkgoParallelNode & 7000+GinkgoParallelNode (4000,7000,40001,70001...)
+		portRange := 1000
+		endPort := startPort + portRange*(node+1)
+
+		var err error
+		portAllocator, err = portauthority.New(startPort, endPort)
+		Expect(err).NotTo(HaveOccurred())
+
 		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 
 		locketBinPath = string(locketBinPathData)
@@ -52,9 +63,12 @@ var _ = SynchronizedBeforeSuite(
 		sqlRunner = test_helpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 
+		port, err := portAllocator.ClaimPorts(consulrunner.PortOffsetLength)
+		Expect(err).NotTo(HaveOccurred())
+
 		consulRunner = consulrunner.NewClusterRunner(
 			consulrunner.ClusterRunnerConfig{
-				StartingPort: 9001 + GinkgoParallelNode()*consulrunner.PortOffsetLength,
+				StartingPort: int(port),
 				NumNodes:     1,
 				Scheme:       "http",
 			},

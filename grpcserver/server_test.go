@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/models"
@@ -27,7 +28,19 @@ var _ = Describe("GRPCServer", func() {
 		tlsConfig     *tls.Config
 
 		certFixture, keyFixture, caCertFixture string
+		portAllocator                          portauthority.PortAllocator
 	)
+
+	BeforeSuite(func() {
+		node := GinkgoParallelNode()
+		startPort := 1050 * node // make sure we don't conflict with etcd ports 4000+GinkgoParallelNode & 7000+GinkgoParallelNode (4000,7000,40001,70001...)
+		portRange := 1000
+		endPort := startPort + portRange*(node+1)
+
+		var err error
+		portAllocator, err = portauthority.New(startPort, endPort)
+		Expect(err).NotTo(HaveOccurred())
+	})
 
 	BeforeEach(func() {
 		var err error
@@ -40,7 +53,9 @@ var _ = Describe("GRPCServer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("grpc-server")
-		listenAddress = fmt.Sprintf("localhost:%d", 10000+GinkgoParallelNode())
+		port, err := portAllocator.ClaimPorts(1)
+		Expect(err).NotTo(HaveOccurred())
+		listenAddress = fmt.Sprintf("localhost:%d", port)
 
 		runner = grpcserver.NewGRPCServer(logger, listenAddress, tlsConfig, &testHandler{})
 	})

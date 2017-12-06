@@ -12,7 +12,6 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -44,7 +43,7 @@ var _ = Describe("Locket", func() {
 	BeforeEach(func() {
 		var err error
 
-		locketPort, err = localip.LocalPort()
+		locketPort, err = portAllocator.ClaimPorts(1)
 		Expect(err).NotTo(HaveOccurred())
 
 		locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
@@ -188,7 +187,7 @@ var _ = Describe("Locket", func() {
 		var debugAddress string
 
 		BeforeEach(func() {
-			port, err := localip.LocalPort()
+			port, err := portAllocator.ClaimPorts(1)
 			Expect(err).NotTo(HaveOccurred())
 
 			debugAddress = fmt.Sprintf("127.0.0.1:%d", port)
