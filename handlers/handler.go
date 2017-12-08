@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"time"
+
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration"
+	"code.cloudfoundry.org/locket/metrics"
 	"code.cloudfoundry.org/locket/models"
 	"golang.org/x/net/context"
 )
@@ -15,14 +18,16 @@ type locketHandler struct {
 	db       db.LockDB
 	exitCh   chan<- struct{}
 	lockPick expiration.LockPick
+	metrics  metrics.RequestMetrics
 }
 
-func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, exitCh chan<- struct{}) *locketHandler {
+func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics.RequestMetrics, exitCh chan<- struct{}) *locketHandler {
 	return &locketHandler{
 		logger:   logger,
 		db:       db,
 		lockPick: lockPick,
 		exitCh:   exitCh,
+		metrics:  requestMetrics,
 	}
 }
 
@@ -39,7 +44,84 @@ func (h *locketHandler) exitIfUnrecoverable(err error) {
 	}
 }
 
+func (h *locketHandler) monitorRequest(requestType string, f func() error) error {
+
+	h.metrics.IncrementRequestsStartedCounter(requestType, 1)
+	h.metrics.IncrementRequestsInFlightCounter(requestType, 1)
+	defer h.metrics.DecrementRequestsInFlightCounter(requestType, 1)
+
+	start := time.Now()
+
+	err := f()
+
+	h.metrics.UpdateLatency(requestType, time.Since(start))
+
+	if err != nil {
+		h.metrics.IncrementRequestsFailedCounter(requestType, 1)
+		h.exitIfUnrecoverable(err)
+	} else {
+		h.metrics.IncrementRequestsSucceededCounter(requestType, 1)
+	}
+	return err
+}
+
 func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
+	var (
+		response *models.LockResponse
+		err      error
+	)
+
+	err = h.monitorRequest("Lock", func() error {
+		response, err = h.lock(ctx, req)
+		return err
+	})
+
+	return response, err
+}
+
+func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
+	var (
+		response *models.ReleaseResponse
+		err      error
+	)
+
+	err = h.monitorRequest("Release", func() error {
+		response, err = h.release(ctx, req)
+		return err
+	})
+
+	return response, err
+}
+
+func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
+	var (
+		response *models.FetchResponse
+		err      error
+	)
+
+	err = h.monitorRequest("Fetch", func() error {
+		response, err = h.fetch(ctx, req)
+		return err
+	})
+
+	return response, err
+}
+
+func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+	var (
+		response *models.FetchAllResponse
+		err      error
+	)
+
+	err = h.monitorRequest("FetchAll", func() error {
+		response, err = h.fetchAll(ctx, req)
+		return err
+	})
+
+	return response, err
+}
+
+func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
 	logger := h.logger.Session("lock")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -47,6 +129,7 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	err := validate(req)
 	if err != nil {
 		logger.Error("invalid-request", err, lager.Data{"type": req.Resource.GetType(), "typeCode": req.Resource.GetTypeCode()})
+
 		return nil, err
 	}
 
@@ -68,7 +151,6 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 
 	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
-		h.exitIfUnrecoverable(err)
 		if err != models.ErrLockCollision {
 			logger.Error("failed-locking-lock", err, lager.Data{
 				"key":   req.Resource.Key,
@@ -83,35 +165,35 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	return &models.LockResponse{}, nil
 }
 
-func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
+func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
 	logger := h.logger.Session("release")
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
 	err := h.db.Release(logger, req.Resource)
 	if err != nil {
-		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
+
 	return &models.ReleaseResponse{}, nil
 }
 
-func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
+func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
 	logger := h.logger.Session("fetch")
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
 	lock, err := h.db.Fetch(logger, req.Key)
 	if err != nil {
-		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
+
 	return &models.FetchResponse{
 		Resource: lock.Resource,
 	}, nil
 }
 
-func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
 	logger := h.logger.Session("fetch-all")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -124,7 +206,6 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 
 	locks, err := h.db.FetchAll(logger, models.GetType(&models.Resource{Type: req.Type, TypeCode: req.TypeCode}))
 	if err != nil {
-		h.exitIfUnrecoverable(err)
 		return nil, err
 	}
 

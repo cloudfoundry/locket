@@ -5,11 +5,13 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/locket/expiration/expirationfakes"
 	"code.cloudfoundry.org/locket/handlers"
+	"code.cloudfoundry.org/locket/metrics/metricsfakes"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,17 +20,20 @@ import (
 
 var _ = Describe("Lock", func() {
 	var (
-		fakeLockDB    *dbfakes.FakeLockDB
-		fakeLockPick  *expirationfakes.FakeLockPick
-		logger        *lagertest.TestLogger
-		locketHandler models.LocketServer
-		resource      *models.Resource
-		exitCh        chan struct{}
+		fakeLockDB         *dbfakes.FakeLockDB
+		fakeLockPick       *expirationfakes.FakeLockPick
+		logger             *lagertest.TestLogger
+		locketHandler      models.LocketServer
+		resource           *models.Resource
+		exitCh             chan struct{}
+		fakeRequestMetrics *metricsfakes.FakeRequestMetrics
 	)
 
 	BeforeEach(func() {
 		fakeLockDB = &dbfakes.FakeLockDB{}
 		fakeLockPick = &expirationfakes.FakeLockPick{}
+		fakeRequestMetrics = &metricsfakes.FakeRequestMetrics{}
+
 		logger = lagertest.NewTestLogger("locket-handler")
 		exitCh = make(chan struct{}, 1)
 
@@ -39,7 +44,13 @@ var _ = Describe("Lock", func() {
 			Type:  "lock",
 		}
 
-		locketHandler = handlers.NewLocketHandler(logger, fakeLockDB, fakeLockPick, exitCh)
+		locketHandler = handlers.NewLocketHandler(
+			logger,
+			fakeLockDB,
+			fakeLockPick,
+			fakeRequestMetrics,
+			exitCh,
+		)
 	})
 
 	Context("Lock", func() {
@@ -66,11 +77,25 @@ var _ = Describe("Lock", func() {
 		It("reserves the lock in the database", func() {
 			_, err := locketHandler.Lock(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeLockDB.LockCallCount()).To(Equal(1))
 
-			Expect(fakeLockDB.LockCallCount()).Should(Equal(1))
 			_, actualResource, ttl := fakeLockDB.LockArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
 			Expect(ttl).To(BeEquivalentTo(10))
+
+			metricsRecordSuccess(fakeRequestMetrics)
+			metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
+		})
+
+		It("increments the in-flight counter and then decrements it when done", func() {
+			_, err := locketHandler.Lock(context.Background(), request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeLockDB.LockCallCount()).To(Equal(1))
+
+			_, delta := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+			Expect(delta).To(BeEquivalentTo(1))
+			_, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+			Expect(delta).To(BeEquivalentTo(1))
 		})
 
 		It("registers the lock and ttl with the lock pick", func() {
@@ -80,6 +105,9 @@ var _ = Describe("Lock", func() {
 			Expect(fakeLockPick.RegisterTTLCallCount()).To(Equal(1))
 			_, lock := fakeLockPick.RegisterTTLArgsForCall(0)
 			Expect(lock).To(Equal(expectedLock))
+
+			metricsRecordSuccess(fakeRequestMetrics)
+			metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 		})
 
 		Context("validate lock type", func() {
@@ -88,27 +116,43 @@ var _ = Describe("Lock", func() {
 					request.Resource.Type = "random"
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
+
+					requestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+					Expect(requestType).To(Equal("Lock"))
+					Expect(delta).To(Equal(1))
 				})
 
 				It("should be valid with type set to presence", func() {
 					request.Resource.Type = "presence"
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
+
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 				})
 
 				It("should be valid with type set to lock", func() {
 					request.Resource.Type = "lock"
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
+
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 				})
 			})
 
 			Context("when type_code is set", func() {
-				It("should ba invalid when mismatching non-empty type", func() {
+				It("should be invalid when mismatching non-empty type", func() {
 					request.Resource.Type = "lock"
 					request.Resource.TypeCode = models.PRESENCE
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 
 					request.Resource.Type = "presence"
 					request.Resource.TypeCode = models.LOCK
@@ -122,6 +166,9 @@ var _ = Describe("Lock", func() {
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
 
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
+
 					request.Resource.Type = "presence"
 					request.Resource.TypeCode = models.PRESENCE
 					_, err = locketHandler.Lock(context.Background(), request)
@@ -133,6 +180,9 @@ var _ = Describe("Lock", func() {
 					request.Resource.TypeCode = models.LOCK
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
+
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 				})
 
 				It("should be invalid on an UNKNOWN type code and empty type", func() {
@@ -140,6 +190,9 @@ var _ = Describe("Lock", func() {
 					request.Resource.TypeCode = models.UNKNOWN
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 				})
 
 				It("should be invalid on an non-existent type code", func() {
@@ -147,6 +200,9 @@ var _ = Describe("Lock", func() {
 					request.Resource.TypeCode = 4
 					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 				})
 			})
 		})
@@ -165,6 +221,9 @@ var _ = Describe("Lock", func() {
 				Expect(logger).To(gbytes.Say(models.ErrInvalidTTL.Error()))
 				Expect(logger).To(gbytes.Say("\"key\":"))
 				Expect(logger).To(gbytes.Say("\"owner\":"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 			})
 		})
 
@@ -180,6 +239,9 @@ var _ = Describe("Lock", func() {
 				Expect(logger).To(gbytes.Say(models.ErrInvalidOwner.Error()))
 				Expect(logger).To(gbytes.Say("\"key\":"))
 				Expect(logger).To(gbytes.Say("\"owner\":"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 			})
 		})
 
@@ -198,6 +260,9 @@ var _ = Describe("Lock", func() {
 
 			It("returns the error", func() {
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
 			})
 
 			It("logs the error with identifying information", func() {
@@ -225,12 +290,70 @@ var _ = Describe("Lock", func() {
 			It("logs and writes to the exit channel", func() {
 				locketHandler.Lock(context.Background(), request)
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Lock")
+
 				Expect(exitCh).To(Receive())
 			})
 		})
 	})
 
 	Context("Release", func() {
+		Context("when the db request take too long", func() {
+			var (
+				blockDB chan struct{}
+			)
+
+			BeforeEach(func() {
+				blockDB = make(chan struct{})
+				fakeLockDB.ReleaseStub = func(logger lager.Logger, resource *models.Resource) error {
+					<-blockDB
+					return nil
+				}
+			})
+
+			AfterEach(func() {
+				select {
+				case <-blockDB:
+				default:
+					close(blockDB)
+				}
+			})
+
+			JustBeforeEach(func() {
+				go func() {
+					_, err := locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
+					Expect(err).NotTo(HaveOccurred())
+				}()
+			})
+
+			It("updates the in-flight counter", func() {
+				Eventually(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount).Should(Equal(1))
+				requestType, value := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+				Expect(value).To(BeEquivalentTo(1))
+				Expect(requestType).To(Equal("Release"))
+			})
+
+			It("does not decrement the counter", func() {
+				Consistently(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount).Should(BeZero())
+			})
+
+			Context("when the db request is finished", func() {
+				BeforeEach(func() {
+					close(blockDB)
+				})
+
+				It("decrements the counter", func() {
+					Eventually(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount).Should(Equal(1))
+					requestType, value := fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+					Expect(value).To(BeEquivalentTo(1))
+					Expect(requestType).To(Equal("Release"))
+
+				})
+			})
+		})
+
 		It("releases the lock in the database", func() {
 			_, err := locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
 			Expect(err).NotTo(HaveOccurred())
@@ -238,6 +361,9 @@ var _ = Describe("Lock", func() {
 			Expect(fakeLockDB.ReleaseCallCount()).Should(Equal(1))
 			_, actualResource := fakeLockDB.ReleaseArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
+
+			metricsRecordSuccess(fakeRequestMetrics)
+			metricsUseCorrectCallTags(fakeRequestMetrics, "Release")
 		})
 
 		Context("when releasing errors", func() {
@@ -248,6 +374,9 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Release")
 			})
 		})
 
@@ -259,6 +388,10 @@ var _ = Describe("Lock", func() {
 			It("logs and writes to the exit channel", func() {
 				locketHandler.Release(context.Background(), &models.ReleaseRequest{Resource: resource})
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Release")
+
 				Expect(exitCh).To(Receive())
 			})
 		})
@@ -277,6 +410,9 @@ var _ = Describe("Lock", func() {
 			Expect(fakeLockDB.FetchCallCount()).Should(Equal(1))
 			_, key := fakeLockDB.FetchArgsForCall(0)
 			Expect(key).To(Equal("test-fetch"))
+
+			metricsRecordSuccess(fakeRequestMetrics)
+			metricsUseCorrectCallTags(fakeRequestMetrics, "Fetch")
 		})
 
 		Context("when fetching errors", func() {
@@ -287,6 +423,9 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.Fetch(context.Background(), &models.FetchRequest{Key: "test-fetch"})
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Fetch")
 			})
 		})
 
@@ -298,6 +437,10 @@ var _ = Describe("Lock", func() {
 			It("logs and writes to the exit channel", func() {
 				locketHandler.Fetch(context.Background(), &models.FetchRequest{Key: "test-fetch"})
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "Fetch")
+
 				Expect(exitCh).To(Receive())
 			})
 		})
@@ -323,16 +466,25 @@ var _ = Describe("Lock", func() {
 				It("should be invalid with type not set to presence/lock", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "random"})
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 				})
 
 				It("should be valid with type set to presence", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence"})
 					Expect(err).NotTo(HaveOccurred())
+
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 				})
 
 				It("should be valid with type set to lock", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock"})
 					Expect(err).NotTo(HaveOccurred())
+
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 				})
 			})
 
@@ -340,6 +492,9 @@ var _ = Describe("Lock", func() {
 				It("should be invalid when mismatching a non-empty type", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock", TypeCode: models.PRESENCE})
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 
 					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence", TypeCode: models.LOCK})
 					Expect(err).To(HaveOccurred())
@@ -349,6 +504,9 @@ var _ = Describe("Lock", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "lock", TypeCode: models.LOCK})
 					Expect(err).NotTo(HaveOccurred())
 
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "presence", TypeCode: models.PRESENCE})
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -357,6 +515,9 @@ var _ = Describe("Lock", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
 					Expect(err).NotTo(HaveOccurred())
 
+					metricsRecordSuccess(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 					_, err = locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -364,6 +525,9 @@ var _ = Describe("Lock", func() {
 				It("should be invalid on an UNKNOWN type code and empty type", func() {
 					_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
 					Expect(err).To(HaveOccurred())
+
+					metricsRecordFailure(fakeRequestMetrics)
+					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 				})
 			})
 		})
@@ -372,6 +536,10 @@ var _ = Describe("Lock", func() {
 			It("fetches all the presence locks in the database by type", func() {
 				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
 				Expect(err).NotTo(HaveOccurred())
+
+				metricsRecordSuccess(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
 				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
@@ -381,6 +549,10 @@ var _ = Describe("Lock", func() {
 			It("fetches all the lock locks in the database by type", func() {
 				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
 				Expect(err).NotTo(HaveOccurred())
+
+				metricsRecordSuccess(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
 				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
@@ -390,6 +562,10 @@ var _ = Describe("Lock", func() {
 			It("fetches all the presence locks in the database by type code", func() {
 				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
 				Expect(err).NotTo(HaveOccurred())
+
+				metricsRecordSuccess(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
 				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
@@ -399,6 +575,10 @@ var _ = Describe("Lock", func() {
 			It("fetches all the lock locks in the database by type code", func() {
 				fetchResp, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
 				Expect(err).NotTo(HaveOccurred())
+
+				metricsRecordSuccess(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
 				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
@@ -410,6 +590,9 @@ var _ = Describe("Lock", func() {
 			It("returns an invalid type error", func() {
 				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: "dawg"})
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 			})
 		})
 
@@ -417,6 +600,9 @@ var _ = Describe("Lock", func() {
 			It("returns an invalid type error", func() {
 				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.UNKNOWN})
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 			})
 		})
 
@@ -428,6 +614,9 @@ var _ = Describe("Lock", func() {
 			It("returns the error", func() {
 				_, err := locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{})
 				Expect(err).To(HaveOccurred())
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 			})
 		})
 
@@ -439,8 +628,93 @@ var _ = Describe("Lock", func() {
 			It("logs and writes to the exit channel", func() {
 				locketHandler.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
+
+				metricsRecordFailure(fakeRequestMetrics)
+				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
+
 				Expect(exitCh).To(Receive())
 			})
 		})
 	})
 })
+
+func metricsRecordSuccess(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
+	Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+	_, started := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+	Expect(started).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+	_, succeeded := fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+	Expect(succeeded).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
+
+	Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+	_, incInFlight := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+	Expect(incInFlight).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+	_, decInFlight := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+	Expect(decInFlight).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+	_, latency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+	Expect(latency).To(BeNumerically(">=", 0))
+}
+
+func metricsRecordFailure(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
+	Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+	_, started := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+	Expect(started).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+	Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+	_, failed := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+	Expect(failed).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+	_, incInFlight := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+	Expect(incInFlight).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+	_, decInFlight := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+	Expect(decInFlight).To(BeEquivalentTo(1))
+
+	Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+	_, latency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+	Expect(latency).To(BeNumerically(">=", 0))
+}
+
+func metricsUseCorrectCallTags(fakeRequestMetrics *metricsfakes.FakeRequestMetrics, expectedRequestType string) {
+
+	if fakeRequestMetrics.IncrementRequestsStartedCounterCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+
+	if fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+
+	if fakeRequestMetrics.IncrementRequestsFailedCounterCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+
+	if fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+
+	if fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+
+	if fakeRequestMetrics.UpdateLatencyCallCount() > 0 {
+		requestType, _ := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+		Expect(requestType).To(Equal(expectedRequestType))
+	}
+}

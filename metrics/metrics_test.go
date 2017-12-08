@@ -66,7 +66,7 @@ var _ = Describe("Metrics", func() {
 			Eventually(metricsChan).Should(BeSent(FakeGauge{name, value}))
 			return nil
 		}
-		fakeMetronClient.SendDurationStub = func(name string, value time.Duration) error {
+		fakeMetronClient.SendDurationStub = func(name string, value time.Duration, opts ...loggregator.EmitGaugeOption) error {
 			defer GinkgoRecover()
 
 			Eventually(metricsChan).Should(BeSent(FakeGauge{name, int(value)}))

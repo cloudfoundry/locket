@@ -90,7 +90,7 @@ var _ = Describe("Lock", func() {
 			fakeMetricChan <- intMetric{name: name, value: value}
 			return nil
 		}
-		fakeMetronClient.SendDurationStub = func(name string, value time.Duration) error {
+		fakeMetronClient.SendDurationStub = func(name string, value time.Duration, opts ...loggregator.EmitGaugeOption) error {
 			fakeDurationChan <- durationMetric{name: name, value: value}
 			return nil
 		}
