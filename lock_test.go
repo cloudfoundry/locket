@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/consuladapter"
+	loggregator "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/locket"
 	"github.com/hashicorp/consul/api"
 
@@ -85,7 +86,7 @@ var _ = Describe("Lock", func() {
 		fakeDurationChan = make(chan durationMetric, 5)
 
 		fakeMetronClient = new(mfakes.FakeIngressClient)
-		fakeMetronClient.SendMetricStub = func(name string, value int) error {
+		fakeMetronClient.SendMetricStub = func(name string, value int, opts ...loggregator.EmitGaugeOption) error {
 			fakeMetricChan <- intMetric{name: name, value: value}
 			return nil
 		}
