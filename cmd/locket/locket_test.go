@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -160,24 +161,31 @@ var _ = Describe("Locket", func() {
 			})
 
 			Context("when a lock is acquired", func() {
-				It("emits DBQueriesSucceeded metric", func() {
+				JustBeforeEach(func() {
 					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
 					_, err := locketClient.Lock(context.Background(), &models.LockRequest{
 						Resource:     requestedResource,
 						TtlInSeconds: 10,
 					})
 					Expect(err).NotTo(HaveOccurred())
-					Eventually(testMetricsChan).Should(Receive(And(
-						WithTransform(func(e *events.Envelope) *events.ValueMetric {
-							return e.GetValueMetric()
-						}, Not(BeNil())),
-						WithTransform(func(e *events.Envelope) string {
-							return e.GetValueMetric().GetName()
-						}, Equal("DBQueriesTotal")),
-						WithTransform(func(e *events.Envelope) float64 {
-							return e.GetValueMetric().GetValue()
-						}, BeNumerically(">", 0)),
-					)))
+				})
+
+				It("emits DBQueriesSucceeded metric", func() {
+					Eventually(testMetricsChan).Should(Receive(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+						"ValueMetric": gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+							"Name":  gstruct.PointTo(Equal("DBQueriesTotal")),
+							"Value": gstruct.PointTo(BeNumerically(">", 0)),
+						})),
+					}))))
+				})
+
+				It("increases the RequestsSucceeded metric", func() {
+					Eventually(testMetricsChan).Should(Receive(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+						"ValueMetric": gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+							"Name":  gstruct.PointTo(Equal("RequestsSucceeded")),
+							"Value": gstruct.PointTo(BeNumerically(">", 0)),
+						})),
+					}))))
 				})
 			})
 		})

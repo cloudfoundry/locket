@@ -128,6 +128,7 @@ func main() {
 		{"server", server},
 		{"burglar", burglar},
 		{"metrics-notifier", metricsNotifier},
+		{"request-metrics-notifier", requestNotifier},
 	}
 
 	if cfg.EnableConsulServiceRegistration {
