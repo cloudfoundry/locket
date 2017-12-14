@@ -37,7 +37,7 @@ type RequestMetrics interface {
 
 type RequestMetricsNotifier struct {
 	logger          lager.Logger
-	ticker          clock.Clock
+	clock           clock.Clock
 	metricsInterval time.Duration
 	metronClient    loggingclient.IngressClient
 
@@ -56,7 +56,7 @@ type RequestMetricsNotifier struct {
 func NewRequestMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration) *RequestMetricsNotifier {
 	return &RequestMetricsNotifier{
 		logger:                logger,
-		ticker:                ticker,
+		clock:                 ticker,
 		metricsInterval:       metricsInterval,
 		metronClient:          metronClient,
 		latencyLock:           &sync.Mutex{},
@@ -232,7 +232,7 @@ func (notifier *RequestMetricsNotifier) Run(signals <-chan os.Signal, ready chan
 	defer logger.Info("completed")
 	close(ready)
 
-	tick := notifier.ticker.NewTicker(notifier.metricsInterval)
+	tick := notifier.clock.NewTicker(notifier.metricsInterval)
 
 	for {
 		select {
