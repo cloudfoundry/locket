@@ -82,6 +82,7 @@ var _ = Describe("PeriodicLockHeldNotifier", func() {
 		})
 
 		It("returns an ifrit runner that sets the lock", func() {
+			fakeClock.WaitForWatcherAndIncrement(reportInterval)
 			Eventually(metricsCh).Should(Receive(Equal(metric{"LockHeld", 0})))
 
 			setLockProcess = ifrit.Invoke(setLockRunner)
