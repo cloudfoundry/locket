@@ -2,7 +2,6 @@ package lockheldmetrics_test
 
 import (
 	"os"
-	"sync"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -18,10 +17,14 @@ import (
 )
 
 var _ = Describe("PeriodicLockHeldNotifier", func() {
+	type metric struct {
+		name  string
+		value int
+	}
+
 	var (
 		fakeMetronClient *mfakes.FakeIngressClient
-		gaugeMap         map[string]int
-		metricsLock      sync.Mutex
+		metricsCh        chan metric
 
 		reportInterval time.Duration
 		fakeClock      *fakeclock.FakeClock
@@ -31,12 +34,10 @@ var _ = Describe("PeriodicLockHeldNotifier", func() {
 	)
 
 	BeforeEach(func() {
-		gaugeMap = make(map[string]int)
+		metricsCh = make(chan metric, 10)
 		fakeMetronClient = new(mfakes.FakeIngressClient)
 		fakeMetronClient.SendMetricStub = func(name string, value int, opts ...loggregator.EmitGaugeOption) error {
-			metricsLock.Lock()
-			defer metricsLock.Unlock()
-			gaugeMap[name] = value
+			metricsCh <- metric{name, value}
 			return nil
 		}
 
@@ -60,20 +61,12 @@ var _ = Describe("PeriodicLockHeldNotifier", func() {
 		mn.SetLock()
 		fakeClock.WaitForWatcherAndIncrement(reportInterval)
 
-		Eventually(func() int {
-			metricsLock.Lock()
-			defer metricsLock.Unlock()
-			return gaugeMap["LockHeld"]
-		}).Should(Equal(1))
+		Eventually(metricsCh).Should(Receive(Equal(metric{"LockHeld", 1})))
 
 		mn.UnsetLock()
 		fakeClock.WaitForWatcherAndIncrement(reportInterval)
 
-		Eventually(func() int {
-			metricsLock.Lock()
-			defer metricsLock.Unlock()
-			return gaugeMap["LockHeld"]
-		}).Should(Equal(0))
+		Eventually(metricsCh).Should(Receive(Equal(metric{"LockHeld", 0})))
 	})
 
 	Describe("SetLockHeldRunner", func() {
@@ -89,20 +82,12 @@ var _ = Describe("PeriodicLockHeldNotifier", func() {
 		})
 
 		It("returns an ifrit runner that sets the lock", func() {
-			Eventually(func() int {
-				metricsLock.Lock()
-				defer metricsLock.Unlock()
-				return gaugeMap["LockHeld"]
-			}).Should(Equal(0))
+			Eventually(metricsCh).Should(Receive(Equal(metric{"LockHeld", 0})))
 
 			setLockProcess = ifrit.Invoke(setLockRunner)
 			fakeClock.WaitForWatcherAndIncrement(reportInterval)
 
-			Eventually(func() int {
-				metricsLock.Lock()
-				defer metricsLock.Unlock()
-				return gaugeMap["LockHeld"]
-			}).Should(Equal(1))
+			Eventually(metricsCh).Should(Receive(Equal(metric{"LockHeld", 1})))
 		})
 	})
 })
