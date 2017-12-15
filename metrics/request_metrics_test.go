@@ -1,6 +1,7 @@
 package metrics_test
 
 import (
+	"fmt"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -68,7 +69,7 @@ var _ = Describe("RequestMetrics", func() {
 	})
 
 	Context("when there is traffic to the locket server", func() {
-		var requestType = "random-request"
+		var requestType = "Lock"
 
 		JustBeforeEach(func() {
 			fakeClock.Increment(metricsInterval)
@@ -164,6 +165,27 @@ var _ = Describe("RequestMetrics", func() {
 				},
 			)))
 		})
+	})
+
+	Context("on startup", func() {
+		JustBeforeEach(func() {
+			fakeClock.WaitForWatcherAndIncrement(metricsInterval)
+		})
+
+		for _, requestType := range []string{"Lock", "Release", "Fetch", "FetchAll"} {
+			for _, metric := range []string{"RequestsStarted", "RequestsSucceeded", "RequestsFailed", "RequestsInFlight", "RequestLatencyMax"} {
+				title := fmt.Sprintf("Emits the %s metric for request type %s with 0 value", metric, requestType)
+				It(title, func() {
+					Eventually(metricsChan).Should(Receive(gstruct.MatchAllFields(
+						gstruct.Fields{
+							"Name":  Equal(metric),
+							"Value": Equal(time.Duration(0)),
+							"Opts":  haveTag("request-type", requestType),
+						},
+					)))
+				})
+			}
+		}
 	})
 })
 
