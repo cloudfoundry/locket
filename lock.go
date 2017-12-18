@@ -2,7 +2,6 @@ package locket
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +11,11 @@ import (
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
 	"github.com/nu7hatch/gouuid"
+)
+
+const (
+	lockAcquiredMetricPrefix = "LockHeld."
+	lockUptimeMetricPrefix   = "LockHeldDuration."
 )
 
 var (
@@ -28,10 +32,9 @@ type Lock struct {
 
 	logger lager.Logger
 
-	lockAcquiredMetric string
-	lockUptimeMetric   string
-	lockAcquiredTime   time.Time
-	metronClient       loggingclient.IngressClient
+	lockMetricName   string
+	lockAcquiredTime time.Time
+	metronClient     loggingclient.IngressClient
 }
 
 type MetronConfig func(l *Lock)
@@ -76,9 +79,8 @@ func NewLock(
 
 		logger: logger,
 
-		lockAcquiredMetric: fmt.Sprintf("LockHeld.%s", lockMetricName),
-		lockUptimeMetric:   fmt.Sprintf("LockHeldDuration.%s", lockMetricName),
-		metronClient:       client,
+		lockMetricName: lockMetricName,
+		metronClient:   client,
 	}
 	for _, c := range configs {
 		c(&l)
@@ -171,15 +173,15 @@ func (l Lock) emitMetrics(acquired bool) {
 	}
 
 	l.logger.Debug("reemit-lock-uptime", lager.Data{"uptime": uptime,
-		"uptimeMetricName":       l.lockUptimeMetric,
-		"lockAcquiredMetricName": l.lockAcquiredMetric,
+		"uptimeMetricName":       lockUptimeMetricPrefix + l.lockMetricName,
+		"lockAcquiredMetricName": lockAcquiredMetricPrefix + l.lockMetricName,
 	})
-	err := l.metronClient.SendDuration(l.lockUptimeMetric, uptime)
+	err := l.metronClient.SendDuration(lockUptimeMetricPrefix+l.lockMetricName, uptime)
 	if err != nil {
 		l.logger.Error("failed-to-send-lock-uptime-metric", err)
 	}
 
-	err = l.metronClient.SendMetric(l.lockAcquiredMetric, acqVal)
+	err = l.metronClient.SendMetric(lockAcquiredMetricPrefix+l.lockMetricName, acqVal)
 	if err != nil {
 		l.logger.Error("failed-to-send-lock-acquired-metric", err)
 	}
