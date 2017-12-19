@@ -279,6 +279,10 @@ var _ = Describe("Lock", func() {
 				It("does not log the error", func() {
 					Expect(logger).NotTo(gbytes.Say("lock-collision"))
 				})
+
+				It("counts the request in the metrics as a success", func() {
+					metricsRecordSuccess(fakeRequestMetrics)
+				})
 			})
 		})
 

@@ -56,7 +56,7 @@ func (h *locketHandler) monitorRequest(requestType string, f func() error) error
 
 	h.metrics.UpdateLatency(requestType, time.Since(start))
 
-	if err != nil {
+	if err != nil && err != models.ErrLockCollision {
 		h.metrics.IncrementRequestsFailedCounter(requestType, 1)
 		h.exitIfUnrecoverable(err)
 	} else {
