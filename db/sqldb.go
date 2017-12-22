@@ -25,20 +25,20 @@ type Lock struct {
 }
 
 type SQLDB struct {
-	helpers.DB
+	helpers.QueryableDB
 	flavor       string
 	helper       helpers.SQLHelper
 	guidProvider guidprovider.GUIDProvider
 }
 
 func NewSQLDB(
-	db helpers.DB,
+	db helpers.QueryableDB,
 	flavor string,
 	guidProvider guidprovider.GUIDProvider,
 ) *SQLDB {
 	helper := helpers.NewSQLHelper(flavor)
 	return &SQLDB{
-		DB:           db,
+		QueryableDB:  db,
 		flavor:       flavor,
 		helper:       helper,
 		guidProvider: guidProvider,
