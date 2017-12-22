@@ -56,29 +56,7 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			return nil
 		case <-tick.C():
 			logger.Debug("emitting-metrics")
-			locks, err := notifier.lockDB.Count(logger, models.LockType)
-			if err != nil {
-				logger.Error("failed-to-retrieve-lock-count", err)
-				continue
-			}
-
-			presences, err := notifier.lockDB.Count(logger, models.PresenceType)
-			if err != nil {
-				logger.Error("failed-to-retrieve-presence-count", err)
-				continue
-			}
-
-			err = notifier.metronClient.SendMetric(activeLocksMetric, locks)
-			if err != nil {
-				logger.Error("failed-sending-lock-count", err)
-			}
-
-			err = notifier.metronClient.SendMetric(activePresencesMetric, presences)
-			if err != nil {
-				logger.Error("failed-sending-presences-count", err)
-			}
-
-			err = notifier.metronClient.SendMetric(dbOpenConnectionsMetric, notifier.lockDB.OpenConnections())
+			err := notifier.metronClient.SendMetric(dbOpenConnectionsMetric, notifier.lockDB.OpenConnections())
 			if err != nil {
 				logger.Error("failed-sending-db-open-connections-count", err)
 			}
@@ -113,6 +91,27 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			if err != nil {
 				logger.Error("inFlight-sending-db-query-duration-max", err)
 			}
+
+			locks, err := notifier.lockDB.Count(logger, models.LockType)
+			if err != nil {
+				logger.Error("failed-to-retrieve-lock-count", err)
+			} else {
+				err = notifier.metronClient.SendMetric(activeLocksMetric, locks)
+				if err != nil {
+					logger.Error("failed-sending-lock-count", err)
+				}
+			}
+
+			presences, err := notifier.lockDB.Count(logger, models.PresenceType)
+			if err != nil {
+				logger.Error("failed-to-retrieve-presence-count", err)
+			} else {
+				err = notifier.metronClient.SendMetric(activePresencesMetric, presences)
+				if err != nil {
+					logger.Error("failed-sending-presences-count", err)
+				}
+			}
+
 			logger.Debug("emitted-metrics")
 		}
 	}

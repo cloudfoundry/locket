@@ -15,7 +15,6 @@ import (
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -92,7 +91,6 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("when there are no errors retrieving counts from database", func() {
-
 		BeforeEach(func() {
 			lockDBMetrics.OpenConnectionsReturns(100)
 			queryMonitor.QueriesInFlightReturns(5)
@@ -106,13 +104,13 @@ var _ = Describe("Metrics", func() {
 			fakeClock.Increment(metricsInterval)
 		})
 
-		It("periodically emits metric for number of active locks", func() {
+		It("emits a metric for the number of active locks", func() {
 			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActiveLocks", 3})))
 			fakeClock.Increment(metricsInterval)
 			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActiveLocks", 3})))
 		})
 
-		It("emits metric for number of active presences", func() {
+		It("emits a metric for the number of active presences", func() {
 			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActivePresences", 2})))
 			fakeClock.Increment(metricsInterval)
 			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"ActivePresences", 2})))
@@ -158,15 +156,68 @@ var _ = Describe("Metrics", func() {
 	Context("when there are errors retrieving counts from database", func() {
 		BeforeEach(func() {
 			lockDBMetrics.CountReturns(1, errors.New("DB error"))
+			lockDBMetrics.OpenConnectionsReturns(100)
+			queryMonitor.QueriesInFlightReturns(5)
+			queryMonitor.QueriesTotalReturns(105)
+			queryMonitor.QueriesSucceededReturns(90)
+			queryMonitor.QueriesFailedReturns(10)
+			queryMonitor.ReadAndResetQueryDurationMaxReturns(time.Second)
 		})
 
 		JustBeforeEach(func() {
 			fakeClock.Increment(metricsInterval)
 		})
 
-		It("does not emit metrics", func() {
-			Eventually(logger).Should(gbytes.Say("failed-to-retrieve-lock-count"))
-			Consistently(fakeMetronClient.SendMetricCallCount()).Should(Equal(0))
+		It("emits a metric for the number of open database connections", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
+		})
+
+		It("emits a metric for the number of total queries against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesTotal", 105})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesTotal", 105})))
+		})
+
+		It("emits a metric for the number of queries succeeded against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesSucceeded", 90})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesSucceeded", 90})))
+		})
+
+		It("emits a metric for the number of queries failed against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesFailed", 10})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesFailed", 10})))
+		})
+
+		It("emits a metric for the number of queries in flight against the database", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
+		})
+
+		It("emits a metric for the max duration of queries", func() {
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueryDurationMax", int(time.Second)})))
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueryDurationMax", int(time.Second)})))
+		})
+
+		It("does not emit a metric for the number of active locks", func() {
+			Eventually(func() int { return len(metricsChan) }).Should(BeNumerically(">=", 5))
+			for i := 0; i < fakeMetronClient.SendMetricCallCount(); i++ {
+				args, _, _ := fakeMetronClient.SendMetricArgsForCall(i)
+				Expect(args).NotTo(Equal("ActiveLocks"))
+			}
+		})
+
+		It("does not emit a metric for the number of active presences", func() {
+			Eventually(func() int { return len(metricsChan) }).Should(BeNumerically(">=", 5))
+			for i := 0; i < fakeMetronClient.SendMetricCallCount(); i++ {
+				args, _, _ := fakeMetronClient.SendMetricArgsForCall(i)
+				Expect(args).NotTo(Equal("ActiveLocks"))
+			}
 		})
 	})
 })
