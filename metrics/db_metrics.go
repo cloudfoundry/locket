@@ -8,13 +8,10 @@ import (
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/locket/models"
 	"github.com/tedsuo/ifrit"
 )
 
 const (
-	activeLocksMetric        = "ActiveLocks"
-	activePresencesMetric    = "ActivePresences"
 	dbOpenConnectionsMetric  = "DBOpenConnections"
 	dbQueriesTotalMetric     = "DBQueriesTotal"
 	dbQueriesSucceededMetric = "DBQueriesSucceeded"
@@ -23,17 +20,17 @@ const (
 	dbQueryDurationMaxMetric = "DBQueryDurationMax"
 )
 
-type metricsNotifier struct {
+type dbMetricsNotifier struct {
 	logger          lager.Logger
 	ticker          clock.Clock
 	metricsInterval time.Duration
-	lockDB          LockDBMetrics
+	lockDB          helpers.QueryableDB
 	metronClient    loggingclient.IngressClient
 	queryMonitor    helpers.QueryMonitor
 }
 
-func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB LockDBMetrics, queryMonitor helpers.QueryMonitor) ifrit.Runner {
-	return &metricsNotifier{
+func NewDBMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB helpers.QueryableDB, queryMonitor helpers.QueryMonitor) ifrit.Runner {
+	return &dbMetricsNotifier{
 		logger:          logger,
 		ticker:          ticker,
 		metricsInterval: metricsInterval,
@@ -43,7 +40,7 @@ func NewMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient lo
 	}
 }
 
-func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := notifier.logger.Session("metrics-notifier")
 	logger.Info("starting", lager.Data{"interval": notifier.metricsInterval})
 	defer logger.Info("completed")
@@ -90,26 +87,6 @@ func (notifier *metricsNotifier) Run(signals <-chan os.Signal, ready chan<- stru
 			err = notifier.metronClient.SendDuration(dbQueryDurationMaxMetric, queryDurationMax)
 			if err != nil {
 				logger.Error("inFlight-sending-db-query-duration-max", err)
-			}
-
-			locks, err := notifier.lockDB.Count(logger, models.LockType)
-			if err != nil {
-				logger.Error("failed-to-retrieve-lock-count", err)
-			} else {
-				err = notifier.metronClient.SendMetric(activeLocksMetric, locks)
-				if err != nil {
-					logger.Error("failed-sending-lock-count", err)
-				}
-			}
-
-			presences, err := notifier.lockDB.Count(logger, models.PresenceType)
-			if err != nil {
-				logger.Error("failed-to-retrieve-presence-count", err)
-			} else {
-				err = notifier.metronClient.SendMetric(activePresencesMetric, presences)
-				if err != nil {
-					logger.Error("failed-sending-presences-count", err)
-				}
 			}
 
 			logger.Debug("emitted-metrics")

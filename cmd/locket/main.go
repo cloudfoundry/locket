@@ -117,17 +117,20 @@ func main() {
 		logger.Fatal("invalid-tls-config", err)
 	}
 
-	metricsNotifier := metrics.NewMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB, dbMonitor)
+	lockMetricsNotifier := metrics.NewLockMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB)
+	dbMetricsNotifier := metrics.NewDBMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB, dbMonitor)
 	requestNotifier := metrics.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval))
 	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
 	exitCh := make(chan struct{})
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, requestNotifier, exitCh)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)
+
 	members := grouper.Members{
 		{"server", server},
 		{"burglar", burglar},
-		{"metrics-notifier", metricsNotifier},
+		{"lock-metrics-notifier", lockMetricsNotifier},
+		{"db-metrics-notifier", dbMetricsNotifier},
 		{"request-metrics-notifier", requestNotifier},
 	}
 
