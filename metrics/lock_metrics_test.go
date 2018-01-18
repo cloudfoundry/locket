@@ -35,8 +35,6 @@ var _ = Describe("LockMetrics", func() {
 		metricsChan      chan FakeGauge
 	)
 
-	metricsChan = make(chan FakeGauge, 100)
-
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("metrics")
 		fakeMetronClient = new(mfakes.FakeIngressClient)
@@ -56,10 +54,13 @@ var _ = Describe("LockMetrics", func() {
 			}
 		}
 
+		metricsChan = make(chan FakeGauge, 100)
+
+		ch := metricsChan
 		fakeMetronClient.SendMetricStub = func(name string, value int, opts ...loggregator.EmitGaugeOption) error {
 			defer GinkgoRecover()
 
-			Eventually(metricsChan).Should(BeSent(FakeGauge{name, value}))
+			Eventually(ch).Should(BeSent(FakeGauge{name, value}))
 			return nil
 		}
 	})
