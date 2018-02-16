@@ -46,7 +46,7 @@ var _ = SynchronizedBeforeSuite(
 	},
 	func(locketBinPathData []byte) {
 		node := GinkgoParallelNode()
-		startPort := 1050 * node // make sure we don't conflict with etcd ports 4000+GinkgoParallelNode & 7000+GinkgoParallelNode (4000,7000,40001,70001...)
+		startPort := 1050 * node
 		portRange := 1000
 		endPort := startPort + portRange
 
