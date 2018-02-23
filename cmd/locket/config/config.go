@@ -19,7 +19,6 @@ type LocketConfig struct {
 	DatabaseConnectionString        string                `json:"database_connection_string"`
 	MaxOpenDatabaseConnections      int                   `json:"max_open_database_connections,omitempty"`
 	DatabaseDriver                  string                `json:"database_driver,omitempty"`
-	DropsondePort                   int                   `json:"dropsonde_port,omitempty"`
 	KeyFile                         string                `json:"key_file"`
 	ListenAddress                   string                `json:"listen_address"`
 	SQLCACertFile                   string                `json:"sql_ca_cert_file,omitempty"`

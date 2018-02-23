@@ -13,7 +13,6 @@ import (
 
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
-	"github.com/cloudfoundry/dropsonde"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/consul/api"
 	"github.com/lib/pq"
@@ -36,10 +35,6 @@ import (
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics"
-)
-
-const (
-	dropsondeOrigin = "locket"
 )
 
 var configFilePath = flag.String(
@@ -167,14 +162,6 @@ func main() {
 	}
 }
 
-func initializeDropsonde(logger lager.Logger, dropsondePort int) {
-	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
-	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
-	if err != nil {
-		logger.Error("failed to initialize dropsonde: %v", err)
-	}
-}
-
 func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggingclient.IngressClient, error) {
 	client, err := loggingclient.NewIngressClient(locketConfig.LoggregatorConfig)
 	if err != nil {
@@ -184,8 +171,6 @@ func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (lo
 	if locketConfig.LoggregatorConfig.UseV2API {
 		emitter := runtimeemitter.NewV1(client)
 		go emitter.Run()
-	} else {
-		initializeDropsonde(logger, locketConfig.DropsondePort)
 	}
 
 	return client, nil

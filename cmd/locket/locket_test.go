@@ -17,13 +17,10 @@ import (
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/locket/models"
 
-	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gstruct"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -83,77 +80,37 @@ var _ = Describe("Locket", func() {
 
 		var (
 			testIngressServer *testhelpers.TestIngressServer
-			testMetricsChan   chan loggregator_v2.Ingress_BatchSenderServer
-			err               error
+			testMetricsChan   chan *loggregator_v2.Envelope
+			testMetricsPort   int
+			signalMetricsChan chan struct{}
 		)
+
+		BeforeEach(func() {
+			var err error
+			testIngressServer, err = testhelpers.NewTestIngressServer("fixtures/metron/metron.crt", "fixtures/metron/metron.key", "fixtures/metron/CA.crt")
+			Expect(err).NotTo(HaveOccurred())
+			receiversChan := testIngressServer.Receivers()
+			testIngressServer.Start()
+			testMetricsPort, err = strconv.Atoi(strings.TrimPrefix(testIngressServer.Addr(), "127.0.0.1:"))
+			Expect(err).NotTo(HaveOccurred())
+
+			testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+		})
+
+		AfterEach(func() {
+			testIngressServer.Stop()
+			close(signalMetricsChan)
+		})
 
 		Context("when using the v2 api", func() {
 			BeforeEach(func() {
-				testIngressServer, err = testhelpers.NewTestIngressServer("fixtures/metron/metron.crt", "fixtures/metron/metron.key", "fixtures/metron/CA.crt")
-				Expect(err).NotTo(HaveOccurred())
-				testMetricsChan = testIngressServer.Receivers()
-				testIngressServer.Start()
-				port, err := strconv.Atoi(strings.TrimPrefix(testIngressServer.Addr(), "127.0.0.1:"))
-				Expect(err).NotTo(HaveOccurred())
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
 					cfg.LoggregatorConfig.UseV2API = true
-					cfg.LoggregatorConfig.APIPort = port
+					cfg.LoggregatorConfig.APIPort = testMetricsPort
 					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
 					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
 					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
 				})
-			})
-
-			AfterEach(func() {
-				testIngressServer.Stop()
-			})
-			It("emits metrics", func() {
-				Eventually(testMetricsChan).Should(Receive())
-			})
-		})
-
-		Context("when using the v1 api", func() {
-			var (
-				testMetricsListener net.PacketConn
-				testMetricsChan     chan *events.Envelope
-			)
-
-			BeforeEach(func() {
-				testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
-				testMetricsChan = make(chan *events.Envelope, 1)
-				go func() {
-					logger := logger.Session("fake-metron-agent")
-					defer GinkgoRecover()
-					for {
-						buffer := make([]byte, 1024)
-						n, _, err := testMetricsListener.ReadFrom(buffer)
-						if err != nil {
-							logger.Error("received-an-error", err)
-							close(testMetricsChan)
-							return
-						}
-
-						var envelope events.Envelope
-						err = proto.Unmarshal(buffer[:n], &envelope)
-						Expect(err).NotTo(HaveOccurred())
-						testMetricsChan <- &envelope
-					}
-				}()
-				port, err := strconv.Atoi(strings.TrimPrefix(testMetricsListener.LocalAddr().String(), "127.0.0.1:"))
-				Expect(err).NotTo(HaveOccurred())
-
-				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-					cfg.DropsondePort = port
-					cfg.LoggregatorConfig.UseV2API = false
-					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
-				})
-			})
-
-			AfterEach(func() {
-				testMetricsListener.Close()
-				Eventually(testMetricsChan).Should(BeClosed())
 			})
 
 			It("emits metrics", func() {
@@ -170,23 +127,45 @@ var _ = Describe("Locket", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				It("emits DBQueriesSucceeded metric", func() {
-					Eventually(testMetricsChan).Should(Receive(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-						"ValueMetric": gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-							"Name":  gstruct.PointTo(Equal("DBQueriesTotal")),
-							"Value": gstruct.PointTo(BeNumerically(">", 0)),
-						})),
-					}))))
+				It("emits DBQueriesTotal metric", func() {
+					metricName := "DBQueriesTotal"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
 				})
 
 				It("increases the RequestsSucceeded metric", func() {
-					Eventually(testMetricsChan).Should(Receive(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-						"ValueMetric": gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-							"Name":  gstruct.PointTo(Equal("RequestsSucceeded")),
-							"Value": gstruct.PointTo(BeNumerically(">", 0)),
-						})),
-					}))))
+					metricName := "RequestsSucceeded"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
 				})
+			})
+		})
+
+		Context("when not using the v2 api", func() {
+			BeforeEach(func() {
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.LoggregatorConfig.UseV2API = false
+					cfg.LoggregatorConfig.APIPort = testMetricsPort
+					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
+					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
+					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+				})
+			})
+
+			It("does not emit metrics", func() {
+				Consistently(testMetricsChan).ShouldNot(Receive())
 			})
 		})
 	})
