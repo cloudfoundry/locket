@@ -65,7 +65,6 @@ var _ = Describe("LockPick", func() {
 		fakeLockDB = &dbfakes.FakeLockDB{}
 		fakeMetronClient = new(mfakes.FakeIngressClient)
 
-		sender.Reset()
 		lockPick = expiration.NewLockPick(fakeLockDB, fakeClock, fakeMetronClient)
 	})
 
