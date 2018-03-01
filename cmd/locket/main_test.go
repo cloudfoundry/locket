@@ -3,7 +3,10 @@ package main_test
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -57,6 +61,29 @@ var _ = Describe("Locket", func() {
 				cfg.ReportInterval = durationjson.Duration(time.Second)
 			},
 		}
+	})
+
+	Context("when an invalid config is passe", func() {
+		var (
+			configFile string
+		)
+
+		BeforeEach(func() {
+			locketConfigFilePath, err := ioutil.TempFile(os.TempDir(), "locket-config")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = locketConfigFilePath.Write([]byte(`{"foo":`))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(locketConfigFilePath.Close()).To(Succeed())
+			configFile = locketConfigFilePath.Name()
+		})
+
+		It("prints a meaningfull error to the user", func() {
+			session, err := gexec.Start(exec.Command(locketBinPath, "-config="+configFile), GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session.Exited).Should(BeClosed())
+			Expect(session.ExitCode()).To(Equal(2))
+			Expect(session.Err).To(gbytes.Say("invalid-config-file"))
+		})
 	})
 
 	JustBeforeEach(func() {

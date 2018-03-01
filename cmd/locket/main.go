@@ -48,8 +48,7 @@ func main() {
 
 	cfg, err := config.NewLocketConfig(*configFilePath)
 	if err != nil {
-		logger, _ := lagerflags.New("locket")
-		logger.Fatal("invalid-config-file", err)
+		panic("invalid-config-file: " + err.Error())
 	}
 
 	logger, reconfigurableSink := lagerflags.NewFromConfig("locket", cfg.LagerConfig)
