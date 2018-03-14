@@ -22,7 +22,7 @@ type LocketConfig struct {
 	KeyFile                         string                `json:"key_file"`
 	ListenAddress                   string                `json:"listen_address"`
 	SQLCACertFile                   string                `json:"sql_ca_cert_file,omitempty"`
-	LoggregatorConfig               loggingclient.Config  `json:"loggregator"`
+	LoggregatorConfig               *loggingclient.Config  `json:"loggregator,omitempty"`
 	ReportInterval                  durationjson.Duration `json:"report_interval,omitempty"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
@@ -33,6 +33,9 @@ func DefaultLocketConfig() LocketConfig {
 		LagerConfig:    lagerflags.DefaultLagerConfig(),
 		DatabaseDriver: "mysql",
 		ReportInterval: durationjson.Duration(1 * time.Minute),
+		LoggregatorConfig: &loggingclient.Config{
+			SourceID: "locket",
+		},
 	}
 }
 

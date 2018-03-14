@@ -162,7 +162,7 @@ func main() {
 }
 
 func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggingclient.IngressClient, error) {
-	client, err := loggingclient.NewIngressClient(locketConfig.LoggregatorConfig)
+	client, err := loggingclient.NewIngressClient(*locketConfig.LoggregatorConfig)
 	if err != nil {
 		return nil, err
 	}
