@@ -115,7 +115,7 @@ func main() {
 	dbMetricsNotifier := metrics.NewDBMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB, dbMonitor)
 	requestNotifier := metrics.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval))
 	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
-	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval)
+	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval, metronClient)
 	exitCh := make(chan struct{})
 	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, requestNotifier, exitCh)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)

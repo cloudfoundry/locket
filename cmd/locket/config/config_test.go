@@ -35,17 +35,15 @@ var _ = Describe("LocketConfig", func() {
 			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
       "report_interval":"1s",
 			"loggregator": {
-			  "loggregator_use_v2_api": true,
-			  "loggregator_api_port": 1234,
-			  "loggregator_ca_path": "/var/ca_cert",
-			  "loggregator_cert_path": "/var/cert_path",
-			  "loggregator_key_path": "/var/key_path",
-				"loggregator_job_deployment": "job1",
-				"loggregator_job_name": "myjob",
-				"loggregator_job_index": "1",
-				"loggregator_job_ip": "1.1.1.1",
+				"loggregator_use_v2_api": true,
+				"loggregator_api_port": 1234,
+				"loggregator_ca_path": "/var/ca_cert",
+				"loggregator_cert_path": "/var/cert_path",
+				"loggregator_key_path": "/var/key_path",
+				"loggregator_source_id": "my-source-id",
+				"loggregator_instance_id": "1",
 				"loggregator_job_origin": "Earth"
-		  }
+			}
 		}`
 	})
 
@@ -87,16 +85,14 @@ var _ = Describe("LocketConfig", func() {
 			KeyFile:       "i am a key file",
 			SQLCACertFile: "/var/vcap/jobs/locket/config/sql.ca",
 			LoggregatorConfig: loggingclient.Config{
-				UseV2API:      true,
-				APIPort:       1234,
-				CACertPath:    "/var/ca_cert",
-				CertPath:      "/var/cert_path",
-				KeyPath:       "/var/key_path",
-				JobDeployment: "job1",
-				JobName:       "myjob",
-				JobIndex:      "1",
-				JobIP:         "1.1.1.1",
-				JobOrigin:     "Earth",
+				UseV2API:   true,
+				APIPort:    1234,
+				CACertPath: "/var/ca_cert",
+				CertPath:   "/var/cert_path",
+				KeyPath:    "/var/key_path",
+				JobOrigin:  "Earth",
+				SourceID:   "my-source-id",
+				InstanceID: "1",
 			},
 			ReportInterval: durationjson.Duration(time.Second),
 		}

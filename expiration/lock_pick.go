@@ -2,6 +2,7 @@ package expiration
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock"
@@ -19,14 +20,17 @@ const (
 //go:generate counterfeiter . LockPick
 type LockPick interface {
 	RegisterTTL(logger lager.Logger, lock *db.Lock)
+	ExpirationCounts() (uint32, uint32) // return lock and presence expirations, resp.
 }
 
 type lockPick struct {
-	lockDB       db.LockDB
-	clock        clock.Clock
-	metronClient loggingclient.IngressClient
-	lockTTLs     map[checkKey]chanAndIndex
-	lockMutex    *sync.Mutex
+	lockDB                db.LockDB
+	clock                 clock.Clock
+	metronClient          loggingclient.IngressClient
+	lockTTLs              map[checkKey]chanAndIndex
+	lockMutex             *sync.Mutex
+	presencesExpiredCount *uint32
+	locksExpiredCount     *uint32
 }
 
 type chanAndIndex struct {
@@ -41,12 +45,18 @@ type checkKey struct {
 
 func NewLockPick(lockDB db.LockDB, clock clock.Clock, metronClient loggingclient.IngressClient) lockPick {
 	return lockPick{
-		lockDB:       lockDB,
-		clock:        clock,
-		metronClient: metronClient,
-		lockTTLs:     make(map[checkKey]chanAndIndex),
-		lockMutex:    &sync.Mutex{},
+		lockDB:                lockDB,
+		clock:                 clock,
+		metronClient:          metronClient,
+		lockTTLs:              make(map[checkKey]chanAndIndex),
+		lockMutex:             &sync.Mutex{},
+		presencesExpiredCount: new(uint32),
+		locksExpiredCount:     new(uint32),
 	}
+}
+
+func (l lockPick) ExpirationCounts() (uint32, uint32) {
+	return atomic.LoadUint32(l.locksExpiredCount), atomic.LoadUint32(l.presencesExpiredCount)
 }
 
 func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
@@ -101,15 +111,11 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 
 			if expired {
 				logger.Info("lock-expired")
-
-				switch lock.Type {
-				case models.LockType:
-					l.metronClient.IncrementCounter(locksExpiredCounter)
-				case models.PresenceType:
-					l.metronClient.IncrementCounter(presenceExpiredCounter)
-				default:
-					logger.Debug("unknown-logger-type")
+				counter := l.locksExpiredCount
+				if lock.Type == models.PresenceType {
+					counter = l.presencesExpiredCount
 				}
+				atomic.AddUint32(counter, 1)
 			}
 			return
 		}

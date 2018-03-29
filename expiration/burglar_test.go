@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
@@ -30,6 +31,7 @@ var _ = Describe("Burglar", func() {
 
 		expectedLock1, expectedLock2 *db.Lock
 		checkInterval                time.Duration
+		fakeMetronClient             *mfakes.FakeIngressClient
 	)
 
 	BeforeEach(func() {
@@ -40,9 +42,11 @@ var _ = Describe("Burglar", func() {
 
 		expectedLock1 = &db.Lock{
 			Resource: &models.Resource{
-				Key:   "funky",
-				Owner: "town",
-				Value: "won't you take me to",
+				Key:      "funky",
+				Owner:    "town",
+				Value:    "won't you take me to",
+				Type:     "lock",
+				TypeCode: models.LOCK,
 			},
 			TtlInSeconds:  25,
 			ModifiedIndex: 3587584357348,
@@ -50,9 +54,11 @@ var _ = Describe("Burglar", func() {
 
 		expectedLock2 = &db.Lock{
 			Resource: &models.Resource{
-				Key:   "clif",
-				Owner: "bar",
-				Value: "chocolate chip",
+				Key:      "clif",
+				Owner:    "bar",
+				Value:    "chocolate chip",
+				Type:     "presence",
+				TypeCode: models.PRESENCE,
 			},
 			TtlInSeconds:  437,
 			ModifiedIndex: 2346,
@@ -61,10 +67,11 @@ var _ = Describe("Burglar", func() {
 		checkInterval = 5 * time.Second
 
 		fakeLockDB.FetchAllReturns([]*db.Lock{expectedLock1, expectedLock2}, nil)
+		fakeMetronClient = new(mfakes.FakeIngressClient)
 	})
 
 	JustBeforeEach(func() {
-		runner = expiration.NewBurglar(logger, fakeLockDB, fakeLockPick, fakeClock, checkInterval)
+		runner = expiration.NewBurglar(logger, fakeLockDB, fakeLockPick, fakeClock, checkInterval, fakeMetronClient)
 		process = ifrit.Background(runner)
 	})
 
@@ -104,6 +111,27 @@ var _ = Describe("Burglar", func() {
 		_, lockType = fakeLockDB.FetchAllArgsForCall(initialFetchAllCallCount + 1 - 1)
 		Expect(lockType).To(Equal(""))
 		Eventually(fakeLockPick.RegisterTTLCallCount).Should(Equal(initialRegisterTTLCallCount + 2))
+	})
+
+	It("periodically emits a counter metric showing the lock and presence haven't expired", func() {
+		counter := 0
+		fakeLockPick.ExpirationCountsStub = func() (uint32, uint32) {
+			counter++
+			return uint32(counter), uint32(counter)
+		}
+
+		for i := 0; i < 4; i++ {
+			fakeClock.WaitForNWatchersAndIncrement(60*time.Second, 1)
+
+			Eventually(fakeMetronClient.SendMetricCallCount).Should(BeEquivalentTo(2 * (i + 1)))
+			metric, value, _ := fakeMetronClient.SendMetricArgsForCall(i * 2)
+			Expect(metric).To(BeEquivalentTo("LocksExpired"))
+			Expect(value).To(BeNumerically(">=", i))
+
+			metric, value, _ = fakeMetronClient.SendMetricArgsForCall(i*2 + 1)
+			Expect(metric).To(BeEquivalentTo("PresenceExpired"))
+			Expect(value).To(BeNumerically(">=", i))
+		}
 	})
 
 	Context("when fetching the locks fails", func() {

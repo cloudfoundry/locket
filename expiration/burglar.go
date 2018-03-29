@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/db"
 )
 
@@ -15,15 +17,17 @@ type burglar struct {
 	lockPick      LockPick
 	clock         clock.Clock
 	checkInterval time.Duration
+	metronClient  loggingclient.IngressClient
 }
 
-func NewBurglar(logger lager.Logger, lockDB db.LockDB, lockPick LockPick, clock clock.Clock, checkInterval time.Duration) burglar {
+func NewBurglar(logger lager.Logger, lockDB db.LockDB, lockPick LockPick, clock clock.Clock, checkInterval time.Duration, metronClient loggingclient.IngressClient) burglar {
 	return burglar{
 		logger:        logger,
 		lockDB:        lockDB,
 		lockPick:      lockPick,
 		clock:         clock,
 		checkInterval: checkInterval,
+		metronClient:  metronClient,
 	}
 }
 
@@ -43,6 +47,7 @@ func (b burglar) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	check := b.clock.NewTicker(b.checkInterval)
+	expirationCheck := b.clock.NewTicker(locket.ExpirationMetricsInterval)
 
 	close(ready)
 
@@ -61,8 +66,10 @@ func (b burglar) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			for _, lock := range locks {
 				b.lockPick.RegisterTTL(logger, lock)
 			}
+		case <-expirationCheck.C():
+			locksExpired, presencesExpired := b.lockPick.ExpirationCounts()
+			b.metronClient.SendMetric(locksExpiredCounter, int(locksExpired))
+			b.metronClient.SendMetric(presenceExpiredCounter, int(presencesExpired))
 		}
 	}
-
-	return nil
 }

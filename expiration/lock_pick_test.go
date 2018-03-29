@@ -83,20 +83,24 @@ var _ = Describe("LockPick", func() {
 			Expect(lock).To(Equal(oldLock))
 		})
 
-		It("emits a counter metric for lock expiration", func() {
+		It("increments the count for lock expiration", func() {
 			lockPick.RegisterTTL(logger, lock)
 			fakeClock.WaitForNWatchersAndIncrement(ttl, 1)
 
-			Eventually(fakeMetronClient.IncrementCounterCallCount).Should(BeEquivalentTo(1))
-			Eventually(fakeMetronClient.IncrementCounterArgsForCall(0)).Should(BeEquivalentTo("LocksExpired"))
+			Eventually(func() uint32 {
+				locksExpired, _ := lockPick.ExpirationCounts()
+				return locksExpired
+			}).Should(BeEquivalentTo(1))
 		})
 
-		It("emits a counter metric for presence expiration", func() {
+		It("increments the count for presence expiration", func() {
 			lockPick.RegisterTTL(logger, presence)
 			fakeClock.WaitForNWatchersAndIncrement(ttl, 1)
 
-			Eventually(fakeMetronClient.IncrementCounterCallCount).Should(BeEquivalentTo(1))
-			Eventually(fakeMetronClient.IncrementCounterArgsForCall(0)).Should(BeEquivalentTo("PresenceExpired"))
+			Eventually(func() uint32 {
+				_, presencesExpired := lockPick.ExpirationCounts()
+				return presencesExpired
+			}).Should(BeEquivalentTo(1))
 		})
 
 		It("logs the type of the lock", func() {
