@@ -101,3 +101,7 @@ The following errors can be returned:
 A [FetchResponse](https://godoc.org/code.cloudfoundry.org/locket/models#FetchResponse) will include the following field:
 
 1. `Resource` the resource that was requested. A grpc error will be returned if the resource with the given key was not found.
+
+## SQL
+
+For a description of Locket database schema see [schema-description.md](schema-description.md)
