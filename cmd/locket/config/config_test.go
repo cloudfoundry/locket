@@ -42,7 +42,7 @@ var _ = Describe("LocketConfig", func() {
 				"loggregator_key_path": "/var/key_path",
 				"loggregator_job_origin": "Earth",
 				"loggregator_source_id": "my-source-id",
-				"loggregator_instance_id": 1
+				"loggregator_instance_id": "my-instance-id"
 			}
 		}`
 	})
@@ -92,7 +92,7 @@ var _ = Describe("LocketConfig", func() {
 				KeyPath:    "/var/key_path",
 				JobOrigin:  "Earth",
 				SourceID:   "my-source-id",
-				InstanceID: 1,
+				InstanceID: "my-instance-id",
 			},
 			ReportInterval: durationjson.Duration(time.Second),
 		}
