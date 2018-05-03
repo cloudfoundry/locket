@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cfhttp"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	. "github.com/onsi/gomega"
@@ -26,9 +27,10 @@ var (
 
 func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) *ginkgomon.Runner {
 	cfg := &config.LocketConfig{
-		CaFile:   caCertFile,
-		CertFile: certFile,
-		KeyFile:  keyFile,
+		CaFile:            caCertFile,
+		CertFile:          certFile,
+		KeyFile:           keyFile,
+		LoggregatorConfig: &loggingclient.Config{},
 	}
 
 	for _, f := range fs {
