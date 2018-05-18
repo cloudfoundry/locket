@@ -12,11 +12,6 @@ import (
 	"code.cloudfoundry.org/locket/models"
 )
 
-const (
-	locksExpiredCounter    = "LocksExpired"
-	presenceExpiredCounter = "PresenceExpired"
-)
-
 //go:generate counterfeiter . LockPick
 type LockPick interface {
 	RegisterTTL(logger lager.Logger, lock *db.Lock)

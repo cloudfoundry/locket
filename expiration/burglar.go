@@ -11,6 +11,11 @@ import (
 	"code.cloudfoundry.org/locket/db"
 )
 
+const (
+	locksExpiredCounter    = "LocksExpired"
+	presenceExpiredCounter = "PresenceExpired"
+)
+
 type burglar struct {
 	logger        lager.Logger
 	lockDB        db.LockDB
