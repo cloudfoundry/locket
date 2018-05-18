@@ -121,16 +121,19 @@ var _ = Describe("Burglar", func() {
 		}
 
 		for i := 0; i < 4; i++ {
-			fakeClock.WaitForNWatchersAndIncrement(60*time.Second, 1)
+			fakeClock.WaitForNWatchersAndIncrement(60*time.Second, 2)
 
 			Eventually(fakeMetronClient.SendMetricCallCount).Should(BeEquivalentTo(2 * (i + 1)))
 			metric, value, _ := fakeMetronClient.SendMetricArgsForCall(i * 2)
 			Expect(metric).To(BeEquivalentTo("LocksExpired"))
-			Expect(value).To(BeNumerically(">=", i))
+			Expect(value).To(BeEquivalentTo(i + 1))
 
 			metric, value, _ = fakeMetronClient.SendMetricArgsForCall(i*2 + 1)
 			Expect(metric).To(BeEquivalentTo("PresenceExpired"))
-			Expect(value).To(BeNumerically(">=", i))
+			Expect(value).To(BeEquivalentTo(i + 1))
+
+			// make sure the other case statement is executed
+			Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(i + 2))
 		}
 	})
 
