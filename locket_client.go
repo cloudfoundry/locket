@@ -1,6 +1,7 @@
 package locket
 
 import (
+	"net"
 	"time"
 
 	"code.cloudfoundry.org/cfhttp"
@@ -37,11 +38,22 @@ func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertV
 	}
 	locketTLSConfig.InsecureSkipVerify = skipCertVerify
 
+	// TODO: test the following code when the following change is released:
+	// 1. https://go-review.googlesource.com/c/go/+/115855
+	// 2. https://github.com/golang/go/issues/12503
+	//
+	// We will need the mentioned change in order to mock the dns resolver to
+	// return a list of addresses. We will also need to add a new NewClient
+	// method that accepts a dialer in order to mock the ipsec (blocking) issue
+	// we ran into in https://www.pivotaltracker.com/story/show/158104990
 	conn, err := grpc.Dial(
 		config.LocketAddress,
 		grpc.WithTransportCredentials(credentials.NewTLS(locketTLSConfig)),
+		grpc.WithDialer(func(addr string, _ time.Duration) (net.Conn, error) {
+			return net.DialTimeout("tcp", addr, 10*time.Second) // give at least 2 seconds per ip address (assuming there are at most 5)
+		}),
 		grpc.WithBlock(),
-		grpc.WithTimeout(1*time.Second),
+		grpc.WithTimeout(10*time.Second), // ensure that grpc won't keep retrying forever
 	)
 	if err != nil {
 		return nil, err
