@@ -7,6 +7,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
@@ -61,281 +63,225 @@ var _ = Describe("Locket", func() {
 		}
 	})
 
-	JustBeforeEach(func() {
-		locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
+	Context("when an invalid config is passe", func() {
+		var (
+			configFile string
+		)
+
+		BeforeEach(func() {
+			locketConfigFilePath, err := ioutil.TempFile(os.TempDir(), "locket-config")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = locketConfigFilePath.Write([]byte(`{"foo":`))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(locketConfigFilePath.Close()).To(Succeed())
+			configFile = locketConfigFilePath.Name()
+		})
+
+		It("prints a meaningfull error to the user", func() {
+			session, err := gexec.Start(exec.Command(locketBinPath, "-config="+configFile), GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session.Exited).Should(BeClosed())
+			Expect(session.ExitCode()).To(Equal(2))
+			Expect(session.Err).To(gbytes.Say("invalid-config-file"))
+		})
 	})
 
-	Context("when the configuration is invalid", func() {
-		Context("when the loggregator configuration isn't valid or the agent isn't up", func() {
+	JustBeforeEach(func() {
+		var err error
+
+		locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
+		locketProcess = ginkgomon.Invoke(locketRunner)
+
+		config := testrunner.ClientLocketConfig()
+		config.LocketAddress = locketAddress
+		locketClient, err = locket.NewClient(logger, config)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		ginkgomon.Interrupt(locketProcess)
+		sqlRunner.ResetTables(TruncateTableList)
+	})
+
+	Context("metrics", func() {
+
+		var (
+			testIngressServer *testhelpers.TestIngressServer
+			testMetricsChan   chan *loggregator_v2.Envelope
+			testMetricsPort   int
+			signalMetricsChan chan struct{}
+		)
+
+		BeforeEach(func() {
+			var err error
+			testIngressServer, err = testhelpers.NewTestIngressServer("fixtures/metron/metron.crt", "fixtures/metron/metron.key", "fixtures/metron/CA.crt")
+			Expect(err).NotTo(HaveOccurred())
+			receiversChan := testIngressServer.Receivers()
+			testIngressServer.Start()
+			testMetricsPort, err = strconv.Atoi(strings.TrimPrefix(testIngressServer.Addr(), "127.0.0.1:"))
+			Expect(err).NotTo(HaveOccurred())
+
+			testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+		})
+
+		AfterEach(func() {
+			testIngressServer.Stop()
+			close(signalMetricsChan)
+		})
+
+		Context("when using the v2 api", func() {
 			BeforeEach(func() {
-				port, err := portAllocator.ClaimPorts(1)
-				Expect(err).NotTo(HaveOccurred())
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
 					cfg.LoggregatorConfig.UseV2API = true
-					cfg.LoggregatorConfig.APIPort = int(port)
+					cfg.LoggregatorConfig.APIPort = testMetricsPort
 					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
 					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
 					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
 				})
 			})
 
-			It("exit with non-zero status code", func() {
-				locketProcess = ifrit.Invoke(locketRunner)
-				Eventually(locketProcess.Wait()).Should(Receive(HaveOccurred()))
+			It("emits metrics", func() {
+				Eventually(testMetricsChan).Should(Receive())
+			})
+
+			Context("when a lock is acquired", func() {
+				JustBeforeEach(func() {
+					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+					_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+						Resource:     requestedResource,
+						TtlInSeconds: 10,
+					})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("emits DBQueriesTotal metric", func() {
+					metricName := "DBQueriesTotal"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
+				})
+
+				It("increases the RequestsSucceeded metric", func() {
+					metricName := "RequestsSucceeded"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
+				})
 			})
 		})
 
-		Context("when an invalid config is passed", func() {
-			var (
-				configFile string
-			)
-
+		Context("when not using the v2 api", func() {
 			BeforeEach(func() {
-				locketConfigFilePath, err := ioutil.TempFile(os.TempDir(), "locket-config")
-				Expect(err).NotTo(HaveOccurred())
-				_, err = locketConfigFilePath.Write([]byte(`{"foo":`))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(locketConfigFilePath.Close()).To(Succeed())
-				configFile = locketConfigFilePath.Name()
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.LoggregatorConfig.UseV2API = false
+					cfg.LoggregatorConfig.APIPort = testMetricsPort
+					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
+					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
+					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+				})
 			})
 
-			It("prints a meaningfull error to the user", func() {
-				session, err := gexec.Start(exec.Command(locketBinPath, "-config="+configFile), GinkgoWriter, GinkgoWriter)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(session.Exited).Should(BeClosed())
-				Expect(session.ExitCode()).To(Equal(2))
-				Expect(session.Err).To(gbytes.Say("invalid-config-file"))
+			It("does not emit metrics", func() {
+				Consistently(testMetricsChan).ShouldNot(Receive())
 			})
 		})
 	})
 
-	Context("when the configuration is valid", func() {
-		JustBeforeEach(func() {
-			locketProcess = ginkgomon.Invoke(locketRunner)
+	Context("debug address", func() {
+		var debugAddress string
 
-			config := testrunner.ClientLocketConfig()
-			config.LocketAddress = locketAddress
+		BeforeEach(func() {
+			port, err := portAllocator.ClaimPorts(1)
+			Expect(err).NotTo(HaveOccurred())
 
-			var err error
-			locketClient, err = locket.NewClient(logger, config)
+			debugAddress = fmt.Sprintf("127.0.0.1:%d", port)
+			configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+				cfg.DebugAddress = debugAddress
+			})
+		})
+
+		It("listens on the debug address specified", func() {
+			_, err := net.Dial("tcp", debugAddress)
 			Expect(err).NotTo(HaveOccurred())
 		})
+	})
 
-		AfterEach(func() {
-			ginkgomon.Interrupt(locketProcess)
-			sqlRunner.ResetTables(TruncateTableList)
-		})
-
-		Context("metrics", func() {
-
-			var (
-				testIngressServer *testhelpers.TestIngressServer
-				testMetricsChan   chan *loggregator_v2.Envelope
-				testMetricsPort   int
-				signalMetricsChan chan struct{}
-			)
-
+	Context("ServiceRegistration", func() {
+		Context("with EnableConsulServiceRegistration set to false", func() {
 			BeforeEach(func() {
-				var err error
-				testIngressServer, err = testhelpers.NewTestIngressServer(
-					"fixtures/metron/metron.crt",
-					"fixtures/metron/metron.key",
-					"fixtures/metron/CA.crt",
-				)
-				Expect(err).NotTo(HaveOccurred())
-				receiversChan := testIngressServer.Receivers()
-				Expect(testIngressServer.Start()).To(Succeed())
-				testMetricsPort, err = testIngressServer.Port()
-				Expect(err).NotTo(HaveOccurred())
-
-				testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
-			})
-
-			AfterEach(func() {
-				testIngressServer.Stop()
-				close(signalMetricsChan)
-			})
-
-			Context("when using the v2 api", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.UseV2API = true
-						cfg.LoggregatorConfig.APIPort = testMetricsPort
-						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-						cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
-					})
-				})
-
-				It("emits metrics", func() {
-					Eventually(testMetricsChan).Should(Receive())
-				})
-
-				Context("when a lock is acquired", func() {
-					JustBeforeEach(func() {
-						requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-						_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-							Resource:     requestedResource,
-							TtlInSeconds: 10,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("emits DBQueriesTotal metric", func() {
-						metricName := "DBQueriesTotal"
-						Eventually(testMetricsChan).Should(Receive(
-							SatisfyAll(
-								testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
-								WithTransform(func(source *loggregator_v2.Envelope) float64 {
-									return source.GetGauge().GetMetrics()[metricName].Value
-								}, BeNumerically(">", 0)),
-							),
-						))
-					})
-
-					It("increases the RequestsSucceeded metric", func() {
-						metricName := "RequestsSucceeded"
-						Eventually(testMetricsChan).Should(Receive(
-							SatisfyAll(
-								testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
-								WithTransform(func(source *loggregator_v2.Envelope) float64 {
-									return source.GetGauge().GetMetrics()[metricName].Value
-								}, BeNumerically(">", 0)),
-							),
-						))
-					})
-				})
-			})
-
-			Context("when not using the v2 api", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.UseV2API = false
-						cfg.LoggregatorConfig.APIPort = testMetricsPort
-						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-						cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
-					})
-				})
-
-				It("does not emit metrics", func() {
-					Consistently(testMetricsChan).ShouldNot(Receive())
-				})
-			})
-		})
-
-		Context("debug address", func() {
-			var debugAddress string
-
-			BeforeEach(func() {
-				port, err := portAllocator.ClaimPorts(1)
-				Expect(err).NotTo(HaveOccurred())
-
-				debugAddress = fmt.Sprintf("127.0.0.1:%d", port)
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-					cfg.DebugAddress = debugAddress
+					cfg.EnableConsulServiceRegistration = false
 				})
 			})
 
-			It("listens on the debug address specified", func() {
-				_, err := net.Dial("tcp", debugAddress)
+			It("does not register itself with consul", func() {
+				consulClient := consulRunner.NewClient()
+				services, err := consulClient.Agent().Services()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(services).NotTo(HaveKey("locket"))
+			})
+		})
+
+		Context("with EnableConsulServiceRegistration set to true", func() {
+			BeforeEach(func() {
+				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+					cfg.EnableConsulServiceRegistration = true
+				})
+			})
+
+			It("registers itself with consul", func() {
+				consulClient := consulRunner.NewClient()
+				services, err := consulClient.Agent().Services()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(services).To(HaveKeyWithValue("locket",
+					&api.AgentService{
+						Service: "locket",
+						ID:      "locket",
+						Port:    int(locketPort),
+					}))
+			})
+
+			It("registers a TTL healthcheck", func() {
+				consulClient := consulRunner.NewClient()
+				checks, err := consulClient.Agent().Checks()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(checks).To(HaveKeyWithValue("service:locket",
+					&api.AgentCheck{
+						Node:        "0",
+						CheckID:     "service:locket",
+						Name:        "Service 'locket' check",
+						Status:      "passing",
+						ServiceID:   "locket",
+						ServiceName: "locket",
+					}))
+			})
+		})
+	})
+
+	Context("Lock", func() {
+		Context("if the table disappears", func() {
+			AfterEach(func() {
+				sqlRunner.DB().Close()
+				sqlProcess = ginkgomon.Invoke(sqlRunner)
+			})
+
+			JustBeforeEach(func() {
+				_, err := sqlRunner.DB().Exec("DROP TABLE locks")
 				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-
-		Context("ServiceRegistration", func() {
-			Context("with EnableConsulServiceRegistration set to false", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.EnableConsulServiceRegistration = false
-					})
-				})
-
-				It("does not register itself with consul", func() {
-					consulClient := consulRunner.NewClient()
-					services, err := consulClient.Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).NotTo(HaveKey("locket"))
-				})
-			})
-
-			Context("with EnableConsulServiceRegistration set to true", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.EnableConsulServiceRegistration = true
-					})
-				})
-
-				It("registers itself with consul", func() {
-					consulClient := consulRunner.NewClient()
-					services, err := consulClient.Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).To(HaveKeyWithValue("locket",
-						&api.AgentService{
-							Service: "locket",
-							ID:      "locket",
-							Port:    int(locketPort),
-						}))
-				})
-
-				It("registers a TTL healthcheck", func() {
-					consulClient := consulRunner.NewClient()
-					checks, err := consulClient.Agent().Checks()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(checks).To(HaveKeyWithValue("service:locket",
-						&api.AgentCheck{
-							Node:        "0",
-							CheckID:     "service:locket",
-							Name:        "Service 'locket' check",
-							Status:      "passing",
-							ServiceID:   "locket",
-							ServiceName: "locket",
-						}))
-				})
-			})
-		})
-
-		Context("Lock", func() {
-			Context("if the table disappears", func() {
-				AfterEach(func() {
-					sqlRunner.DB().Close()
-					sqlProcess = ginkgomon.Invoke(sqlRunner)
-				})
-
-				JustBeforeEach(func() {
-					_, err := sqlRunner.DB().Exec("DROP TABLE locks")
-					Expect(err).NotTo(HaveOccurred())
-					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-					_, err = locketClient.Lock(context.Background(), &models.LockRequest{
-						Resource:     requestedResource,
-						TtlInSeconds: 10,
-					})
-					Expect(err).To(HaveOccurred())
-				})
-
-				It("exits", func() {
-					Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
-					Eventually(locketProcess.Wait()).Should(Receive())
-				})
-			})
-
-			It("locks the key with the corresponding value", func() {
 				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-				expectedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
-				_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-					Resource:     requestedResource,
-					TtlInSeconds: 10,
-				})
-				Expect(err).NotTo(HaveOccurred())
-
-				resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Resource).To(BeEquivalentTo(expectedResource))
-
-				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima", Type: "lock"}
 				_, err = locketClient.Lock(context.Background(), &models.LockRequest{
 					Resource:     requestedResource,
 					TtlInSeconds: 10,
@@ -343,192 +289,218 @@ var _ = Describe("Locket", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("expires after a ttl", func() {
+			It("exits", func() {
+				Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
+				Eventually(locketProcess.Wait()).Should(Receive())
+			})
+		})
+
+		It("locks the key with the corresponding value", func() {
+			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+			expectedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Resource).To(BeEquivalentTo(expectedResource))
+
+			requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima", Type: "lock"}
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 10,
+			})
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("expires after a ttl", func() {
+			requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     requestedResource,
+				TtlInSeconds: 6,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+				return err
+			}, 10*time.Second).Should(HaveOccurred())
+		})
+
+		Context("when the lock server disappears unexpectedly", func() {
+			It("still disappears after ~ the ttl", func() {
 				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
 				_, err := locketClient.Lock(context.Background(), &models.LockRequest{
 					Resource:     requestedResource,
-					TtlInSeconds: 6,
+					TtlInSeconds: 3,
 				})
 				Expect(err).NotTo(HaveOccurred())
+
+				ginkgomon.Kill(locketProcess)
+
+				// cannot reuse the runner otherwise a `exec: already started` error will occur
+				locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
+				locketProcess = ginkgomon.Invoke(locketRunner)
 
 				Eventually(func() error {
 					_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
 					return err
-				}, 10*time.Second).Should(HaveOccurred())
+				}, 6*time.Second).Should(HaveOccurred())
 			})
+		})
+	})
 
-			Context("when the lock server disappears unexpectedly", func() {
-				It("still disappears after ~ the ttl", func() {
-					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-					_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-						Resource:     requestedResource,
-						TtlInSeconds: 3,
-					})
-					Expect(err).NotTo(HaveOccurred())
+	Context("Release", func() {
+		var requestedResource *models.Resource
 
-					ginkgomon.Kill(locketProcess)
-
-					// cannot reuse the runner otherwise a `exec: already started` error will occur
-					locketRunner = testrunner.NewLocketRunner(locketBinPath, configOverrides...)
-					locketProcess = ginkgomon.Invoke(locketRunner)
-
-					Eventually(func() error {
-						_, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-						return err
-					}, 6*time.Second).Should(HaveOccurred())
-				})
+		Context("when the lock does not exist", func() {
+			It("throws an error releasing the lock", func() {
+				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+				_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
-		Context("Release", func() {
-			var requestedResource *models.Resource
+		Context("when the lock exists", func() {
+			JustBeforeEach(func() {
+				requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+				_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource, TtlInSeconds: 10})
+				Expect(err).NotTo(HaveOccurred())
 
-			Context("when the lock does not exist", func() {
-				It("throws an error releasing the lock", func() {
-					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
+				resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
+			})
+
+			It("releases the lock", func() {
+				_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
+				Expect(err).To(HaveOccurred())
+			})
+
+			Context("when another process is the lock owner", func() {
+				It("throws an error", func() {
+					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima", Type: "lock"}
 					_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
 					Expect(err).To(HaveOccurred())
 				})
 			})
+		})
+	})
 
-			Context("when the lock exists", func() {
-				JustBeforeEach(func() {
-					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
-					_, err := locketClient.Lock(context.Background(), &models.LockRequest{Resource: requestedResource, TtlInSeconds: 10})
-					Expect(err).NotTo(HaveOccurred())
+	Context("FetchAll", func() {
+		var (
+			resource1, resource2, resource3, resource4 *models.Resource
+		)
 
-					resp, err := locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.Resource).To(BeEquivalentTo(requestedResource))
-				})
+		JustBeforeEach(func() {
+			_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource1,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-				It("releases the lock", func() {
-					_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
-					Expect(err).NotTo(HaveOccurred())
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource2,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-					_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{Key: "test"})
-					Expect(err).To(HaveOccurred())
-				})
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource3,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-				Context("when another process is the lock owner", func() {
-					It("throws an error", func() {
-						requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "nima", Type: "lock"}
-						_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
-						Expect(err).To(HaveOccurred())
-					})
-				})
+			_, err = locketClient.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource4,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when using type strings", func() {
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
+			})
+
+			It("fetches all the locks corresponding to type code", func() {
+				_, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("fetches all the locks corresponding to type code", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(resource1, resource2))
+			})
+
+			It("fetches all the presences corresponding to type", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(resource3, resource4))
 			})
 		})
 
-		Context("FetchAll", func() {
-			var (
-				resource1, resource2, resource3, resource4 *models.Resource
-			)
+		Context("when using type code", func() {
+			var expectedResource1, expectedResource2, expectedResource3, expectedResource4 *models.Resource
+
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+
+				expectedResource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
+				expectedResource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
+				expectedResource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
+				expectedResource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
+			})
+
+			It("fetches all the locks corresponding to type code", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(expectedResource1, expectedResource2))
+			})
+
+			It("fetches all the presences corresponding to type", func() {
+				response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.Resources).To(ConsistOf(expectedResource3, expectedResource4))
+			})
+		})
+
+		Context("if the table disappears", func() {
+			BeforeEach(func() {
+				resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+				resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+				resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
+			})
 
 			JustBeforeEach(func() {
-				_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-					Resource:     resource1,
-					TtlInSeconds: 10,
-				})
+				_, err := sqlRunner.DB().Exec("DROP TABLE locks")
 				Expect(err).NotTo(HaveOccurred())
-
-				_, err = locketClient.Lock(context.Background(), &models.LockRequest{
-					Resource:     resource2,
-					TtlInSeconds: 10,
-				})
-				Expect(err).NotTo(HaveOccurred())
-
-				_, err = locketClient.Lock(context.Background(), &models.LockRequest{
-					Resource:     resource3,
-					TtlInSeconds: 10,
-				})
-				Expect(err).NotTo(HaveOccurred())
-
-				_, err = locketClient.Lock(context.Background(), &models.LockRequest{
-					Resource:     resource4,
-					TtlInSeconds: 10,
-				})
-				Expect(err).NotTo(HaveOccurred())
+				_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
+				Expect(err).To(HaveOccurred())
 			})
 
-			Context("when using type strings", func() {
-				BeforeEach(func() {
-					resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
-					resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", Type: "lock", TypeCode: models.LOCK}
-					resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
-					resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", Type: "presence", TypeCode: models.PRESENCE}
-				})
-
-				It("fetches all the locks corresponding to type code", func() {
-					_, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
-					Expect(err).To(HaveOccurred())
-				})
-
-				It("fetches all the locks corresponding to type code", func() {
-					response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(response.Resources).To(ConsistOf(resource1, resource2))
-				})
-
-				It("fetches all the presences corresponding to type", func() {
-					response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.PresenceType})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(response.Resources).To(ConsistOf(resource3, resource4))
-				})
+			AfterEach(func() {
+				sqlRunner.DB().Close()
+				sqlProcess = ginkgomon.Invoke(sqlRunner)
 			})
 
-			Context("when using type code", func() {
-				var expectedResource1, expectedResource2, expectedResource3, expectedResource4 *models.Resource
-
-				BeforeEach(func() {
-					resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
-					resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
-					resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
-					resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
-
-					expectedResource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
-					expectedResource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK, Type: models.LockType}
-					expectedResource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
-					expectedResource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE, Type: models.PresenceType}
-				})
-
-				It("fetches all the locks corresponding to type code", func() {
-					response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.LOCK})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(response.Resources).To(ConsistOf(expectedResource1, expectedResource2))
-				})
-
-				It("fetches all the presences corresponding to type", func() {
-					response, err := locketClient.FetchAll(context.Background(), &models.FetchAllRequest{TypeCode: models.PRESENCE})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(response.Resources).To(ConsistOf(expectedResource3, expectedResource4))
-				})
-			})
-
-			Context("if the table disappears", func() {
-				BeforeEach(func() {
-					resource1 = &models.Resource{Key: "test-lock1", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
-					resource2 = &models.Resource{Key: "test-lock2", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
-					resource3 = &models.Resource{Key: "test-presence1", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
-					resource4 = &models.Resource{Key: "test-presence2", Value: "test-data", Owner: "jim", TypeCode: models.PRESENCE}
-				})
-
-				JustBeforeEach(func() {
-					_, err := sqlRunner.DB().Exec("DROP TABLE locks")
-					Expect(err).NotTo(HaveOccurred())
-					_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{Type: models.LockType})
-					Expect(err).To(HaveOccurred())
-				})
-
-				AfterEach(func() {
-					sqlRunner.DB().Close()
-					sqlProcess = ginkgomon.Invoke(sqlRunner)
-				})
-
-				It("exits", func() {
-					Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
-					Eventually(locketProcess.Wait()).Should(Receive())
-				})
+			It("exits", func() {
+				Eventually(locketRunner).Should(gbytes.Say("unrecoverable-error"))
+				Eventually(locketProcess.Wait()).Should(Receive())
 			})
 		})
 	})
