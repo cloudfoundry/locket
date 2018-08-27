@@ -83,37 +83,35 @@ func (l lockPick) RegisterTTL(logger lager.Logger, lock *db.Lock) {
 func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan chan struct{}) {
 	lockTimer := l.clock.NewTimer(time.Duration(lock.TtlInSeconds) * time.Second)
 
-	for {
-		select {
-		case <-closeChan:
-			logger.Debug("cancelling-old-check-goroutine")
-			return
-		case <-lockTimer.C():
-			defer func() {
-				l.lockMutex.Lock()
-				chanIndex := l.lockTTLs[checkKeyFromLock(lock)]
-				if chanIndex.index == lock.ModifiedIndex {
-					delete(l.lockTTLs, checkKeyFromLock(lock))
-				}
-				l.lockMutex.Unlock()
-			}()
-
-			expired, err := l.lockDB.FetchAndRelease(logger, lock)
-			if err != nil {
-				logger.Error("failed-compare-and-release", err)
-				return
+	select {
+	case <-closeChan:
+		logger.Debug("cancelling-old-check-goroutine")
+		return
+	case <-lockTimer.C():
+		defer func() {
+			l.lockMutex.Lock()
+			chanIndex := l.lockTTLs[checkKeyFromLock(lock)]
+			if chanIndex.index == lock.ModifiedIndex {
+				delete(l.lockTTLs, checkKeyFromLock(lock))
 			}
+			l.lockMutex.Unlock()
+		}()
 
-			if expired {
-				logger.Info("lock-expired")
-				counter := l.locksExpiredCount
-				if lock.Type == models.PresenceType {
-					counter = l.presencesExpiredCount
-				}
-				atomic.AddUint32(counter, 1)
-			}
+		expired, err := l.lockDB.FetchAndRelease(logger, lock)
+		if err != nil {
+			logger.Error("failed-compare-and-release", err)
 			return
 		}
+
+		if expired {
+			logger.Info("lock-expired")
+			counter := l.locksExpiredCount
+			if lock.Type == models.PresenceType {
+				counter = l.presencesExpiredCount
+			}
+			atomic.AddUint32(counter, 1)
+		}
+		return
 	}
 }
 
