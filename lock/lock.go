@@ -118,18 +118,19 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 				return err
 			}
 			ctx, cancel := context.WithTimeout(ctx, time.Duration(l.ttlInSeconds)*time.Second)
+			start := time.Now()
 			_, err = l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
 			cancel()
 			if err != nil {
 				if acquired {
-					logger.Error("lost-lock", err, lager.Data{"request-uuid": uuid})
+					logger.Error("lost-lock", err, lager.Data{"request-uuid": uuid, "duration": time.Since(start)})
 					if l.exitOnLostLock {
 						return err
 					}
 
 					acquired = false
 				} else if err != models.ErrLockCollision {
-					logger.Error("failed-to-acquire-lock", err, lager.Data{"request-uuid": uuid})
+					logger.Error("failed-to-acquire-lock", err, lager.Data{"request-uuid": uuid, "duration": time.Since(start)})
 				}
 			} else if !acquired {
 				logger.Info("acquired-lock")
