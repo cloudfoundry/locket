@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/locket/models/modelsfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/net/context"
@@ -78,23 +79,61 @@ var _ = Describe("Lock", func() {
 				fakeLocker.LockReturns(nil, errors.New("no-lock-for-you"))
 			})
 
-			It("retries locking after the lock retry interval", func() {
+			JustBeforeEach(func() {
 				Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 				_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
 				Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
+			})
 
-				fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
+			It("logs the initial error", func() {
+				Eventually(logger).Should(gbytes.Say("no-lock-for-you"))
+			})
 
-				Eventually(fakeLocker.LockCallCount).Should(Equal(2))
-				ctx, lockReq, options := fakeLocker.LockArgsForCall(1)
-				Expect(lockReq.Resource).To(Equal(expectedLock))
-				Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
-				_, ok := ctx.Deadline()
-				Expect(ok).To(BeTrue(), "no deadline set")
-				Expect(options).To(HaveLen(1))
+			Context("and the retry interval elapses", func() {
+				JustBeforeEach(func() {
+					Eventually(logger).Should(gbytes.Say("no-lock-for-you"))
+					fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
+				})
 
-				Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
+				It("logs subsequent errors", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					Eventually(logger).Should(gbytes.Say("no-lock-for-you"))
+				})
+
+				It("retries locking after the lock retry interval", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					ctx, lockReq, options := fakeLocker.LockArgsForCall(1)
+					Expect(lockReq.Resource).To(Equal(expectedLock))
+					Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
+					_, ok := ctx.Deadline()
+					Expect(ok).To(BeTrue(), "no deadline set")
+					Expect(options).To(HaveLen(1))
+
+					Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
+				})
+			})
+
+			Context("when there is a lock collision", func() {
+				BeforeEach(func() {
+					fakeLocker.LockReturns(nil, models.ErrLockCollision)
+				})
+
+				It("logs the initial error", func() {
+					Eventually(logger).Should(gbytes.Say("lock-collision"))
+				})
+
+				Context("and the retry interval elapses", func() {
+					JustBeforeEach(func() {
+						Eventually(logger).Should(gbytes.Say("lock-collision"))
+						fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
+					})
+
+					It("does not log subsequent errors", func() {
+						Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+						Eventually(logger).ShouldNot(gbytes.Say("lock-collision"))
+					})
+				})
 			})
 
 			Context("and the lock becomes available", func() {
@@ -114,10 +153,6 @@ var _ = Describe("Lock", func() {
 				})
 
 				It("grabs the lock and the continues to heartbeat", func() {
-					Eventually(fakeLocker.LockCallCount).Should(Equal(1))
-					_, lockReq, _ := fakeLocker.LockArgsForCall(0)
-					Expect(lockReq.Resource).To(Equal(expectedLock))
-					Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
 					Consistently(lockProcess.Ready()).ShouldNot(BeClosed())
 
 					close(done)
@@ -125,7 +160,7 @@ var _ = Describe("Lock", func() {
 
 					Eventually(lockProcess.Ready()).Should(BeClosed())
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
-					_, lockReq, _ = fakeLocker.LockArgsForCall(1)
+					_, lockReq, _ := fakeLocker.LockArgsForCall(1)
 					Expect(lockReq.Resource).To(Equal(expectedLock))
 					Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
 
@@ -173,15 +208,20 @@ var _ = Describe("Lock", func() {
 					}
 				})
 
-				It("exits with an error", func() {
+				JustBeforeEach(func() {
 					Eventually(lockProcess.Ready()).Should(BeClosed())
 					Eventually(fakeLocker.LockCallCount).Should(Equal(1))
-					_, lockReq, _ := fakeLocker.LockArgsForCall(0)
-					Expect(lockReq.Resource).To(Equal(expectedLock))
-					Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
-
 					close(done)
+
 					fakeClock.WaitForWatcherAndIncrement(lockRetryInterval)
+				})
+
+				It("logs the error", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					Eventually(logger).Should(gbytes.Say("lost-lock.*no-lock-for-you"))
+				})
+
+				It("exits with an error", func() {
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 					Eventually(lockProcess.Wait()).Should(Receive())
 				})

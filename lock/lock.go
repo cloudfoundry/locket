@@ -105,6 +105,8 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 					}
 
 					acquired = false
+				} else if err != models.ErrLockCollision {
+					logger.Error("failed-to-acquire-lock", err)
 				}
 			} else if !acquired {
 				logger.Info("acquired-lock")
