@@ -19,9 +19,10 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 	logger = logger.Session("lock", lagerDataFromLock(resource))
 	var lock *Lock
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
-		newLock := false
+	var newLock bool
 
+	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+		newLock = false
 		res, index, id, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
@@ -84,12 +85,12 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 			return err
 		}
 
-		if newLock {
-			logger.Info("acquired-lock")
-		}
-
 		return nil
 	})
+
+	if err == nil && newLock {
+		logger.Info("acquired-lock")
+	}
 
 	return lock, db.helper.ConvertSQLError(err)
 }
