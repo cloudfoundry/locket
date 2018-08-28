@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -74,6 +75,13 @@ var _ = Describe("Lock", func() {
 			Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
 		})
 
+		It("sets the request guid metadata", func() {
+			Eventually(fakeLocker.LockCallCount).Should(Equal(1))
+			ctx, _, _ := fakeLocker.LockArgsForCall(0)
+			md, _ := metadata.FromContext(ctx)
+			Expect(md).To(HaveKey("uuid"))
+		})
+
 		Context("when the lock cannot be acquired", func() {
 			BeforeEach(func() {
 				fakeLocker.LockReturns(nil, errors.New("no-lock-for-you"))
@@ -84,6 +92,10 @@ var _ = Describe("Lock", func() {
 				_, lockReq, _ := fakeLocker.LockArgsForCall(0)
 				Expect(lockReq.Resource).To(Equal(expectedLock))
 				Expect(lockReq.TtlInSeconds).To(Equal(expectedTTL))
+			})
+
+			It("logs the request uuid", func() {
+				Eventually(logger).Should(gbytes.Say("request-uuid"))
 			})
 
 			It("logs the initial error", func() {
@@ -99,6 +111,18 @@ var _ = Describe("Lock", func() {
 				It("logs subsequent errors", func() {
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 					Eventually(logger).Should(gbytes.Say("no-lock-for-you"))
+				})
+
+				It("logs the request uuid", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					Eventually(logger).Should(gbytes.Say("request-uuid"))
+				})
+
+				It("sets the request guid metadata", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					ctx, _, _ := fakeLocker.LockArgsForCall(1)
+					md, _ := metadata.FromContext(ctx)
+					Expect(md).To(HaveKey("uuid"))
 				})
 
 				It("retries locking after the lock retry interval", func() {
@@ -219,6 +243,11 @@ var _ = Describe("Lock", func() {
 				It("logs the error", func() {
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 					Eventually(logger).Should(gbytes.Say("lost-lock.*no-lock-for-you"))
+				})
+
+				It("logs the request uuid", func() {
+					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+					Eventually(logger).Should(gbytes.Say("request-uuid"))
 				})
 
 				It("exits with an error", func() {

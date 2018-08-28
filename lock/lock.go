@@ -7,8 +7,10 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
+	uuid "github.com/nu7hatch/gouuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type lockRunner struct {
@@ -60,6 +62,17 @@ func NewPresenceRunner(
 	}
 }
 
+func contextWithRequestGUID() (context.Context, string, error) {
+	ctx := context.Background()
+
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return ctx, "", err
+	}
+	md := metadata.Pairs("uuid", uuid.String())
+	return metadata.NewContext(ctx, md), uuid.String(), nil
+}
+
 func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := l.logger.Session("locket-lock", lager.Data{"lock": l.lock, "ttl_in_seconds": l.ttlInSeconds})
 
@@ -67,9 +80,14 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 	defer logger.Info("completed")
 
 	var acquired, isReady bool
-	_, err := l.locker.Lock(context.Background(), &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds})
+	ctx, uuid, err := contextWithRequestGUID()
 	if err != nil {
-		logger.Error("failed-to-acquire-lock", err)
+		logger.Error("failed-to-create-context", err)
+		return err
+	}
+	_, err = l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds})
+	if err != nil {
+		logger.Error("failed-to-acquire-lock", err, lager.Data{"request-uuid": uuid})
 	} else {
 		logger.Info("acquired-lock")
 		close(ready)
@@ -94,19 +112,24 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			return nil
 
 		case <-retry.C():
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(l.ttlInSeconds)*time.Second)
-			_, err := l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
+			ctx, uuid, err := contextWithRequestGUID()
+			if err != nil {
+				logger.Error("failed-to-create-context", err)
+				return err
+			}
+			ctx, cancel := context.WithTimeout(ctx, time.Duration(l.ttlInSeconds)*time.Second)
+			_, err = l.locker.Lock(ctx, &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}, grpc.FailFast(false))
 			cancel()
 			if err != nil {
 				if acquired {
-					logger.Error("lost-lock", err)
+					logger.Error("lost-lock", err, lager.Data{"request-uuid": uuid})
 					if l.exitOnLostLock {
 						return err
 					}
 
 					acquired = false
 				} else if err != models.ErrLockCollision {
-					logger.Error("failed-to-acquire-lock", err)
+					logger.Error("failed-to-acquire-lock", err, lager.Data{"request-uuid": uuid})
 				}
 			} else if !acquired {
 				logger.Info("acquired-lock")
@@ -120,6 +143,4 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			retry.Reset(l.retryInterval)
 		}
 	}
-
-	return nil
 }

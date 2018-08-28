@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/locket/metrics"
 	"code.cloudfoundry.org/locket/models"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 type locketHandler struct {
@@ -147,6 +148,12 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 			"owner": req.Resource.Owner,
 		})
 		return nil, models.ErrInvalidOwner
+	}
+
+	md, _ := metadata.FromContext(ctx)
+	requestUUID := md["uuid"]
+	if len(requestUUID) > 0 {
+		logger = logger.WithData(lager.Data{"request-uuid": requestUUID[0]})
 	}
 
 	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
