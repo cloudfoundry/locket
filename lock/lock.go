@@ -129,7 +129,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 					}
 
 					acquired = false
-				} else if err != models.ErrLockCollision {
+				} else if grpc.Code(err) != grpc.Code(models.ErrLockCollision) {
 					logger.Error("failed-to-acquire-lock", err, lager.Data{"request-uuid": uuid, "duration": time.Since(start)})
 				}
 			} else if !acquired {

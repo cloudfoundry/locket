@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -140,7 +141,9 @@ var _ = Describe("Lock", func() {
 
 			Context("when there is a lock collision", func() {
 				BeforeEach(func() {
-					fakeLocker.LockReturns(nil, models.ErrLockCollision)
+					// do not use models.ErrLockCollision because in practice from the wire that
+					// variable instance cannot be returned
+					fakeLocker.LockReturns(nil, grpc.Errorf(codes.AlreadyExists, "lock-collision"))
 				})
 
 				It("logs the initial error", func() {
@@ -155,7 +158,7 @@ var _ = Describe("Lock", func() {
 
 					It("does not log subsequent errors", func() {
 						Eventually(fakeLocker.LockCallCount).Should(Equal(2))
-						Eventually(logger).ShouldNot(gbytes.Say("lock-collision"))
+						Consistently(logger).ShouldNot(gbytes.Say("lock-collision"))
 					})
 				})
 			})
