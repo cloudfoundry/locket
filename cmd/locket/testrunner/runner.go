@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	. "github.com/onsi/gomega"
@@ -26,9 +28,15 @@ var (
 
 func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) *ginkgomon.Runner {
 	cfg := &config.LocketConfig{
-		CaFile:   caCertFile,
-		CertFile: certFile,
-		KeyFile:  keyFile,
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel:   lagerflags.INFO,
+			TimeFormat: lagerflags.FormatUnixEpoch,
+		},
+		DatabaseDriver: "mysql",
+		ReportInterval: durationjson.Duration(1 * time.Minute),
+		CaFile:         caCertFile,
+		CertFile:       certFile,
+		KeyFile:        keyFile,
 	}
 
 	for _, f := range fs {

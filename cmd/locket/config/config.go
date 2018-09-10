@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"os"
-	"time"
 
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
@@ -28,16 +27,8 @@ type LocketConfig struct {
 	lagerflags.LagerConfig
 }
 
-func DefaultLocketConfig() LocketConfig {
-	return LocketConfig{
-		LagerConfig:    lagerflags.DefaultLagerConfig(),
-		DatabaseDriver: "mysql",
-		ReportInterval: durationjson.Duration(1 * time.Minute),
-	}
-}
-
 func NewLocketConfig(configPath string) (LocketConfig, error) {
-	locketConfig := DefaultLocketConfig()
+	locketConfig := LocketConfig{}
 	configFile, err := os.Open(configPath)
 	if err != nil {
 		return LocketConfig{}, err

@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"time"
@@ -117,53 +116,5 @@ var _ = Describe("LocketConfig", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-	})
-
-	Context("default values", func() {
-		BeforeEach(func() {
-			configData = `{}`
-		})
-
-		It("uses default values when they are not specified", func() {
-			locketConfig, err := config.NewLocketConfig(configFilePath)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(locketConfig).To(Equal(config.DefaultLocketConfig()))
-		})
-
-		Context("when serialized from LocketConfig", func() {
-			Context("when no values are specified", func() {
-				BeforeEach(func() {
-					locketConfig := config.LocketConfig{}
-					bytes, err := json.Marshal(locketConfig)
-					Expect(err).NotTo(HaveOccurred())
-					configData = string(bytes)
-				})
-
-				It("uses default values when they are not specified", func() {
-					locketConfig, err := config.NewLocketConfig(configFilePath)
-					Expect(err).NotTo(HaveOccurred())
-
-					Expect(locketConfig).To(Equal(config.DefaultLocketConfig()))
-				})
-			})
-
-			Context("when some values are specified", func() {
-				BeforeEach(func() {
-					locketConfig := config.LocketConfig{
-						EnableConsulServiceRegistration: false,
-					}
-					bytes, err := json.Marshal(locketConfig)
-					Expect(err).NotTo(HaveOccurred())
-					configData = string(bytes)
-				})
-
-				It("does not overwrite specified values with default values", func() {
-					locketConfig, err := config.NewLocketConfig(configFilePath)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(locketConfig.EnableConsulServiceRegistration).To(Equal(false))
-				})
-			})
-		})
 	})
 })
