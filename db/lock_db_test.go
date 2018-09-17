@@ -43,7 +43,7 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 		errMsg += fmt.Sprintf("mismatch ttl (%d, %d),", expectedTTL, ttl)
 	}
 	if expectedModifiedId != modifiedId {
-		errMsg += fmt.Sprintf("mismatch modified_id (%d, %d),", expectedModifiedId, modifiedId)
+		errMsg += fmt.Sprintf("mismatch modified_id (%s, %s),", expectedModifiedId, modifiedId)
 	}
 
 	if errMsg != "" {
