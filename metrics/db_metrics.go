@@ -86,7 +86,7 @@ func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- st
 
 			err = notifier.metronClient.SendDuration(dbQueryDurationMaxMetric, queryDurationMax)
 			if err != nil {
-				logger.Error("inFlight-sending-db-query-duration-max", err)
+				logger.Error("failed-sending-db-query-duration-max", err)
 			}
 
 			logger.Debug("emitted-metrics")
