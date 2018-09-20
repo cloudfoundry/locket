@@ -58,10 +58,10 @@ var _ = Describe("DBMetrics", func() {
 		}
 
 		lockDB.OpenConnectionsReturns(100)
-		queryMonitor.QueriesInFlightReturns(5)
 		queryMonitor.QueriesTotalReturns(105)
 		queryMonitor.QueriesSucceededReturns(90)
 		queryMonitor.QueriesFailedReturns(10)
+		queryMonitor.ReadAndResetQueriesInFlightMaxReturns(5)
 		queryMonitor.ReadAndResetQueryDurationMaxReturns(time.Second)
 	})
 
@@ -107,7 +107,7 @@ var _ = Describe("DBMetrics", func() {
 		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesFailed", 10})))
 	})
 
-	It("emits a metric for the number of queries in flight against the database", func() {
+	It("emits a metric for the max number of queries in flight against the database", func() {
 		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
 		fakeClock.Increment(metricsInterval)
 		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBQueriesInFlight", 5})))
