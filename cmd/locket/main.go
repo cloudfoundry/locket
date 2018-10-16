@@ -21,6 +21,7 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
@@ -82,7 +83,7 @@ func main() {
 		logger.Fatal("sql-failed-to-connect", err)
 	}
 
-	dbMonitor := helpers.NewQueryMonitor()
+	dbMonitor := monitor.New()
 	monitoredDB := helpers.NewMonitoredDB(sqlConn, dbMonitor)
 
 	sqlDB := db.NewSQLDB(

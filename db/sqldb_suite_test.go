@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/bbs/guidprovider/fakes"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -64,7 +65,7 @@ var _ = BeforeSuite(func() {
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
 	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
-	db := helpers.NewMonitoredDB(rawDB, helpers.NewQueryMonitor())
+	db := helpers.NewMonitoredDB(rawDB, monitor.New())
 	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(logger)
 	Expect(err).NotTo(HaveOccurred())

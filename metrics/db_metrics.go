@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
@@ -26,10 +27,10 @@ type dbMetricsNotifier struct {
 	metricsInterval time.Duration
 	lockDB          helpers.QueryableDB
 	metronClient    loggingclient.IngressClient
-	queryMonitor    helpers.QueryMonitor
+	queryMonitor    monitor.Monitor
 }
 
-func NewDBMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB helpers.QueryableDB, queryMonitor helpers.QueryMonitor) ifrit.Runner {
+func NewDBMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB helpers.QueryableDB, queryMonitor monitor.Monitor) ifrit.Runner {
 	return &dbMetricsNotifier{
 		logger:          logger,
 		ticker:          ticker,
@@ -55,11 +56,11 @@ func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- st
 			logger.Debug("emitting-metrics")
 
 			openConnections := notifier.lockDB.OpenConnections()
-			queriesTotal := notifier.queryMonitor.QueriesTotal()
-			queriesSucceeded := notifier.queryMonitor.QueriesSucceeded()
-			queriesFailed := notifier.queryMonitor.QueriesFailed()
-			queriesInFlightMax := notifier.queryMonitor.ReadAndResetQueriesInFlightMax()
-			queryDurationMax := notifier.queryMonitor.ReadAndResetQueryDurationMax()
+			queriesTotal := notifier.queryMonitor.Total()
+			queriesSucceeded := notifier.queryMonitor.Succeeded()
+			queriesFailed := notifier.queryMonitor.Failed()
+			queriesInFlightMax := notifier.queryMonitor.ReadAndResetInFlightMax()
+			queryDurationMax := notifier.queryMonitor.ReadAndResetDurationMax()
 
 			err := notifier.metronClient.SendMetric(dbOpenConnectionsMetric, openConnections)
 			if err != nil {

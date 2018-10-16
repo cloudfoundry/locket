@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers/helpersfakes"
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor/monitorfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	loggregator "code.cloudfoundry.org/go-loggregator"
@@ -29,7 +30,7 @@ var _ = Describe("DBMetrics", func() {
 		fakeClock        *fakeclock.FakeClock
 		metricsInterval  time.Duration
 		lockDB           *helpersfakes.FakeQueryableDB
-		queryMonitor     *helpersfakes.FakeQueryMonitor
+		fakeMonitor      *monitorfakes.FakeMonitor
 		metricsChan      chan FakeGauge
 	)
 
@@ -41,8 +42,8 @@ var _ = Describe("DBMetrics", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		metricsInterval = 10 * time.Second
 
-		lockDB = &helpersfakes.FakeQueryableDB{}
-		queryMonitor = &helpersfakes.FakeQueryMonitor{}
+		lockDB = new(helpersfakes.FakeQueryableDB)
+		fakeMonitor = new(monitorfakes.FakeMonitor)
 
 		fakeMetronClient.SendMetricStub = func(name string, value int, opts ...loggregator.EmitGaugeOption) error {
 			defer GinkgoRecover()
@@ -58,11 +59,11 @@ var _ = Describe("DBMetrics", func() {
 		}
 
 		lockDB.OpenConnectionsReturns(100)
-		queryMonitor.QueriesTotalReturns(105)
-		queryMonitor.QueriesSucceededReturns(90)
-		queryMonitor.QueriesFailedReturns(10)
-		queryMonitor.ReadAndResetQueriesInFlightMaxReturns(5)
-		queryMonitor.ReadAndResetQueryDurationMaxReturns(time.Second)
+		fakeMonitor.TotalReturns(105)
+		fakeMonitor.SucceededReturns(90)
+		fakeMonitor.FailedReturns(10)
+		fakeMonitor.ReadAndResetInFlightMaxReturns(5)
+		fakeMonitor.ReadAndResetDurationMaxReturns(time.Second)
 	})
 
 	JustBeforeEach(func() {
@@ -72,7 +73,7 @@ var _ = Describe("DBMetrics", func() {
 			fakeMetronClient,
 			metricsInterval,
 			lockDB,
-			queryMonitor,
+			fakeMonitor,
 		)
 		process = ifrit.Background(runner)
 		Eventually(process.Ready()).Should(BeClosed())
