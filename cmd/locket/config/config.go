@@ -21,6 +21,7 @@ type LocketConfig struct {
 	KeyFile                         string                `json:"key_file"`
 	ListenAddress                   string                `json:"listen_address"`
 	SQLCACertFile                   string                `json:"sql_ca_cert_file,omitempty"`
+	SQLEnableIdentityVerification   bool                  `json:"sql_enable_identity_verification,omitempty"`
 	LoggregatorConfig               loggingclient.Config  `json:"loggregator"`
 	ReportInterval                  durationjson.Duration `json:"report_interval,omitempty"`
 	debugserver.DebugServerConfig

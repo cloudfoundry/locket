@@ -32,6 +32,7 @@ var _ = Describe("LocketConfig", func() {
 			"enable_consul_service_registration": false,
 			"key_file": "i am a key file",
 			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
+			"sql_enable_identity_verification": true,
       "report_interval":"1s",
 			"loggregator": {
 				"loggregator_use_v2_api": true,
@@ -79,10 +80,11 @@ var _ = Describe("LocketConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "some-more-stuff",
 			},
-			CaFile:        "i am a ca file",
-			CertFile:      "i am a cert file",
-			KeyFile:       "i am a key file",
-			SQLCACertFile: "/var/vcap/jobs/locket/config/sql.ca",
+			CaFile:                        "i am a ca file",
+			CertFile:                      "i am a cert file",
+			KeyFile:                       "i am a key file",
+			SQLCACertFile:                 "/var/vcap/jobs/locket/config/sql.ca",
+			SQLEnableIdentityVerification: true,
 			LoggregatorConfig: loggingclient.Config{
 				UseV2API:   true,
 				APIPort:    1234,

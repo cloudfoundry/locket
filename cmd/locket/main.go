@@ -67,6 +67,7 @@ func main() {
 		cfg.DatabaseDriver,
 		cfg.DatabaseConnectionString,
 		cfg.SQLCACertFile,
+		cfg.SQLEnableIdentityVerification,
 	)
 
 	sqlConn, err := sql.Open(cfg.DatabaseDriver, connectionString)
@@ -176,7 +177,7 @@ func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (lo
 	return client, nil
 }
 
-func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseConnectionString, sqlCACertFile string) string {
+func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseConnectionString, sqlCACertFile string, sqlEnableIdentityVerification bool) string {
 	switch driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(databaseConnectionString)
@@ -195,11 +196,7 @@ func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseC
 				logger.Fatal("failed-to-parse-sql-ca", err)
 			}
 
-			tlsConfig := &tls.Config{
-				InsecureSkipVerify: false,
-				RootCAs:            caCertPool,
-			}
-
+			tlsConfig := generateTLSConfig(logger, caCertPool, sqlEnableIdentityVerification)
 			mysql.RegisterTLSConfig("bbs-tls", tlsConfig)
 			cfg.TLSConfig = "bbs-tls"
 		}
@@ -221,6 +218,60 @@ func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseC
 	}
 
 	return databaseConnectionString
+}
+
+func generateTLSConfig(logger lager.Logger, caCertPool *x509.CertPool, sqlEnableIdentityVerification bool) *tls.Config {
+	var tlsConfig *tls.Config
+
+	if sqlEnableIdentityVerification {
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: false,
+			RootCAs:            caCertPool,
+		}
+	} else {
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify:    true,
+			RootCAs:               caCertPool,
+			VerifyPeerCertificate: generateCustomTLSVerificationFunction(caCertPool),
+		}
+	}
+
+	return tlsConfig
+}
+
+func generateCustomTLSVerificationFunction(caCertPool *x509.CertPool) func([][]byte, [][]*x509.Certificate) error {
+	return func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		opts := x509.VerifyOptions{
+			Roots:         caCertPool,
+			CurrentTime:   time.Now(),
+			DNSName:       "",
+			Intermediates: x509.NewCertPool(),
+		}
+
+		certs := make([]*x509.Certificate, len(rawCerts))
+		for i, rawCert := range rawCerts {
+			cert, err := x509.ParseCertificate(rawCert)
+			if err != nil {
+				return err
+			}
+			certs[i] = cert
+		}
+
+		for i, cert := range certs {
+			if i == 0 {
+				continue
+			}
+
+			opts.Intermediates.AddCert(cert)
+		}
+
+		_, err := certs[0].Verify(opts)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
 func initializeRegistrationRunner(
