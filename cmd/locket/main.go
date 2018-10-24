@@ -1,24 +1,11 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"time"
-
-	loggingclient "code.cloudfoundry.org/diego-logging-client"
-	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
-	"github.com/go-sql-driver/mysql"
-	"github.com/hashicorp/consul/api"
-	"github.com/lib/pq"
-	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/grouper"
-	"github.com/tedsuo/ifrit/sigmon"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
@@ -27,6 +14,8 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
@@ -36,6 +25,10 @@ import (
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics"
+	"github.com/hashicorp/consul/api"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/sigmon"
 )
 
 var configFilePath = flag.String(
@@ -62,7 +55,7 @@ func main() {
 
 	clock := clock.NewClock()
 
-	connectionString := appendExtraConnectionStringParam(
+	connectionString := helpers.AddTLSParams(
 		logger,
 		cfg.DatabaseDriver,
 		cfg.DatabaseConnectionString,
@@ -175,103 +168,6 @@ func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (lo
 	}
 
 	return client, nil
-}
-
-func appendExtraConnectionStringParam(logger lager.Logger, driverName, databaseConnectionString, sqlCACertFile string, sqlEnableIdentityVerification bool) string {
-	switch driverName {
-	case "mysql":
-		cfg, err := mysql.ParseDSN(databaseConnectionString)
-		if err != nil {
-			logger.Fatal("invalid-db-connection-string", err, lager.Data{"connection-string": databaseConnectionString})
-		}
-
-		if sqlCACertFile != "" {
-			certBytes, err := ioutil.ReadFile(sqlCACertFile)
-			if err != nil {
-				logger.Fatal("failed-to-read-sql-ca-file", err)
-			}
-
-			caCertPool := x509.NewCertPool()
-			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
-				logger.Fatal("failed-to-parse-sql-ca", err)
-			}
-
-			tlsConfig := generateTLSConfig(logger, caCertPool, sqlEnableIdentityVerification)
-			mysql.RegisterTLSConfig("bbs-tls", tlsConfig)
-			cfg.TLSConfig = "bbs-tls"
-		}
-		cfg.Timeout = 10 * time.Minute
-		cfg.ReadTimeout = 10 * time.Minute
-		cfg.WriteTimeout = 10 * time.Minute
-		databaseConnectionString = cfg.FormatDSN()
-	case "postgres":
-		var err error
-		databaseConnectionString, err = pq.ParseURL(databaseConnectionString)
-		if err != nil {
-			logger.Fatal("invalid-db-connection-string", err, lager.Data{"connection-string": databaseConnectionString})
-		}
-		if sqlCACertFile == "" {
-			databaseConnectionString = databaseConnectionString + " sslmode=disable"
-		} else {
-			databaseConnectionString = fmt.Sprintf("%s sslmode=verify-ca sslrootcert=%s", databaseConnectionString, sqlCACertFile)
-		}
-	}
-
-	return databaseConnectionString
-}
-
-func generateTLSConfig(logger lager.Logger, caCertPool *x509.CertPool, sqlEnableIdentityVerification bool) *tls.Config {
-	var tlsConfig *tls.Config
-
-	if sqlEnableIdentityVerification {
-		tlsConfig = &tls.Config{
-			InsecureSkipVerify: false,
-			RootCAs:            caCertPool,
-		}
-	} else {
-		tlsConfig = &tls.Config{
-			InsecureSkipVerify:    true,
-			RootCAs:               caCertPool,
-			VerifyPeerCertificate: generateCustomTLSVerificationFunction(caCertPool),
-		}
-	}
-
-	return tlsConfig
-}
-
-func generateCustomTLSVerificationFunction(caCertPool *x509.CertPool) func([][]byte, [][]*x509.Certificate) error {
-	return func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		opts := x509.VerifyOptions{
-			Roots:         caCertPool,
-			CurrentTime:   time.Now(),
-			DNSName:       "",
-			Intermediates: x509.NewCertPool(),
-		}
-
-		certs := make([]*x509.Certificate, len(rawCerts))
-		for i, rawCert := range rawCerts {
-			cert, err := x509.ParseCertificate(rawCert)
-			if err != nil {
-				return err
-			}
-			certs[i] = cert
-		}
-
-		for i, cert := range certs {
-			if i == 0 {
-				continue
-			}
-
-			opts.Intermediates.AddCert(cert)
-		}
-
-		_, err := certs[0].Verify(opts)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
 }
 
 func initializeRegistrationRunner(
