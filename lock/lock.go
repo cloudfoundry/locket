@@ -70,7 +70,7 @@ func contextWithRequestGUID() (context.Context, string, error) {
 		return ctx, "", err
 	}
 	md := metadata.Pairs("uuid", uuid.String())
-	return metadata.NewContext(ctx, md), uuid.String(), nil
+	return metadata.NewOutgoingContext(ctx, md), uuid.String(), nil
 }
 
 func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {

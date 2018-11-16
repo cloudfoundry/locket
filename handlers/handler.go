@@ -150,7 +150,7 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 		return nil, models.ErrInvalidOwner
 	}
 
-	md, _ := metadata.FromContext(ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
 	requestUUID := md["uuid"]
 	if len(requestUUID) > 0 {
 		logger = logger.WithData(lager.Data{"request-uuid": requestUUID[0]})

@@ -346,7 +346,7 @@ var _ = Describe("Locket", func() {
 
 			It("logs the uuid of the request", func() {
 				requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
-				ctx := metadata.NewContext(context.Background(), metadata.Pairs("uuid", "some-uuid"))
+				ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-uuid"))
 				_, err := locketClient.Lock(ctx, &models.LockRequest{
 					Resource:     requestedResource,
 					TtlInSeconds: 10,

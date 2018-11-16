@@ -79,7 +79,7 @@ var _ = Describe("Lock", func() {
 		It("sets the request guid metadata", func() {
 			Eventually(fakeLocker.LockCallCount).Should(Equal(1))
 			ctx, _, _ := fakeLocker.LockArgsForCall(0)
-			md, _ := metadata.FromContext(ctx)
+			md, _ := metadata.FromOutgoingContext(ctx)
 			Expect(md).To(HaveKey("uuid"))
 		})
 
@@ -122,7 +122,7 @@ var _ = Describe("Lock", func() {
 				It("sets the request guid metadata", func() {
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
 					ctx, _, _ := fakeLocker.LockArgsForCall(1)
-					md, _ := metadata.FromContext(ctx)
+					md, _ := metadata.FromOutgoingContext(ctx)
 					Expect(md).To(HaveKey("uuid"))
 				})
 
