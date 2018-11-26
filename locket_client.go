@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/locket/models"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 type ClientLocketConfig struct {
@@ -54,6 +55,9 @@ func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertV
 		}),
 		grpc.WithBlock(),
 		grpc.WithTimeout(10*time.Second), // ensure that grpc won't keep retrying forever
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time: 10 * time.Second,
+		}),
 	)
 	if err != nil {
 		return nil, err
