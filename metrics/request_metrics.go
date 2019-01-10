@@ -19,6 +19,7 @@ const (
 	requestsSucceededMetric   = "RequestsSucceeded"
 	requestsFailedMetric      = "RequestsFailed"
 	requestsInFlightMetric    = "RequestsInFlight"
+	requestsCancelledMetric   = "RequestsCancelled"
 	requestLatencyMaxDuration = "RequestLatencyMax"
 )
 
@@ -27,6 +28,7 @@ type requestMetric struct {
 	RequestsSucceeded uint64
 	RequestsFailed    uint64
 	RequestsInFlight  uint64
+	RequestsCancelled uint64
 	RequestLatencyMax int64
 }
 
@@ -41,6 +43,7 @@ type RequestMetrics interface {
 	IncrementRequestsFailedCounter(requestType string, delta int)
 	IncrementRequestsInFlightCounter(requestType string, delta int)
 	DecrementRequestsInFlightCounter(requestType string, delta int)
+	IncrementRequestsCancelledCounter(requestType string, delta int)
 	UpdateLatency(requestType string, dur time.Duration)
 }
 
@@ -96,6 +99,10 @@ func (notifier *RequestMetricsNotifier) DecrementRequestsInFlightCounter(request
 	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsInFlight, uint64(-delta))
 }
 
+func (notifier *RequestMetricsNotifier) IncrementRequestsCancelledCounter(requestType string, delta int) {
+	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsCancelled, uint64(delta))
+}
+
 func (notifier *RequestMetricsNotifier) UpdateLatency(requestType string, dur time.Duration) {
 	addr := &notifier.requestMetricForType(requestType).RequestLatencyMax
 	for {
@@ -147,6 +154,10 @@ func (notifier *RequestMetricsNotifier) Run(signals <-chan os.Signal, ready chan
 				err = notifier.metronClient.SendMetric(requestsInFlightMetric, int(atomic.LoadUint64(&metric.RequestsInFlight)), opt)
 				if err != nil {
 					logger.Error("failed-to-emit-requests-in-flight-metric", err)
+				}
+				err = notifier.metronClient.SendMetric(requestsCancelledMetric, int(atomic.LoadUint64(&metric.RequestsCancelled)), opt)
+				if err != nil {
+					logger.Error("failed-to-emit-requests-cancelled-metric", err)
 				}
 				latency := atomic.SwapInt64(&metric.RequestLatencyMax, 0)
 				err = notifier.metronClient.SendDuration(requestLatencyMaxDuration, time.Duration(latency), opt)

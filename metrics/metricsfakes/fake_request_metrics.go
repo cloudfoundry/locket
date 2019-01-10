@@ -39,6 +39,12 @@ type FakeRequestMetrics struct {
 		requestType string
 		delta       int
 	}
+	IncrementRequestsCancelledCounterStub        func(requestType string, delta int)
+	incrementRequestsCancelledCounterMutex       sync.RWMutex
+	incrementRequestsCancelledCounterArgsForCall []struct {
+		requestType string
+		delta       int
+	}
 	UpdateLatencyStub        func(requestType string, dur time.Duration)
 	updateLatencyMutex       sync.RWMutex
 	updateLatencyArgsForCall []struct {
@@ -174,6 +180,31 @@ func (fake *FakeRequestMetrics) DecrementRequestsInFlightCounterArgsForCall(i in
 	return fake.decrementRequestsInFlightCounterArgsForCall[i].requestType, fake.decrementRequestsInFlightCounterArgsForCall[i].delta
 }
 
+func (fake *FakeRequestMetrics) IncrementRequestsCancelledCounter(requestType string, delta int) {
+	fake.incrementRequestsCancelledCounterMutex.Lock()
+	fake.incrementRequestsCancelledCounterArgsForCall = append(fake.incrementRequestsCancelledCounterArgsForCall, struct {
+		requestType string
+		delta       int
+	}{requestType, delta})
+	fake.recordInvocation("IncrementRequestsCancelledCounter", []interface{}{requestType, delta})
+	fake.incrementRequestsCancelledCounterMutex.Unlock()
+	if fake.IncrementRequestsCancelledCounterStub != nil {
+		fake.IncrementRequestsCancelledCounterStub(requestType, delta)
+	}
+}
+
+func (fake *FakeRequestMetrics) IncrementRequestsCancelledCounterCallCount() int {
+	fake.incrementRequestsCancelledCounterMutex.RLock()
+	defer fake.incrementRequestsCancelledCounterMutex.RUnlock()
+	return len(fake.incrementRequestsCancelledCounterArgsForCall)
+}
+
+func (fake *FakeRequestMetrics) IncrementRequestsCancelledCounterArgsForCall(i int) (string, int) {
+	fake.incrementRequestsCancelledCounterMutex.RLock()
+	defer fake.incrementRequestsCancelledCounterMutex.RUnlock()
+	return fake.incrementRequestsCancelledCounterArgsForCall[i].requestType, fake.incrementRequestsCancelledCounterArgsForCall[i].delta
+}
+
 func (fake *FakeRequestMetrics) UpdateLatency(requestType string, dur time.Duration) {
 	fake.updateLatencyMutex.Lock()
 	fake.updateLatencyArgsForCall = append(fake.updateLatencyArgsForCall, struct {
@@ -212,6 +243,8 @@ func (fake *FakeRequestMetrics) Invocations() map[string][][]interface{} {
 	defer fake.incrementRequestsInFlightCounterMutex.RUnlock()
 	fake.decrementRequestsInFlightCounterMutex.RLock()
 	defer fake.decrementRequestsInFlightCounterMutex.RUnlock()
+	fake.incrementRequestsCancelledCounterMutex.RLock()
+	defer fake.incrementRequestsCancelledCounterMutex.RUnlock()
 	fake.updateLatencyMutex.RLock()
 	defer fake.updateLatencyMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

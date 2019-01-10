@@ -145,6 +145,18 @@ var _ = Describe("RequestMetrics", func() {
 			)))
 		})
 
+		It("periodically emits the number of requests cancelled", func() {
+			runner.IncrementRequestsCancelledCounter(requestType, 2)
+			fakeClock.Increment(metricsInterval)
+			Eventually(metricsChan).Should(Receive(gstruct.MatchAllFields(
+				gstruct.Fields{
+					"Name":  Equal("RequestsCancelled"),
+					"Value": Equal(2),
+					"Opts":  haveTag("request-type", requestType),
+				},
+			)))
+		})
+
 		It("periodically emits the max latency", func() {
 			runner.UpdateLatency(requestType, 5*time.Millisecond)
 			fakeClock.Increment(metricsInterval)
@@ -172,19 +184,33 @@ var _ = Describe("RequestMetrics", func() {
 			fakeClock.WaitForWatcherAndIncrement(metricsInterval)
 		})
 
-		for _, requestType := range []string{"Lock", "Release", "Fetch", "FetchAll"} {
-			for _, metric := range []string{"RequestsStarted", "RequestsSucceeded", "RequestsFailed", "RequestsInFlight", "RequestLatencyMax"} {
+		for _, r := range []string{"Lock", "Release", "Fetch", "FetchAll"} {
+			requestType := r
+			for _, m := range []string{"RequestsStarted", "RequestsSucceeded", "RequestsFailed", "RequestsInFlight", "RequestsCancelled"} {
+				metric := m
 				title := fmt.Sprintf("Emits the %s metric for request type %s with 0 value", metric, requestType)
 				It(title, func() {
 					Eventually(metricsChan).Should(Receive(gstruct.MatchAllFields(
 						gstruct.Fields{
 							"Name":  Equal(metric),
-							"Value": Equal(time.Duration(0)),
+							"Value": Equal(0),
 							"Opts":  haveTag("request-type", requestType),
 						},
 					)))
 				})
 			}
+
+			metric := "RequestLatencyMax"
+			title := fmt.Sprintf("Emits the %s metric for request type %s with 0 value", metric, requestType)
+			It(title, func() {
+				Eventually(metricsChan).Should(Receive(gstruct.MatchAllFields(
+					gstruct.Fields{
+						"Name":  Equal("RequestLatencyMax"),
+						"Value": Equal(time.Duration(0)),
+						"Opts":  haveTag("request-type", requestType),
+					},
+				)))
+			})
 		}
 	})
 })
