@@ -45,8 +45,7 @@ func (h *locketHandler) exitIfUnrecoverable(err error) {
 	}
 }
 
-func (h *locketHandler) monitorRequest(requestType string, ctx context.Context, f func() error) error {
-
+func (h *locketHandler) monitorRequest(requestType string, ctx context.Context, key string, owner string, f func() error) error {
 	h.metrics.IncrementRequestsStartedCounter(requestType, 1)
 	h.metrics.IncrementRequestsInFlightCounter(requestType, 1)
 	defer h.metrics.DecrementRequestsInFlightCounter(requestType, 1)
@@ -55,11 +54,17 @@ func (h *locketHandler) monitorRequest(requestType string, ctx context.Context, 
 
 	err := f()
 
+	logData := lager.Data{
+		"request-id":     ctx.Value("uuid"),
+		"request-type":   requestType,
+		"resource-key":   key,
+		"resource-owner": owner,
+	}
 	if ctx.Err() == context.Canceled {
-		h.logger.Info("context-cancelled", lager.Data{"request-type": requestType})
+		h.logger.Info("context-cancelled", logData)
 		h.metrics.IncrementRequestsCancelledCounter(requestType, 1)
 	} else if ctx.Err() == context.DeadlineExceeded {
-		h.logger.Info("context-deadline-exceeded", lager.Data{"request-type": requestType})
+		h.logger.Info("context-deadline-exceeded", logData)
 	}
 
 	h.metrics.UpdateLatency(requestType, time.Since(start))
@@ -79,7 +84,7 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 		err      error
 	)
 
-	err = h.monitorRequest("Lock", ctx, func() error {
+	err = h.monitorRequest("Lock", ctx, req.Resource.Key, req.Resource.Owner, func() error {
 		response, err = h.lock(ctx, req)
 		return err
 	})
@@ -93,7 +98,7 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 		err      error
 	)
 
-	err = h.monitorRequest("Release", ctx, func() error {
+	err = h.monitorRequest("Release", ctx, req.Resource.Key, req.Resource.Owner, func() error {
 		response, err = h.release(ctx, req)
 		return err
 	})
@@ -107,7 +112,7 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 		err      error
 	)
 
-	err = h.monitorRequest("Fetch", ctx, func() error {
+	err = h.monitorRequest("Fetch", ctx, req.Key, "", func() error {
 		response, err = h.fetch(ctx, req)
 		return err
 	})
@@ -121,7 +126,7 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 		err      error
 	)
 
-	err = h.monitorRequest("FetchAll", ctx, func() error {
+	err = h.monitorRequest("FetchAll", ctx, "", "", func() error {
 		response, err = h.fetchAll(ctx, req)
 		return err
 	})

@@ -307,7 +307,7 @@ var _ = Describe("Lock", func() {
 			var ctx context.Context
 
 			BeforeEach(func() {
-				ctx = context.Background()
+				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
 			})
 
 			JustBeforeEach(func() {
@@ -322,9 +322,12 @@ var _ = Describe("Lock", func() {
 					cancel()
 				})
 
-				It("logs the context cancelled error", func() {
+				It("logs the context cancelled error with request data", func() {
 					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Lock"))
+					Expect(logger).To(gbytes.Say("test"))
+					Expect(logger).To(gbytes.Say("myself"))
 				})
 
 				It("records an increase in the request cancelled metric", func() {
@@ -342,7 +345,10 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context deadline exceeded error", func() {
 					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Lock"))
+					Expect(logger).To(gbytes.Say("test"))
+					Expect(logger).To(gbytes.Say("myself"))
 				})
 
 				It("does not emit a requests cancelled metric", func() {
@@ -452,7 +458,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.Background()
+				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
 			})
 
 			JustBeforeEach(func() {
@@ -469,7 +475,10 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context cancelled error", func() {
 					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Release"))
+					Expect(logger).To(gbytes.Say("test"))
+					Expect(logger).To(gbytes.Say("myself"))
 				})
 
 				It("records an increase in the request cancelled metric", func() {
@@ -487,7 +496,10 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context deadline exceeded error", func() {
 					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Release"))
+					Expect(logger).To(gbytes.Say("test"))
+					Expect(logger).To(gbytes.Say("myself"))
 				})
 
 				It("does not emit a requests cancelled metric", func() {
@@ -548,7 +560,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.Background()
+				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
 			})
 
 			JustBeforeEach(func() {
@@ -565,7 +577,9 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context cancelled error", func() {
 					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Fetch"))
+					Expect(logger).To(gbytes.Say("test"))
 				})
 
 				It("records an increase in the request cancelled metric", func() {
@@ -583,7 +597,9 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context deadline exceeded error", func() {
 					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("Fetch"))
+					Expect(logger).To(gbytes.Say("test"))
 				})
 
 				It("does not emit a requests cancelled metric", func() {
@@ -786,7 +802,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.Background()
+				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
 			})
 
 			JustBeforeEach(func() {
@@ -803,6 +819,7 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context cancelled error", func() {
 					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("FetchAll"))
 				})
 
@@ -821,6 +838,7 @@ var _ = Describe("Lock", func() {
 
 				It("logs the context deadline exceeded error", func() {
 					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("some-request-id"))
 					Expect(logger).To(gbytes.Say("FetchAll"))
 				})
 
