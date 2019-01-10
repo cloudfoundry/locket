@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"errors"
+	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager"
@@ -301,6 +302,54 @@ var _ = Describe("Lock", func() {
 				Expect(exitCh).To(Receive())
 			})
 		})
+
+		Context("when the context errors", func() {
+			var ctx context.Context
+
+			BeforeEach(func() {
+				ctx = context.Background()
+			})
+
+			JustBeforeEach(func() {
+				fakeLockDB.LockReturns(nil, errors.New("Boom."))
+				locketHandler.Lock(ctx, request)
+			})
+
+			Context("when the context was closed due to a client cancellation", func() {
+				BeforeEach(func() {
+					var cancel func()
+					ctx, cancel = context.WithCancel(ctx)
+					cancel()
+				})
+
+				It("logs the context cancelled error", func() {
+					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("Lock"))
+				})
+
+				It("records an increase in the request cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(1))
+					_, requestsCancelled := fakeRequestMetrics.IncrementRequestsCancelledCounterArgsForCall(0)
+					Expect(requestsCancelled).To(BeEquivalentTo(1))
+				})
+			})
+
+			Context("when the context was closed due to an exceeded deadline", func() {
+				BeforeEach(func() {
+					// This context should expire immediately, so we don't care about the cancel func
+					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+				})
+
+				It("logs the context deadline exceeded error", func() {
+					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("Lock"))
+				})
+
+				It("does not emit a requests cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
+				})
+			})
+		})
 	})
 
 	Context("Release", func() {
@@ -399,6 +448,53 @@ var _ = Describe("Lock", func() {
 				Expect(exitCh).To(Receive())
 			})
 		})
+
+		Context("when the context errors", func() {
+			var ctx context.Context
+			BeforeEach(func() {
+				ctx = context.Background()
+			})
+
+			JustBeforeEach(func() {
+				fakeLockDB.ReleaseReturns(errors.New("Boom."))
+				locketHandler.Release(ctx, &models.ReleaseRequest{Resource: resource})
+			})
+
+			Context("when the context was closed due to a client cancellation", func() {
+				BeforeEach(func() {
+					var cancel func()
+					ctx, cancel = context.WithCancel(ctx)
+					cancel()
+				})
+
+				It("logs the context cancelled error", func() {
+					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("Release"))
+				})
+
+				It("records an increase in the request cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(1))
+					_, requestsCancelled := fakeRequestMetrics.IncrementRequestsCancelledCounterArgsForCall(0)
+					Expect(requestsCancelled).To(BeEquivalentTo(1))
+				})
+			})
+
+			Context("when the context was closed due to an exceeded deadline", func() {
+				BeforeEach(func() {
+					// This context should expire immediately, so we don't care about the cancel func
+					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+				})
+
+				It("logs the context deadline exceeded error", func() {
+					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("Release"))
+				})
+
+				It("does not emit a requests cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
+				})
+			})
+		})
 	})
 
 	Context("Fetch", func() {
@@ -446,6 +542,53 @@ var _ = Describe("Lock", func() {
 				metricsUseCorrectCallTags(fakeRequestMetrics, "Fetch")
 
 				Expect(exitCh).To(Receive())
+			})
+		})
+
+		Context("when the context errors", func() {
+			var ctx context.Context
+			BeforeEach(func() {
+				ctx = context.Background()
+			})
+
+			JustBeforeEach(func() {
+				fakeLockDB.FetchReturns(nil, errors.New("boom"))
+				locketHandler.Fetch(ctx, &models.FetchRequest{Key: "test-fetch"})
+			})
+
+			Context("when the context was closed due to a client cancellation", func() {
+				BeforeEach(func() {
+					var cancel func()
+					ctx, cancel = context.WithCancel(ctx)
+					cancel()
+				})
+
+				It("logs the context cancelled error", func() {
+					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("Fetch"))
+				})
+
+				It("records an increase in the request cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(1))
+					_, requestsCancelled := fakeRequestMetrics.IncrementRequestsCancelledCounterArgsForCall(0)
+					Expect(requestsCancelled).To(BeEquivalentTo(1))
+				})
+			})
+
+			Context("when the context was closed due to an exceeded deadline", func() {
+				BeforeEach(func() {
+					// This context should expire immediately, so we don't care about the cancel func
+					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+				})
+
+				It("logs the context deadline exceeded error", func() {
+					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("Fetch"))
+				})
+
+				It("does not emit a requests cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
+				})
 			})
 		})
 	})
@@ -637,6 +780,53 @@ var _ = Describe("Lock", func() {
 				metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 
 				Expect(exitCh).To(Receive())
+			})
+		})
+
+		Context("when the context errors", func() {
+			var ctx context.Context
+			BeforeEach(func() {
+				ctx = context.Background()
+			})
+
+			JustBeforeEach(func() {
+				fakeLockDB.FetchAllReturns(nil, errors.New("boom"))
+				locketHandler.FetchAll(ctx, &models.FetchAllRequest{})
+			})
+
+			Context("when the context was closed due to a client cancellation", func() {
+				BeforeEach(func() {
+					var cancel func()
+					ctx, cancel = context.WithCancel(ctx)
+					cancel()
+				})
+
+				It("logs the context cancelled error", func() {
+					Expect(logger).To(gbytes.Say("context-cancelled"))
+					Expect(logger).To(gbytes.Say("FetchAll"))
+				})
+
+				It("records an increase in the request cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(1))
+					_, requestsCancelled := fakeRequestMetrics.IncrementRequestsCancelledCounterArgsForCall(0)
+					Expect(requestsCancelled).To(BeEquivalentTo(1))
+				})
+			})
+
+			Context("when the context was closed due to an exceeded deadline", func() {
+				BeforeEach(func() {
+					// This context should expire immediately, so we don't care about the cancel func
+					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+				})
+
+				It("logs the context deadline exceeded error", func() {
+					Expect(logger).To(gbytes.Say("context-deadline-exceeded"))
+					Expect(logger).To(gbytes.Say("FetchAll"))
+				})
+
+				It("does not emit a requests cancelled metric", func() {
+					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
+				})
 			})
 		})
 	})
