@@ -101,8 +101,13 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		res, _, _, _, err := db.fetchLock(logger, tx, resource.Key)
 		if err != nil {
+			sqlErr := db.helper.ConvertSQLError(err)
+			if sqlErr == helpers.ErrResourceNotFound {
+				logger.Debug("lock-does-not-exist")
+				return nil
+			}
 			logger.Error("failed-to-fetch-lock", err)
-			return err
+			return sqlErr
 		}
 
 		if res.Owner != resource.Owner {
@@ -115,12 +120,12 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 		)
 		if err != nil {
 			logger.Error("failed-to-release-lock", err)
-			return err
+			return db.helper.ConvertSQLError(err)
 		}
 		logger.Info("released-lock")
 		return nil
 	})
-	return db.helper.ConvertSQLError(err)
+	return err
 }
 
 func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
@@ -252,16 +257,13 @@ func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) 
 		res, index, id, ttl, err := db.fetchLock(logger, tx, lock.Resource.Key)
 
 		if err != nil {
-			logger.Error("failed-to-fetch-lock", err)
 			sqlErr := db.helper.ConvertSQLError(err)
 			if sqlErr == helpers.ErrResourceNotFound {
+				logger.Debug("lock-does-not-exist")
 				return models.ErrResourceNotFound
 			}
+			logger.Error("failed-to-fetch-lock", err)
 			return sqlErr
-		}
-
-		if res.Owner == "" {
-			return models.ErrResourceNotFound
 		}
 
 		logger.Info("fetched-lock")
@@ -298,6 +300,9 @@ func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) 
 	})
 
 	if err != nil {
+		if err == models.ErrResourceNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 

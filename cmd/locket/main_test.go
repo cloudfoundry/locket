@@ -397,10 +397,10 @@ var _ = Describe("Locket", func() {
 			var requestedResource *models.Resource
 
 			Context("when the lock does not exist", func() {
-				It("throws an error releasing the lock", func() {
+				It("does not throw an error releasing the lock", func() {
 					requestedResource = &models.Resource{Key: "test", Value: "test-data", Owner: "jim", Type: "lock"}
 					_, err := locketClient.Release(context.Background(), &models.ReleaseRequest{Resource: requestedResource})
-					Expect(err).To(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 

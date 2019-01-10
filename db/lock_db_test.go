@@ -246,11 +246,12 @@ var _ = Describe("Lock", func() {
 			Context("when the lock is owned by another owner", func() {
 				It("returns an error", func() {
 					err := sqlDB.Release(logger, &models.Resource{
-						Key:   "test",
+						Key:   "quack",
 						Owner: "not jim",
 						Value: "beep boop",
 					})
 					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(models.ErrLockCollision))
 				})
 			})
 		})
@@ -273,9 +274,9 @@ var _ = Describe("Lock", func() {
 		})
 
 		Context("when the lock does not exist", func() {
-			It("returns an error", func() {
+			It("does not return an error", func() {
 				err := sqlDB.Release(logger, resource)
-				Expect(err).To(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})
@@ -560,7 +561,6 @@ var _ = Describe("Lock", func() {
 			oldLock, err = sqlDB.Fetch(logger, resource.Key)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(validateLockInDB(rawDB, resource, currentIndex, currentTTL, modifiedId)).To(Succeed())
-
 		})
 
 		AfterEach(func() {
@@ -672,9 +672,10 @@ var _ = Describe("Lock", func() {
 		})
 
 		Context("when the lock does not exist", func() {
-			It("returns an error", func() {
-				_, err := sqlDB.FetchAndRelease(logger, &db.Lock{Resource: &models.Resource{Key: "quack"}})
-				Expect(err).To(HaveOccurred())
+			It("returns false and no error", func() {
+				expired, err := sqlDB.FetchAndRelease(logger, &db.Lock{Resource: &models.Resource{Key: "meow"}})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(expired).To(BeFalse())
 			})
 		})
 	})
