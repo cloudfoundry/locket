@@ -54,8 +54,13 @@ func (h *locketHandler) monitorRequest(requestType string, ctx context.Context, 
 
 	err := f()
 
+	requestID := ""
+	if md, ok := metadata.FromOutgoingContext(ctx); ok {
+		requestID = md.Get("uuid")[0]
+	}
+
 	logData := lager.Data{
-		"request-id":     ctx.Value("uuid"),
+		"request-id":     requestID,
 		"request-type":   requestType,
 		"resource-key":   key,
 		"resource-owner": owner,

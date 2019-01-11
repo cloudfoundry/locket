@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"google.golang.org/grpc/metadata"
 )
 
 var _ = Describe("Lock", func() {
@@ -307,7 +308,7 @@ var _ = Describe("Lock", func() {
 			var ctx context.Context
 
 			BeforeEach(func() {
-				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
+				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -458,7 +459,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
+				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -560,7 +561,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
+				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -802,7 +803,7 @@ var _ = Describe("Lock", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = context.WithValue(context.Background(), "uuid", "some-request-id")
+				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
