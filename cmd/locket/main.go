@@ -10,7 +10,6 @@ import (
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/bbs/guidprovider"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
@@ -25,6 +24,7 @@ import (
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/hashicorp/consul/api"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -101,7 +101,10 @@ func main() {
 		logger.Fatal("failed-invalid-listen-port", err)
 	}
 
-	tlsConfig, err := cfhttp.NewTLSConfig(cfg.CertFile, cfg.KeyFile, cfg.CaFile)
+	tlsConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(cfg.CertFile, cfg.KeyFile),
+	).Server(tlsconfig.WithClientAuthenticationFromFile(cfg.CaFile))
 	if err != nil {
 		logger.Fatal("invalid-tls-config", err)
 	}

@@ -4,9 +4,9 @@ import (
 	"net"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
+	"code.cloudfoundry.org/tlsconfig"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -32,7 +32,10 @@ func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertV
 		logger.Fatal("invalid-locket-config", nil)
 	}
 
-	locketTLSConfig, err := cfhttp.NewTLSConfig(config.LocketClientCertFile, config.LocketClientKeyFile, config.LocketCACertFile)
+	locketTLSConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(config.LocketClientCertFile, config.LocketClientKeyFile),
+	).Client(tlsconfig.WithAuthorityFromFile(config.LocketCACertFile))
 	if err != nil {
 		logger.Error("failed-to-open-tls-config", err, lager.Data{"keypath": config.LocketClientKeyFile, "certpath": config.LocketClientCertFile, "capath": config.LocketCACertFile})
 		return nil, err

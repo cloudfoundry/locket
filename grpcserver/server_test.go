@@ -7,11 +7,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/models"
+	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -49,7 +49,10 @@ var _ = Describe("GRPCServer", func() {
 		keyFixture = "fixtures/cert.key"
 		caCertFixture = "fixtures/ca.crt"
 
-		tlsConfig, err = cfhttp.NewTLSConfig(certFixture, keyFixture, caCertFixture)
+		tlsConfig, err = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(certFixture, keyFixture),
+		).Server(tlsconfig.WithClientAuthenticationFromFile(caCertFixture))
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("grpc-server")
@@ -69,7 +72,13 @@ var _ = Describe("GRPCServer", func() {
 	})
 
 	It("serves on the listen address", func() {
-		conn, err := grpc.Dial(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+		clientTLSConfig, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(certFixture, keyFixture),
+		).Client(tlsconfig.WithAuthorityFromFile(caCertFixture))
+		Expect(err).NotTo(HaveOccurred())
+
+		conn, err := grpc.Dial(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)))
 		Expect(err).NotTo(HaveOccurred())
 
 		locketClient := models.NewLocketClient(conn)

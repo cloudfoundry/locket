@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
+	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -65,7 +65,10 @@ func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig))
 }
 
 func LocketClientTLSConfig() *tls.Config {
-	tlsConfig, err := cfhttp.NewTLSConfig(certFile, keyFile, caCertFile)
+	tlsConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(certFile, keyFile),
+	).Client(tlsconfig.WithAuthorityFromFile(caCertFile))
 	Expect(err).NotTo(HaveOccurred())
 	return tlsConfig
 }
