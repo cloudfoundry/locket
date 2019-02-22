@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/locket"
 	"github.com/hashicorp/consul/api"
@@ -183,7 +183,7 @@ var _ = Describe("Presence", func() {
 						client, err := api.NewClient(&api.Config{
 							Address:    fakeConsulURL.Host,
 							Scheme:     fakeConsulURL.Scheme,
-							HttpClient: cfhttp.NewStreamingClient(),
+							HttpClient: cfhttp.NewClient(cfhttp.WithStreamingDefaults()),
 						})
 						Expect(err).NotTo(HaveOccurred())
 

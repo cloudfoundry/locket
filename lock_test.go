@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/consuladapter"
 	loggregator "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/locket"
@@ -245,7 +245,7 @@ var _ = Describe("Lock", func() {
 						client, err := api.NewClient(&api.Config{
 							Address:    fakeConsulURL.Host,
 							Scheme:     fakeConsulURL.Scheme,
-							HttpClient: cfhttp.NewStreamingClient(),
+							HttpClient: cfhttp.NewClient(cfhttp.WithStreamingDefaults()),
 						})
 						Expect(err).NotTo(HaveOccurred())
 
