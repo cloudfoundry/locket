@@ -1,4 +1,4 @@
-package metrics
+package helpers
 
 import (
 	"fmt"
@@ -11,8 +11,6 @@ import (
 	loggregator "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager"
 )
-
-type RequestType int
 
 const (
 	requestsStartedMetric     = "RequestsStarted"
@@ -32,11 +30,6 @@ type requestMetric struct {
 	RequestLatencyMax int64
 }
 
-type metrics struct {
-	lock, release, fetch, fetchAll requestMetric
-}
-
-//go:generate counterfeiter . RequestMetrics
 type RequestMetrics interface {
 	IncrementRequestsStartedCounter(requestType string, delta int)
 	IncrementRequestsSucceededCounter(requestType string, delta int)
@@ -50,61 +43,60 @@ type RequestMetrics interface {
 type RequestMetricsNotifier struct {
 	logger          lager.Logger
 	clock           clock.Clock
-	metricsInterval time.Duration
 	metronClient    loggingclient.IngressClient
-	metrics         metrics
+	metricsInterval time.Duration
+	metrics         map[string]*requestMetric
 }
 
-func NewRequestMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration) *RequestMetricsNotifier {
+func NewRequestMetricsNotifier(logger lager.Logger, clock clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, requestTypes []string) *RequestMetricsNotifier {
+	metrics := map[string]*requestMetric{}
+	for _, requestType := range requestTypes {
+		metrics[requestType] = &requestMetric{}
+	}
+
 	return &RequestMetricsNotifier{
 		logger:          logger,
-		clock:           ticker,
-		metricsInterval: metricsInterval,
+		clock:           clock,
 		metronClient:    metronClient,
+		metricsInterval: metricsInterval,
+		metrics:         metrics,
 	}
 }
 
-func (notifier *RequestMetricsNotifier) requestMetricForType(requestType string) *requestMetric {
-	switch requestType {
-	case "Lock":
-		return &notifier.metrics.lock
-	case "Release":
-		return &notifier.metrics.release
-	case "Fetch":
-		return &notifier.metrics.fetch
-	case "FetchAll":
-		return &notifier.metrics.fetchAll
-	default:
+func (notifier *RequestMetricsNotifier) requestMetricsForType(requestType string) *requestMetric {
+	metric, exist := notifier.metrics[requestType]
+	if !exist {
 		panic(fmt.Sprintf("unknown request type %s", requestType))
 	}
+	return metric
 }
 
 func (notifier *RequestMetricsNotifier) IncrementRequestsStartedCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsStarted, uint64(delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsStarted, uint64(delta))
 }
 
 func (notifier *RequestMetricsNotifier) IncrementRequestsSucceededCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsSucceeded, uint64(delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsSucceeded, uint64(delta))
 }
 
 func (notifier *RequestMetricsNotifier) IncrementRequestsFailedCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsFailed, uint64(delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsFailed, uint64(delta))
 }
 
 func (notifier *RequestMetricsNotifier) IncrementRequestsInFlightCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsInFlight, uint64(delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsInFlight, uint64(delta))
 }
 
 func (notifier *RequestMetricsNotifier) DecrementRequestsInFlightCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsInFlight, uint64(-delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsInFlight, uint64(-delta))
 }
 
 func (notifier *RequestMetricsNotifier) IncrementRequestsCancelledCounter(requestType string, delta int) {
-	atomic.AddUint64(&notifier.requestMetricForType(requestType).RequestsCancelled, uint64(delta))
+	atomic.AddUint64(&notifier.requestMetricsForType(requestType).RequestsCancelled, uint64(delta))
 }
 
 func (notifier *RequestMetricsNotifier) UpdateLatency(requestType string, dur time.Duration) {
-	addr := &notifier.requestMetricForType(requestType).RequestLatencyMax
+	addr := &notifier.requestMetricsForType(requestType).RequestLatencyMax
 	for {
 		val := atomic.LoadInt64(addr)
 		newval := int64(dur)
@@ -135,11 +127,13 @@ func (notifier *RequestMetricsNotifier) Run(signals <-chan os.Signal, ready chan
 			logger.Debug("emitting-metrics")
 
 			var err error
-			for _, requestType := range []string{"Lock", "Release", "Fetch", "FetchAll"} {
-				metric := notifier.requestMetricForType(requestType)
+			for requestType, _ := range notifier.metrics {
+				metric := notifier.requestMetricsForType(requestType)
 				opt := loggregator.WithEnvelopeTag("request-type", requestType)
 
-				err = notifier.metronClient.SendMetric(requestsStartedMetric, int(atomic.LoadUint64(&metric.RequestsStarted)), opt)
+				value := int(atomic.LoadUint64(&metric.RequestsStarted))
+				err = notifier.metronClient.SendMetric(requestsStartedMetric, value, opt)
+
 				if err != nil {
 					logger.Error("failed-to-emit-requests-started-metric", err)
 				}

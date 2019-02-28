@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics"
+	metrics_helpers "code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/hashicorp/consul/api"
 	"github.com/tedsuo/ifrit"
@@ -111,7 +112,7 @@ func main() {
 
 	lockMetricsNotifier := metrics.NewLockMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB)
 	dbMetricsNotifier := metrics.NewDBMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), sqlDB, dbMonitor)
-	requestNotifier := metrics.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval))
+	requestNotifier := metrics_helpers.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(cfg.ReportInterval), []string{"Lock", "Release", "Fetch", "FetchAll"})
 	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval, metronClient)
 	exitCh := make(chan struct{})

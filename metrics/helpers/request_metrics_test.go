@@ -1,4 +1,4 @@
-package metrics_test
+package helpers_test
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	loggregator "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/locket/metrics"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
@@ -26,7 +26,7 @@ var _ = Describe("RequestMetrics", func() {
 	}
 
 	var (
-		runner           *metrics.RequestMetricsNotifier
+		runner           *helpers.RequestMetricsNotifier
 		process          ifrit.Process
 		fakeMetronClient *mfakes.FakeIngressClient
 		logger           *lagertest.TestLogger
@@ -53,11 +53,12 @@ var _ = Describe("RequestMetrics", func() {
 	})
 
 	JustBeforeEach(func() {
-		runner = metrics.NewRequestMetricsNotifier(
+		runner = helpers.NewRequestMetricsNotifier(
 			logger,
 			fakeClock,
 			fakeMetronClient,
 			metricsInterval,
+			[]string{"requestType1", "requestType2"},
 		)
 
 		process = ifrit.Background(runner)
@@ -68,8 +69,8 @@ var _ = Describe("RequestMetrics", func() {
 		ginkgomon.Interrupt(process)
 	})
 
-	Context("when there is traffic to the locket server", func() {
-		var requestType = "Lock"
+	Context("when there is traffic to the server", func() {
+		var requestType = "requestType1"
 
 		JustBeforeEach(func() {
 			fakeClock.Increment(metricsInterval)
@@ -184,7 +185,7 @@ var _ = Describe("RequestMetrics", func() {
 			fakeClock.WaitForWatcherAndIncrement(metricsInterval)
 		})
 
-		for _, r := range []string{"Lock", "Release", "Fetch", "FetchAll"} {
+		for _, r := range []string{"requestType1", "requestType2"} {
 			requestType := r
 			for _, m := range []string{"RequestsStarted", "RequestsSucceeded", "RequestsFailed", "RequestsInFlight", "RequestsCancelled"} {
 				metric := m

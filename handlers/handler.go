@@ -7,7 +7,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration"
-	"code.cloudfoundry.org/locket/metrics"
+	metrics_helpers "code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/locket/models"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -19,10 +19,10 @@ type locketHandler struct {
 	db       db.LockDB
 	exitCh   chan<- struct{}
 	lockPick expiration.LockPick
-	metrics  metrics.RequestMetrics
+	metrics  metrics_helpers.RequestMetrics
 }
 
-func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics.RequestMetrics, exitCh chan<- struct{}) *locketHandler {
+func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics_helpers.RequestMetrics, exitCh chan<- struct{}) *locketHandler {
 	return &locketHandler{
 		logger:   logger,
 		db:       db,

@@ -12,7 +12,7 @@ import (
 	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/locket/expiration/expirationfakes"
 	"code.cloudfoundry.org/locket/handlers"
-	"code.cloudfoundry.org/locket/metrics/metricsfakes"
+	"code.cloudfoundry.org/locket/metrics/helpers/helpersfakes"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,13 +28,13 @@ var _ = Describe("Lock", func() {
 		locketHandler      models.LocketServer
 		resource           *models.Resource
 		exitCh             chan struct{}
-		fakeRequestMetrics *metricsfakes.FakeRequestMetrics
+		fakeRequestMetrics *helpersfakes.FakeRequestMetrics
 	)
 
 	BeforeEach(func() {
 		fakeLockDB = &dbfakes.FakeLockDB{}
 		fakeLockPick = &expirationfakes.FakeLockPick{}
-		fakeRequestMetrics = &metricsfakes.FakeRequestMetrics{}
+		fakeRequestMetrics = &helpersfakes.FakeRequestMetrics{}
 
 		logger = lagertest.NewTestLogger("locket-handler")
 		exitCh = make(chan struct{}, 1)
@@ -851,7 +851,7 @@ var _ = Describe("Lock", func() {
 	})
 })
 
-func metricsRecordSuccess(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
+func metricsRecordSuccess(fakeRequestMetrics *helpersfakes.FakeRequestMetrics) {
 	Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
 	_, started := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
 	Expect(started).To(BeEquivalentTo(1))
@@ -875,7 +875,7 @@ func metricsRecordSuccess(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
 	Expect(latency).To(BeNumerically(">=", 0))
 }
 
-func metricsRecordFailure(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
+func metricsRecordFailure(fakeRequestMetrics *helpersfakes.FakeRequestMetrics) {
 	Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
 	_, started := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
 	Expect(started).To(BeEquivalentTo(1))
@@ -899,7 +899,7 @@ func metricsRecordFailure(fakeRequestMetrics *metricsfakes.FakeRequestMetrics) {
 	Expect(latency).To(BeNumerically(">=", 0))
 }
 
-func metricsUseCorrectCallTags(fakeRequestMetrics *metricsfakes.FakeRequestMetrics, expectedRequestType string) {
+func metricsUseCorrectCallTags(fakeRequestMetrics *helpersfakes.FakeRequestMetrics, expectedRequestType string) {
 
 	if fakeRequestMetrics.IncrementRequestsStartedCounterCallCount() > 0 {
 		requestType, _ := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
