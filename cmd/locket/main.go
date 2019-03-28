@@ -72,6 +72,7 @@ func main() {
 
 	sqlConn.SetMaxIdleConns(cfg.MaxOpenDatabaseConnections)
 	sqlConn.SetMaxOpenConns(cfg.MaxOpenDatabaseConnections)
+	sqlConn.SetConnMaxLifetime(time.Duration(cfg.MaxDatabaseConnectionLifetime))
 
 	err = sqlConn.Ping()
 	if err != nil {

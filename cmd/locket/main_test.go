@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
@@ -204,6 +205,86 @@ var _ = Describe("Locket", func() {
 								}, BeNumerically(">", 0)),
 							),
 						))
+					})
+				})
+
+				Context("when the locket server is encountering a high load", func() {
+					BeforeEach(func() {
+						configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+							cfg.MaxOpenDatabaseConnections = 100
+							cfg.MaxDatabaseConnectionLifetime = 0
+						})
+					})
+
+					JustBeforeEach(func() {
+						var wg sync.WaitGroup
+						wg.Add(10)
+						for i := 0; i < 10; i++ {
+							key := fmt.Sprintf("test%d", i)
+							requestedResource := &models.Resource{Key: key, Value: "test-data", Owner: key, Type: "lock"}
+							go func() {
+								defer GinkgoRecover()
+								defer wg.Done()
+								var err error
+								for j := 0; j < 3; j++ {
+									_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+										Resource:     requestedResource,
+										TtlInSeconds: 10,
+									})
+									if err == nil {
+										break
+									}
+								}
+								Expect(err).NotTo(HaveOccurred())
+							}()
+						}
+						wg.Wait()
+					})
+
+					It("increases the DBOpenConnections metric", func() {
+						metricName := "DBOpenConnections"
+						openConnections := make(chan float64, 10)
+						go func() {
+							for {
+								metric := <-testMetricsChan
+								gauge := metric.GetGauge()
+								if gauge != nil {
+									metrics := gauge.GetMetrics()
+									if m, found := metrics[metricName]; found {
+										openConnections <- m.Value
+									}
+								}
+							}
+						}()
+						Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
+						Consistently(func() float64 { return <-openConnections }, 10*time.Second).Should(BeNumerically(">", 5))
+					})
+
+					Context("when the max database connection lifetime is set", func() {
+						BeforeEach(func() {
+							configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
+								cfg.MaxDatabaseConnectionLifetime = durationjson.Duration(5 * time.Second)
+							})
+						})
+
+						It("eventually decreases the DBOpenConnections metric", func() {
+							metricName := "DBOpenConnections"
+							openConnections := make(chan float64, 10)
+							go func() {
+								for {
+									metric := <-testMetricsChan
+									gauge := metric.GetGauge()
+									if gauge != nil {
+										metrics := gauge.GetMetrics()
+										if m, found := metrics[metricName]; found {
+											openConnections <- m.Value
+										}
+									}
+								}
+							}()
+							Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
+							Eventually(openConnections).Should(Receive(BeNumerically("<", 5)))
+						})
 					})
 				})
 			})

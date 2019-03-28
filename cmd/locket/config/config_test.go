@@ -24,6 +24,7 @@ var _ = Describe("LocketConfig", func() {
 			"listen_address": "1.2.3.4:9090",
 			"database_driver": "mysql",
 			"max_open_database_connections": 1000,
+			"max_database_connection_lifetime": "1h",
 			"database_connection_string": "stuff",
 			"debug_address": "some-more-stuff",
 			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
@@ -72,6 +73,7 @@ var _ = Describe("LocketConfig", func() {
 			ListenAddress:                   "1.2.3.4:9090",
 			DatabaseConnectionString:        "stuff",
 			MaxOpenDatabaseConnections:      1000,
+			MaxDatabaseConnectionLifetime:   durationjson.Duration(time.Hour),
 			ConsulCluster:                   "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			EnableConsulServiceRegistration: false,
 			LagerConfig: lagerflags.LagerConfig{
@@ -117,6 +119,5 @@ var _ = Describe("LocketConfig", func() {
 			_, err := config.NewLocketConfig(configFilePath)
 			Expect(err).To(HaveOccurred())
 		})
-
 	})
 })
