@@ -14,6 +14,8 @@ import (
 
 const (
 	dbOpenConnectionsMetric  = "DBOpenConnections"
+	dbWaitDurationMetric     = "DBWaitDuration"
+	dbWaitCountMetric        = "DBWaitCount"
 	dbQueriesTotalMetric     = "DBQueriesTotal"
 	dbQueriesSucceededMetric = "DBQueriesSucceeded"
 	dbQueriesFailedMetric    = "DBQueriesFailed"
@@ -56,6 +58,8 @@ func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- st
 			logger.Debug("emitting-metrics")
 
 			openConnections := notifier.lockDB.OpenConnections()
+			waitDuration := notifier.lockDB.WaitDuration()
+			waitCount := notifier.lockDB.WaitCount()
 			queriesTotal := notifier.queryMonitor.Total()
 			queriesSucceeded := notifier.queryMonitor.Succeeded()
 			queriesFailed := notifier.queryMonitor.Failed()
@@ -65,6 +69,16 @@ func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- st
 			err := notifier.metronClient.SendMetric(dbOpenConnectionsMetric, openConnections)
 			if err != nil {
 				logger.Error("failed-sending-db-open-connections-count", err)
+			}
+
+			err = notifier.metronClient.SendDuration(dbWaitDurationMetric, waitDuration)
+			if err != nil {
+				logger.Error("failed-sending-db-wait-duration", err)
+			}
+
+			err = notifier.metronClient.SendMetric(dbWaitCountMetric, int(waitCount))
+			if err != nil {
+				logger.Error("failed-sending-db-wait-count", err)
 			}
 
 			logger.Debug("sending-queries-total-metric", lager.Data{"value": queriesTotal})

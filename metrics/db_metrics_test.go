@@ -59,6 +59,11 @@ var _ = Describe("DBMetrics", func() {
 		}
 
 		lockDB.OpenConnectionsReturns(100)
+		lockDB.WaitCountReturnsOnCall(0, 5)
+		lockDB.WaitCountReturnsOnCall(1, 10)
+		lockDB.WaitDurationReturnsOnCall(0, time.Second)
+		lockDB.WaitDurationReturnsOnCall(1, 10*time.Second)
+
 		fakeMonitor.TotalReturns(105)
 		fakeMonitor.SucceededReturns(90)
 		fakeMonitor.FailedReturns(10)
@@ -88,6 +93,18 @@ var _ = Describe("DBMetrics", func() {
 		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
 		fakeClock.Increment(metricsInterval)
 		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBOpenConnections", 100})))
+	})
+
+	It("emits a metric for the db wait duration metric", func() {
+		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBWaitDuration", int(time.Second)})))
+		fakeClock.Increment(metricsInterval)
+		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBWaitDuration", int(10 * time.Second)})))
+	})
+
+	It("emits a metric for the db wait count metric", func() {
+		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBWaitCount", 5})))
+		fakeClock.Increment(metricsInterval)
+		Eventually(metricsChan).Should(Receive(Equal(FakeGauge{"DBWaitCount", 10})))
 	})
 
 	It("emits a metric for the number of total queries against the database", func() {
