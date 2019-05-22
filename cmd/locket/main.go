@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"net"
@@ -88,7 +89,7 @@ func main() {
 		guidprovider.DefaultGuidProvider,
 	)
 
-	err = sqlDB.CreateLockTable(logger)
+	err = sqlDB.CreateLockTable(context.Background(), logger)
 	if err != nil {
 		logger.Fatal("failed-to-create-lock-table", err)
 	}

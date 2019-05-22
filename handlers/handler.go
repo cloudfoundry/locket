@@ -173,7 +173,7 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 		logger = logger.WithData(lager.Data{"request-uuid": requestUUID[0]})
 	}
 
-	lock, err := h.db.Lock(logger, req.Resource, req.TtlInSeconds)
+	lock, err := h.db.Lock(ctx, logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		if err != models.ErrLockCollision {
 			logger.Error("failed-locking-lock", err, lager.Data{
@@ -194,7 +194,7 @@ func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest)
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	err := h.db.Release(logger, req.Resource)
+	err := h.db.Release(ctx, logger, req.Resource)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*m
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	lock, err := h.db.Fetch(logger, req.Key)
+	lock, err := h.db.Fetch(ctx, logger, req.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		return nil, err
 	}
 
-	locks, err := h.db.FetchAll(logger, models.GetType(&models.Resource{Type: req.Type, TypeCode: req.TypeCode}))
+	locks, err := h.db.FetchAll(ctx, logger, models.GetType(&models.Resource{Type: req.Type, TypeCode: req.TypeCode}))
 	if err != nil {
 		return nil, err
 	}

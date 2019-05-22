@@ -81,7 +81,7 @@ var _ = Describe("Burglar", func() {
 
 	It("fetches the list of locks and registers them with the lock pick", func() {
 		Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(1))
-		_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+		_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 		Expect(lockType).To(Equal(""))
 
 		Eventually(fakeLockPick.RegisterTTLCallCount).Should(Equal(2))
@@ -96,7 +96,7 @@ var _ = Describe("Burglar", func() {
 
 	It("continues to fetch locks and register them on an interval", func() {
 		Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(1))
-		_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+		_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 		Expect(lockType).To(Equal(""))
 
 		Eventually(fakeLockPick.RegisterTTLCallCount).Should(Equal(2))
@@ -108,7 +108,7 @@ var _ = Describe("Burglar", func() {
 
 		fakeClock.Increment(checkInterval)
 		Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(initialFetchAllCallCount + 1))
-		_, lockType = fakeLockDB.FetchAllArgsForCall(initialFetchAllCallCount + 1 - 1)
+		_, _, lockType = fakeLockDB.FetchAllArgsForCall(initialFetchAllCallCount + 1 - 1)
 		Expect(lockType).To(Equal(""))
 		Eventually(fakeLockPick.RegisterTTLCallCount).Should(Equal(initialRegisterTTLCallCount + 2))
 	})
@@ -144,14 +144,14 @@ var _ = Describe("Burglar", func() {
 
 		It("logs the error and continues", func() {
 			Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(1))
-			_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+			_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 			Expect(lockType).To(Equal(""))
 			Eventually(process.Ready()).Should(BeClosed())
 			Eventually(logger).Should(gbytes.Say("failed-fetching-locks"))
 
 			fakeClock.Increment(checkInterval)
 			Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(2))
-			_, lockType = fakeLockDB.FetchAllArgsForCall(1)
+			_, _, lockType = fakeLockDB.FetchAllArgsForCall(1)
 			Expect(lockType).To(Equal(""))
 			Eventually(logger).Should(gbytes.Say("failed-fetching-locks"))
 		})

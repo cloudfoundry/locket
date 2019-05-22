@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var _ = Describe("Lock", func() {
+var _ = Describe("LocketHandler", func() {
 	var (
 		fakeLockDB         *dbfakes.FakeLockDB
 		fakeLockPick       *expirationfakes.FakeLockPick
@@ -81,7 +81,7 @@ var _ = Describe("Lock", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeLockDB.LockCallCount()).To(Equal(1))
 
-			_, actualResource, ttl := fakeLockDB.LockArgsForCall(0)
+			_, _, actualResource, ttl := fakeLockDB.LockArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
 			Expect(ttl).To(BeEquivalentTo(10))
 
@@ -367,7 +367,7 @@ var _ = Describe("Lock", func() {
 
 			BeforeEach(func() {
 				blockDB = make(chan struct{})
-				fakeLockDB.ReleaseStub = func(logger lager.Logger, resource *models.Resource) error {
+				fakeLockDB.ReleaseStub = func(ctx context.Context, logger lager.Logger, resource *models.Resource) error {
 					<-blockDB
 					return nil
 				}
@@ -419,7 +419,7 @@ var _ = Describe("Lock", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLockDB.ReleaseCallCount()).Should(Equal(1))
-			_, actualResource := fakeLockDB.ReleaseArgsForCall(0)
+			_, _, actualResource := fakeLockDB.ReleaseArgsForCall(0)
 			Expect(actualResource).To(Equal(resource))
 
 			metricsRecordSuccess(fakeRequestMetrics)
@@ -521,7 +521,7 @@ var _ = Describe("Lock", func() {
 			Expect(fetchResp.Resource).To(Equal(resource))
 
 			Expect(fakeLockDB.FetchCallCount()).Should(Equal(1))
-			_, key := fakeLockDB.FetchArgsForCall(0)
+			_, _, key := fakeLockDB.FetchArgsForCall(0)
 			Expect(key).To(Equal("test-fetch"))
 
 			metricsRecordSuccess(fakeRequestMetrics)
@@ -706,7 +706,7 @@ var _ = Describe("Lock", func() {
 
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
-				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 				Expect(lockType).To(Equal("presence"))
 			})
 
@@ -719,7 +719,7 @@ var _ = Describe("Lock", func() {
 
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
-				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 				Expect(lockType).To(Equal("lock"))
 			})
 
@@ -732,7 +732,7 @@ var _ = Describe("Lock", func() {
 
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
-				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 				Expect(lockType).To(Equal("presence"))
 			})
 
@@ -745,7 +745,7 @@ var _ = Describe("Lock", func() {
 
 				Expect(fetchResp.Resources).To(Equal(expectedResources))
 				Expect(fakeLockDB.FetchAllCallCount()).Should(Equal(1))
-				_, lockType := fakeLockDB.FetchAllArgsForCall(0)
+				_, _, lockType := fakeLockDB.FetchAllArgsForCall(0)
 				Expect(lockType).To(Equal("lock"))
 			})
 		})

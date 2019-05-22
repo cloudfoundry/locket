@@ -104,7 +104,7 @@ var _ = Describe("Lock", func() {
 							Value:    "i can do anything",
 							TypeCode: models.LOCK,
 						}
-						lock, err := sqlDB.Lock(logger, typeCodeResource, 10)
+						lock, err := sqlDB.Lock(ctx, logger, typeCodeResource, 10)
 						Expect(err).NotTo(HaveOccurred())
 						Expect(lock).To(Equal(&db.Lock{
 							Resource:      expectedResource,
@@ -117,7 +117,7 @@ var _ = Describe("Lock", func() {
 				})
 
 				It("inserts the lock for the owner", func() {
-					lock, err := sqlDB.Lock(logger, resource, 10)
+					lock, err := sqlDB.Lock(ctx, logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      expectedResource,
@@ -134,7 +134,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns an error", func() {
-						_, err := sqlDB.Lock(logger, resource, 10)
+						_, err := sqlDB.Lock(ctx, logger, resource, 10)
 						Expect(err).To(HaveOccurred())
 					})
 				})
@@ -152,7 +152,7 @@ var _ = Describe("Lock", func() {
 				})
 
 				It("inserts the lock for the owner", func() {
-					lock, err := sqlDB.Lock(logger, resource, 10)
+					lock, err := sqlDB.Lock(ctx, logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      expectedResource,
@@ -167,7 +167,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the lock does exist", func() {
 			BeforeEach(func() {
-				_, err := sqlDB.Lock(logger, resource, 10)
+				_, err := sqlDB.Lock(ctx, logger, resource, 10)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
 
@@ -182,7 +182,7 @@ var _ = Describe("Lock", func() {
 						Value: "i have never seen the princess bride and never will",
 					}
 
-					_, err := sqlDB.Lock(logger, newResource, 10)
+					_, err := sqlDB.Lock(ctx, logger, newResource, 10)
 					Expect(err).To(Equal(models.ErrLockCollision))
 					Expect(validateLockInDB(rawDB, resource, 1, 10, "new-guid")).To(Succeed())
 				})
@@ -190,7 +190,7 @@ var _ = Describe("Lock", func() {
 
 			Context("and the desired owner is the same", func() {
 				It("increases the modified_index", func() {
-					lock, err := sqlDB.Lock(logger, resource, 10)
+					lock, err := sqlDB.Lock(ctx, logger, resource, 10)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lock).To(Equal(&db.Lock{
 						Resource:      expectedResource,
@@ -210,12 +210,12 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an unrecoverable error", func() {
-				_, err := sqlDB.Lock(logger, resource, 10)
+				_, err := sqlDB.Lock(ctx, logger, resource, 10)
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
@@ -238,14 +238,14 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("removes the lock from the lock table", func() {
-				err := sqlDB.Release(logger, resource)
+				err := sqlDB.Release(ctx, logger, resource)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validateLockNotInDB(rawDB, resource)).To(Succeed())
 			})
 
 			Context("when the lock is owned by another owner", func() {
 				It("returns an error", func() {
-					err := sqlDB.Release(logger, &models.Resource{
+					err := sqlDB.Release(ctx, logger, &models.Resource{
 						Key:   "quack",
 						Owner: "not jim",
 						Value: "beep boop",
@@ -263,19 +263,19 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an error", func() {
-				err := sqlDB.Release(logger, resource)
+				err := sqlDB.Release(ctx, logger, resource)
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
 
 		Context("when the lock does not exist", func() {
 			It("does not return an error", func() {
-				err := sqlDB.Release(logger, resource)
+				err := sqlDB.Release(ctx, logger, resource)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -309,7 +309,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns the lock from the database", func() {
-						resource, err := sqlDB.Fetch(logger, "test")
+						resource, err := sqlDB.Fetch(ctx, logger, "test")
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resource).To(Equal(&db.Lock{
 							Resource:      expectedLock,
@@ -333,7 +333,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns the lock from the database", func() {
-						resource, err := sqlDB.Fetch(logger, "test")
+						resource, err := sqlDB.Fetch(ctx, logger, "test")
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resource).To(Equal(&db.Lock{
 							Resource:      expectedLock,
@@ -357,7 +357,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns the lock from the database", func() {
-						resource, err := sqlDB.Fetch(logger, "test")
+						resource, err := sqlDB.Fetch(ctx, logger, "test")
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resource).To(Equal(&db.Lock{
 							Resource:      expectedLock,
@@ -381,7 +381,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns the lock from the database", func() {
-						resource, err := sqlDB.Fetch(logger, "test")
+						resource, err := sqlDB.Fetch(ctx, logger, "test")
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resource).To(Equal(&db.Lock{
 							Resource:      expectedLock,
@@ -405,7 +405,7 @@ var _ = Describe("Lock", func() {
 					})
 
 					It("returns the lock from the database", func() {
-						resource, err := sqlDB.Fetch(logger, "test")
+						resource, err := sqlDB.Fetch(ctx, logger, "test")
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resource).To(Equal(&db.Lock{
 							Resource:      expectedLock,
@@ -425,12 +425,12 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an error", func() {
-				_, err := sqlDB.Fetch(logger, "test")
+				_, err := sqlDB.Fetch(ctx, logger, "test")
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
@@ -438,7 +438,7 @@ var _ = Describe("Lock", func() {
 		Context("when the lock does not exist", func() {
 			Context("because the row does not exist", func() {
 				It("returns an resource not found error", func() {
-					_, err := sqlDB.Fetch(logger, "test")
+					_, err := sqlDB.Fetch(ctx, logger, "test")
 					Expect(err).To(Equal(models.ErrResourceNotFound))
 				})
 			})
@@ -455,7 +455,7 @@ var _ = Describe("Lock", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := sqlDB.Fetch(logger, "test")
+					_, err := sqlDB.Fetch(ctx, logger, "test")
 					Expect(err).To(Equal(models.ErrResourceNotFound))
 				})
 			})
@@ -508,14 +508,14 @@ var _ = Describe("Lock", func() {
 		})
 
 		It("retrieves a list of all locks with owners", func() {
-			locks, err := sqlDB.FetchAll(logger, "")
+			locks, err := sqlDB.FetchAll(ctx, logger, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(locks).To(ConsistOf(dogLock, humanLock))
 		})
 
 		Context("when a type is specified", func() {
 			It("filters the locks returned by that type", func() {
-				locks, err := sqlDB.FetchAll(logger, "presence")
+				locks, err := sqlDB.FetchAll(ctx, logger, "presence")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(locks).To(ConsistOf(humanLock))
 			})
@@ -528,12 +528,12 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an unrecoverable error", func() {
-				_, err := sqlDB.FetchAll(logger, "")
+				_, err := sqlDB.FetchAll(ctx, logger, "")
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
@@ -558,7 +558,7 @@ var _ = Describe("Lock", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
 
-			oldLock, err = sqlDB.Fetch(logger, resource.Key)
+			oldLock, err = sqlDB.Fetch(ctx, logger, resource.Key)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(validateLockInDB(rawDB, resource, currentIndex, currentTTL, modifiedId)).To(Succeed())
 		})
@@ -574,7 +574,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the lock hasn't changed", func() {
 			It("deletes the lock record", func() {
-				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				released, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(released).To(BeTrue())
@@ -595,7 +595,7 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("does not delete the lock record", func() {
-				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				released, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
 				Expect(err).To(MatchError(models.ErrLockCollision))
 
 				Expect(released).NotTo(BeTrue())
@@ -618,7 +618,7 @@ var _ = Describe("Lock", func() {
 			})
 
 			It("does not delete the lock record", func() {
-				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				released, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
 				Expect(err).To(MatchError(models.ErrLockCollision))
 
 				Expect(released).NotTo(BeTrue())
@@ -646,7 +646,7 @@ var _ = Describe("Lock", func() {
 					Type:  resource.Type,
 				}
 
-				released, err := sqlDB.FetchAndRelease(logger, oldLock)
+				released, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
 				Expect(err).To(MatchError(models.ErrLockCollision))
 
 				Expect(released).NotTo(BeTrue())
@@ -661,19 +661,19 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an error", func() {
-				_, err := sqlDB.FetchAndRelease(logger, oldLock)
+				_, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})
 
 		Context("when the lock does not exist", func() {
 			It("returns false and no error", func() {
-				expired, err := sqlDB.FetchAndRelease(logger, &db.Lock{Resource: &models.Resource{Key: "meow"}})
+				expired, err := sqlDB.FetchAndRelease(ctx, logger, &db.Lock{Resource: &models.Resource{Key: "meow"}})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(expired).To(BeFalse())
 			})
@@ -700,13 +700,13 @@ var _ = Describe("Lock", func() {
 		})
 
 		It("retrieves a count of the locks", func() {
-			count, err := sqlDB.Count(logger, "")
+			count, err := sqlDB.Count(ctx, logger, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(count).To(Equal(2))
 		})
 
 		It("filters based on lock type", func() {
-			count, err := sqlDB.Count(logger, "dog")
+			count, err := sqlDB.Count(ctx, logger, "dog")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(count).To(Equal(1))
 		})
@@ -718,12 +718,12 @@ var _ = Describe("Lock", func() {
 			})
 
 			AfterEach(func() {
-				err := sqlDB.CreateLockTable(logger)
+				err := sqlDB.CreateLockTable(ctx, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an error", func() {
-				_, err := sqlDB.Count(logger, "")
+				_, err := sqlDB.Count(ctx, logger, "")
 				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
 			})
 		})

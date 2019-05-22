@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -49,7 +50,7 @@ func (notifier *lockMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- 
 		case <-tick.C():
 			logger.Debug("emitting-metrics")
 
-			locks, err := notifier.lockDB.Count(logger, models.LockType)
+			locks, err := notifier.lockDB.Count(context.Background(), logger, models.LockType)
 			if err != nil {
 				logger.Error("failed-to-retrieve-lock-count", err)
 			} else {
@@ -59,7 +60,7 @@ func (notifier *lockMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- 
 				}
 			}
 
-			presences, err := notifier.lockDB.Count(logger, models.PresenceType)
+			presences, err := notifier.lockDB.Count(context.Background(), logger, models.PresenceType)
 			if err != nil {
 				logger.Error("failed-to-retrieve-presence-count", err)
 			} else {

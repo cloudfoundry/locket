@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
@@ -15,15 +17,15 @@ func lagerDataFromLock(resource *models.Resource) lager.Data {
 	}
 }
 
-func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error) {
+func (db *SQLDB) Lock(ctx context.Context, logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error) {
 	logger = logger.Session("lock", lagerDataFromLock(resource))
 	var lock *Lock
 
 	var newLock bool
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		newLock = false
-		res, index, id, _, err := db.fetchLock(logger, tx, resource.Key)
+		res, index, id, _, err := db.fetchLock(ctx, logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
 			if sqlErr != helpers.ErrResourceNotFound {
@@ -55,7 +57,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 		}
 
 		if newLock {
-			_, err = db.helper.Insert(logger, tx, "locks",
+			_, err = db.helper.Insert(ctx, logger, tx, "locks",
 				helpers.SQLAttributes{
 					"path":           lock.Key,
 					"owner":          lock.Owner,
@@ -67,7 +69,7 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 				},
 			)
 		} else {
-			_, err = db.helper.Update(logger, tx, "locks",
+			_, err = db.helper.Update(ctx, logger, tx, "locks",
 				helpers.SQLAttributes{
 					"owner":          lock.Owner,
 					"value":          lock.Value,
@@ -95,11 +97,11 @@ func (db *SQLDB) Lock(logger lager.Logger, resource *models.Resource, ttl int64)
 	return lock, db.helper.ConvertSQLError(err)
 }
 
-func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
+func (db *SQLDB) Release(ctx context.Context, logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
-		res, _, _, _, err := db.fetchLock(logger, tx, resource.Key)
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+		res, _, _, _, err := db.fetchLock(ctx, logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
 			if sqlErr == helpers.ErrResourceNotFound {
@@ -115,7 +117,7 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 			return models.ErrLockCollision
 		}
 
-		_, err = db.helper.Delete(logger, tx, "locks",
+		_, err = db.helper.Delete(ctx, logger, tx, "locks",
 			"path = ?", resource.Key,
 		)
 		if err != nil {
@@ -128,12 +130,12 @@ func (db *SQLDB) Release(logger lager.Logger, resource *models.Resource) error {
 	return err
 }
 
-func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
+func (db *SQLDB) Fetch(ctx context.Context, logger lager.Logger, key string) (*Lock, error) {
 	logger = logger.Session("fetch-lock", lager.Data{"key": key})
 	var lock *Lock
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
-		res, index, id, ttl, err := db.fetchLock(logger, tx, key)
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+		res, index, id, ttl, err := db.fetchLock(ctx, logger, tx, key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
 			sqlErr := db.helper.ConvertSQLError(err)
@@ -155,11 +157,11 @@ func (db *SQLDB) Fetch(logger lager.Logger, key string) (*Lock, error) {
 	return lock, err
 }
 
-func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error) {
+func (db *SQLDB) FetchAll(ctx context.Context, logger lager.Logger, lockType string) ([]*Lock, error) {
 	logger = logger.Session("fetch-all-locks", lager.Data{"type": lockType})
 	var locks []*Lock
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
 		var where string
 		whereBindings := make([]interface{}, 0)
 
@@ -168,7 +170,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 			whereBindings = append(whereBindings, lockType)
 		}
 
-		rows, err := db.helper.All(logger, tx, "locks",
+		rows, err := db.helper.All(ctx, logger, tx, "locks",
 			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "modified_id", "ttl"},
 			helpers.NoLockRow, where, whereBindings...,
 		)
@@ -212,7 +214,7 @@ func (db *SQLDB) FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
 	return locks, db.helper.ConvertSQLError(err)
 }
 
-func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
+func (db *SQLDB) Count(ctx context.Context, logger lager.Logger, lockType string) (int, error) {
 	whereBindings := make([]interface{}, 0)
 	wheres := "owner <> ?"
 	whereBindings = append(whereBindings, "")
@@ -223,12 +225,12 @@ func (db *SQLDB) Count(logger lager.Logger, lockType string) (int, error) {
 	}
 
 	logger = logger.Session("count-locks")
-	count, err := db.helper.Count(logger, db, "locks", wheres, whereBindings...)
+	count, err := db.helper.Count(ctx, logger, db, "locks", wheres, whereBindings...)
 	return count, db.helper.ConvertSQLError(err)
 }
 
-func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, string, int64, error) {
-	row := db.helper.One(logger, q, "locks",
+func (db *SQLDB) fetchLock(ctx context.Context, logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, string, int64, error) {
+	row := db.helper.One(ctx, logger, q, "locks",
 		helpers.ColumnList{"owner", "value", "type", "modified_index", "modified_id", "ttl"},
 		helpers.LockRow,
 		"path = ?", key,
@@ -250,11 +252,11 @@ func (db *SQLDB) fetchLock(logger lager.Logger, q helpers.Queryable, key string)
 	}, index, id, ttl, nil
 }
 
-func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) {
+func (db *SQLDB) FetchAndRelease(ctx context.Context, logger lager.Logger, lock *Lock) (bool, error) {
 	logger = logger.Session("fetch-and-release-lock", lagerDataFromLock(lock.Resource))
 
-	err := db.helper.Transact(logger, db, func(logger lager.Logger, tx helpers.Tx) error {
-		res, index, id, ttl, err := db.fetchLock(logger, tx, lock.Resource.Key)
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+		res, index, id, ttl, err := db.fetchLock(ctx, logger, tx, lock.Resource.Key)
 
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
@@ -285,7 +287,7 @@ func (db *SQLDB) FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error) 
 			return models.ErrLockCollision
 		}
 
-		_, err = db.helper.Delete(logger, tx, "locks",
+		_, err = db.helper.Delete(ctx, logger, tx, "locks",
 			"path = ?", fetchedLock.Resource.Key,
 		)
 

@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -22,6 +23,7 @@ var (
 	rawDB                                *sql.DB
 	sqlDB                                *sqldb.SQLDB
 	logger                               *lagertest.TestLogger
+	ctx                                  context.Context
 	fakeGUIDProvider                     *fakes.FakeGUIDProvider
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
@@ -37,6 +39,7 @@ func TestSql(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 	logger = lagertest.NewTestLogger("sql-db")
+	ctx = context.Background()
 
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
@@ -67,7 +70,7 @@ var _ = BeforeSuite(func() {
 	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
 	db := helpers.NewMonitoredDB(rawDB, monitor.New())
 	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
-	err = sqlDB.CreateLockTable(logger)
+	err = sqlDB.CreateLockTable(ctx, logger)
 	Expect(err).NotTo(HaveOccurred())
 
 	sqlHelper = helpers.NewSQLHelper(dbFlavor)

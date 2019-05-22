@@ -1,9 +1,13 @@
 package db
 
-import "code.cloudfoundry.org/lager"
+import (
+	"context"
 
-func (db *SQLDB) CreateLockTable(logger lager.Logger) error {
-	_, err := db.Exec(`
+	"code.cloudfoundry.org/lager"
+)
+
+func (db *SQLDB) CreateLockTable(ctx context.Context, logger lager.Logger) error {
+	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS locks (
 			path VARCHAR(255) PRIMARY KEY,
 			owner VARCHAR(255),

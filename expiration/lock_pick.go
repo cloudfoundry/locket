@@ -1,6 +1,7 @@
 package expiration
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,7 +98,7 @@ func (l lockPick) checkExpiration(logger lager.Logger, lock *db.Lock, closeChan 
 			l.lockMutex.Unlock()
 		}()
 
-		expired, err := l.lockDB.FetchAndRelease(logger, lock)
+		expired, err := l.lockDB.FetchAndRelease(context.Background(), logger, lock)
 		if err != nil {
 			logger.Error("failed-compare-and-release", err)
 			return

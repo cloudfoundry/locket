@@ -1,6 +1,7 @@
 package expiration_test
 
 import (
+	"context"
 	"errors"
 	"sync/atomic"
 	"time"
@@ -79,7 +80,7 @@ var _ = Describe("LockPick", func() {
 			fakeClock.WaitForWatcherAndIncrement(ttl)
 
 			Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(1))
-			_, oldLock := fakeLockDB.FetchAndReleaseArgsForCall(0)
+			_, _, oldLock := fakeLockDB.FetchAndReleaseArgsForCall(0)
 			Expect(lock).To(Equal(oldLock))
 		})
 
@@ -161,7 +162,7 @@ var _ = Describe("LockPick", func() {
 
 						Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(1))
 						Consistently(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(1))
-						_, lock := fakeLockDB.FetchAndReleaseArgsForCall(0)
+						_, _, lock := fakeLockDB.FetchAndReleaseArgsForCall(0)
 						Expect(lock).To(Equal(returnedLock))
 					})
 				})
@@ -178,7 +179,7 @@ var _ = Describe("LockPick", func() {
 						thirdLock.ModifiedIndex += 1
 
 						trigger = 1
-						fakeLockDB.FetchAndReleaseStub = func(logger lager.Logger, lock *db.Lock) (bool, error) {
+						fakeLockDB.FetchAndReleaseStub = func(ctx context.Context, logger lager.Logger, lock *db.Lock) (bool, error) {
 							if atomic.LoadUint32(&trigger) != 0 {
 								// second expiry goroutine
 								lockPick.RegisterTTL(logger, &newLock)
@@ -242,7 +243,7 @@ var _ = Describe("LockPick", func() {
 							fakeClock.WaitForWatcherAndIncrement(ttl)
 
 							Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(2))
-							_, lock := fakeLockDB.FetchAndReleaseArgsForCall(1)
+							_, _, lock := fakeLockDB.FetchAndReleaseArgsForCall(1)
 							Expect(lock).To(Equal(&l))
 						})
 					})
@@ -298,8 +299,8 @@ var _ = Describe("LockPick", func() {
 					fakeClock.WaitForWatcherAndIncrement(ttl)
 
 					Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(2))
-					_, lock1 := fakeLockDB.FetchAndReleaseArgsForCall(0)
-					_, lock2 := fakeLockDB.FetchAndReleaseArgsForCall(1)
+					_, _, lock1 := fakeLockDB.FetchAndReleaseArgsForCall(0)
+					_, _, lock2 := fakeLockDB.FetchAndReleaseArgsForCall(1)
 					Expect([]*db.Lock{lock1, lock2}).To(ContainElement(&newLock))
 					Expect([]*db.Lock{lock1, lock2}).To(ContainElement(&anotherLock))
 
@@ -313,7 +314,7 @@ var _ = Describe("LockPick", func() {
 
 					Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(1))
 					Consistently(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(1))
-					_, l := fakeLockDB.FetchAndReleaseArgsForCall(0)
+					_, _, l := fakeLockDB.FetchAndReleaseArgsForCall(0)
 					Expect(l).To(Equal(lock))
 				})
 
@@ -325,7 +326,7 @@ var _ = Describe("LockPick", func() {
 
 					Eventually(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(2))
 					Consistently(fakeLockDB.FetchAndReleaseCallCount).Should(Equal(2))
-					_, l := fakeLockDB.FetchAndReleaseArgsForCall(1)
+					_, _, l := fakeLockDB.FetchAndReleaseArgsForCall(1)
 					Expect(l).To(Equal(lock))
 				})
 			})

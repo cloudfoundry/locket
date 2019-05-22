@@ -1,6 +1,7 @@
 package metrics_test
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -43,7 +44,7 @@ var _ = Describe("LockMetrics", func() {
 
 		lockDB = &dbfakes.FakeLockDB{}
 
-		lockDB.CountStub = func(l lager.Logger, lockType string) (int, error) {
+		lockDB.CountStub = func(c context.Context, l lager.Logger, lockType string) (int, error) {
 			switch {
 			case lockType == models.LockType:
 				return 3, nil

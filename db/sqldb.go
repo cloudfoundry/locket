@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/lager"
@@ -9,12 +11,12 @@ import (
 
 //go:generate counterfeiter . LockDB
 type LockDB interface {
-	Lock(logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error)
-	Release(logger lager.Logger, resource *models.Resource) error
-	Fetch(logger lager.Logger, key string) (*Lock, error)
-	FetchAndRelease(logger lager.Logger, lock *Lock) (bool, error)
-	FetchAll(logger lager.Logger, lockType string) ([]*Lock, error)
-	Count(logger lager.Logger, lockType string) (int, error)
+	Lock(ctx context.Context, logger lager.Logger, resource *models.Resource, ttl int64) (*Lock, error)
+	Release(ctx context.Context, logger lager.Logger, resource *models.Resource) error
+	Fetch(ctx context.Context, logger lager.Logger, key string) (*Lock, error)
+	FetchAndRelease(ctx context.Context, logger lager.Logger, lock *Lock) (bool, error)
+	FetchAll(ctx context.Context, logger lager.Logger, lockType string) ([]*Lock, error)
+	Count(ctx context.Context, logger lager.Logger, lockType string) (int, error)
 }
 
 type Lock struct {
