@@ -283,7 +283,7 @@ func (db *SQLDB) FetchAndRelease(ctx context.Context, logger lager.Logger, lock 
 		}
 
 		if fetchedLock.ModifiedIndex != lock.ModifiedIndex {
-			logger.Error("release-failed-index-mismatch", models.ErrLockCollision, lager.Data{"lock-modified-index": lock.ModifiedId, "fetched-modified-id": fetchedLock.ModifiedIndex})
+			logger.Error("release-failed-index-mismatch", models.ErrLockCollision, lager.Data{"lock-modified-index": lock.ModifiedIndex, "fetched-modified-index": fetchedLock.ModifiedIndex})
 			return models.ErrLockCollision
 		}
 
