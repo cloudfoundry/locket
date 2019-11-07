@@ -238,15 +238,19 @@ var _ = Describe("Lock", func() {
 			})
 
 			Context("and then the lock becomes unavailable", func() {
-				var done chan struct{}
+				var (
+					done    chan struct{}
+					lockErr error
+				)
 
 				BeforeEach(func() {
 					done = make(chan struct{})
+					lockErr = errors.New("no-lock-for-you")
 
 					fakeLocker.LockStub = func(ctx context.Context, res *models.LockRequest, opts ...grpc.CallOption) (*models.LockResponse, error) {
 						select {
 						case <-done:
-							return nil, errors.New("no-lock-for-you")
+							return nil, lockErr
 						default:
 							return nil, nil
 						}
@@ -271,9 +275,26 @@ var _ = Describe("Lock", func() {
 					Eventually(logger).Should(gbytes.Say("request-uuid"))
 				})
 
-				It("exits with an error", func() {
+				It("exits with a descriptive error", func() {
 					Eventually(fakeLocker.LockCallCount).Should(Equal(2))
-					Eventually(lockProcess.Wait()).Should(Receive())
+					Eventually(lockProcess.Wait()).Should(Receive(MatchError(And(
+						ContainSubstring("lost lock (request failed), request-uuid"),
+						ContainSubstring("no-lock-for-you"),
+					))))
+				})
+
+				Context("when the lock request fails with a DeadlineExceeded error", func() {
+					BeforeEach(func() {
+						lockErr = grpc.Errorf(codes.DeadlineExceeded, "error")
+					})
+
+					It("exits with a descriptive error", func() {
+						Eventually(fakeLocker.LockCallCount).Should(Equal(2))
+						Eventually(lockProcess.Wait()).Should(Receive(MatchError(And(
+							ContainSubstring("lost lock (request timed out), request-uuid"),
+							ContainSubstring("DeadlineExceeded"),
+						))))
+					})
 				})
 			})
 		})

@@ -8,8 +8,10 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -132,7 +134,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 				if acquired {
 					logger.Error("lost-lock", err, lager.Data{"request-uuid": uuid, "duration": time.Since(start)})
 					if l.exitOnLostLock {
-						return err
+						return newLockLostError(err, uuid)
 					}
 
 					acquired = false
@@ -151,4 +153,13 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			retry.Reset(l.retryInterval)
 		}
 	}
+}
+
+func newLockLostError(err error, requestUUID string) error {
+	additionalMessage := "request failed"
+	switch grpc.Code(err) {
+	case codes.DeadlineExceeded:
+		additionalMessage = "request timed out"
+	}
+	return errors.Wrapf(err, "lost lock (%s), request-uuid %s", additionalMessage, requestUUID)
 }
