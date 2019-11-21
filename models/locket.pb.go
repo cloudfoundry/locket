@@ -50,7 +50,7 @@ var TypeCode_value = map[string]int32{
 }
 
 func (TypeCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{0}
+	return fileDescriptor_locket_ce986258ea781726, []int{0}
 }
 
 type Resource struct {
@@ -64,7 +64,7 @@ type Resource struct {
 func (m *Resource) Reset()      { *m = Resource{} }
 func (*Resource) ProtoMessage() {}
 func (*Resource) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{0}
+	return fileDescriptor_locket_ce986258ea781726, []int{0}
 }
 func (m *Resource) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -137,7 +137,7 @@ type LockRequest struct {
 func (m *LockRequest) Reset()      { *m = LockRequest{} }
 func (*LockRequest) ProtoMessage() {}
 func (*LockRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{1}
+	return fileDescriptor_locket_ce986258ea781726, []int{1}
 }
 func (m *LockRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -186,7 +186,7 @@ type LockResponse struct {
 func (m *LockResponse) Reset()      { *m = LockResponse{} }
 func (*LockResponse) ProtoMessage() {}
 func (*LockResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{2}
+	return fileDescriptor_locket_ce986258ea781726, []int{2}
 }
 func (m *LockResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -222,7 +222,7 @@ type ReleaseRequest struct {
 func (m *ReleaseRequest) Reset()      { *m = ReleaseRequest{} }
 func (*ReleaseRequest) ProtoMessage() {}
 func (*ReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{3}
+	return fileDescriptor_locket_ce986258ea781726, []int{3}
 }
 func (m *ReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -264,7 +264,7 @@ type ReleaseResponse struct {
 func (m *ReleaseResponse) Reset()      { *m = ReleaseResponse{} }
 func (*ReleaseResponse) ProtoMessage() {}
 func (*ReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{4}
+	return fileDescriptor_locket_ce986258ea781726, []int{4}
 }
 func (m *ReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -300,7 +300,7 @@ type FetchRequest struct {
 func (m *FetchRequest) Reset()      { *m = FetchRequest{} }
 func (*FetchRequest) ProtoMessage() {}
 func (*FetchRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{5}
+	return fileDescriptor_locket_ce986258ea781726, []int{5}
 }
 func (m *FetchRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -343,7 +343,7 @@ type FetchResponse struct {
 func (m *FetchResponse) Reset()      { *m = FetchResponse{} }
 func (*FetchResponse) ProtoMessage() {}
 func (*FetchResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{6}
+	return fileDescriptor_locket_ce986258ea781726, []int{6}
 }
 func (m *FetchResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -387,7 +387,7 @@ type FetchAllRequest struct {
 func (m *FetchAllRequest) Reset()      { *m = FetchAllRequest{} }
 func (*FetchAllRequest) ProtoMessage() {}
 func (*FetchAllRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{7}
+	return fileDescriptor_locket_ce986258ea781726, []int{7}
 }
 func (m *FetchAllRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -438,7 +438,7 @@ type FetchAllResponse struct {
 func (m *FetchAllResponse) Reset()      { *m = FetchAllResponse{} }
 func (*FetchAllResponse) ProtoMessage() {}
 func (*FetchAllResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_locket_510d2dee2ec43ba4, []int{8}
+	return fileDescriptor_locket_ce986258ea781726, []int{8}
 }
 func (m *FetchAllResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2435,9 +2435,9 @@ var (
 	ErrIntOverflowLocket   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("locket.proto", fileDescriptor_locket_510d2dee2ec43ba4) }
+func init() { proto.RegisterFile("locket.proto", fileDescriptor_locket_ce986258ea781726) }
 
-var fileDescriptor_locket_510d2dee2ec43ba4 = []byte{
+var fileDescriptor_locket_ce986258ea781726 = []byte{
 	// 490 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x53, 0xcd, 0x6e, 0xd3, 0x40,
 	0x10, 0xf6, 0xe6, 0xaf, 0xce, 0xc4, 0xa4, 0x66, 0x29, 0xad, 0x95, 0xc3, 0x2a, 0xb2, 0x38, 0x54,
