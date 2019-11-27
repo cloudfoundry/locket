@@ -83,9 +83,10 @@ func (fake *FakeLocketClient) Fetch(arg1 context.Context, arg2 *models.FetchRequ
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Fetch", []interface{}{arg1, arg2, arg3})
+	fetchStubCopy := fake.FetchStub
 	fake.fetchMutex.Unlock()
-	if fake.FetchStub != nil {
-		return fake.FetchStub(arg1, arg2, arg3...)
+	if fetchStubCopy != nil {
+		return fetchStubCopy(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -148,9 +149,10 @@ func (fake *FakeLocketClient) FetchAll(arg1 context.Context, arg2 *models.FetchA
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("FetchAll", []interface{}{arg1, arg2, arg3})
+	fetchAllStubCopy := fake.FetchAllStub
 	fake.fetchAllMutex.Unlock()
-	if fake.FetchAllStub != nil {
-		return fake.FetchAllStub(arg1, arg2, arg3...)
+	if fetchAllStubCopy != nil {
+		return fetchAllStubCopy(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -213,9 +215,10 @@ func (fake *FakeLocketClient) Lock(arg1 context.Context, arg2 *models.LockReques
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Lock", []interface{}{arg1, arg2, arg3})
+	lockStubCopy := fake.LockStub
 	fake.lockMutex.Unlock()
-	if fake.LockStub != nil {
-		return fake.LockStub(arg1, arg2, arg3...)
+	if lockStubCopy != nil {
+		return lockStubCopy(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -278,9 +281,10 @@ func (fake *FakeLocketClient) Release(arg1 context.Context, arg2 *models.Release
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Release", []interface{}{arg1, arg2, arg3})
+	releaseStubCopy := fake.ReleaseStub
 	fake.releaseMutex.Unlock()
-	if fake.ReleaseStub != nil {
-		return fake.ReleaseStub(arg1, arg2, arg3...)
+	if releaseStubCopy != nil {
+		return releaseStubCopy(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
