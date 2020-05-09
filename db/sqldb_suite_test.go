@@ -14,8 +14,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	_ "github.com/lib/pq"
-
 	"testing"
 )
 
@@ -55,7 +53,8 @@ var _ = BeforeSuite(func() {
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
-	rawDB, err = sql.Open(dbDriverName, dbBaseConnectionString)
+	rawDB, err = helpers.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
+
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
@@ -63,7 +62,8 @@ var _ = BeforeSuite(func() {
 	_, err = rawDB.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
 	Expect(err).NotTo(HaveOccurred())
 
-	rawDB, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+	connStringWithDB := fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode())
+	rawDB, err = helpers.Connect(logger, dbDriverName, connStringWithDB, "", false)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
@@ -93,7 +93,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	Expect(rawDB.Close()).NotTo(HaveOccurred())
-	rawDB, err := sql.Open(dbDriverName, dbBaseConnectionString)
+	rawDB, err := helpers.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS diego_%d", GinkgoParallelNode()))

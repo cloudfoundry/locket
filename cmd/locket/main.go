@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"net"
 	"os"
@@ -57,7 +56,7 @@ func main() {
 
 	clock := clock.NewClock()
 
-	connectionString := helpers.AddTLSParams(
+	sqlConn, err := helpers.Connect(
 		logger,
 		cfg.DatabaseDriver,
 		cfg.DatabaseConnectionString,
@@ -65,7 +64,6 @@ func main() {
 		cfg.SQLEnableIdentityVerification,
 	)
 
-	sqlConn, err := sql.Open(cfg.DatabaseDriver, connectionString)
 	if err != nil {
 		logger.Fatal("failed-to-open-sql", err)
 	}
