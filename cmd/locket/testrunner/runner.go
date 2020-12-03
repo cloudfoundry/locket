@@ -23,7 +23,7 @@ var (
 
 	caCertFile = filepath.Join(fixturesPath, "ca.crt")
 	certFile   = filepath.Join(fixturesPath, "cert.crt")
-	keyFile    = filepath.Join(fixturesPath, "key.key")
+	keyFile    = filepath.Join(fixturesPath, "cert.key")
 )
 
 func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) *ginkgomon.Runner {
