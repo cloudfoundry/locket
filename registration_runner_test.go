@@ -244,7 +244,7 @@ var _ = Describe("Service Registration Unit Tests", func() {
 			})
 
 			It("returns a validation error", func() {
-				Eventually(registrationProcess.Wait()).Should(Receive(MatchError("time: invalid duration a minute or so")))
+				Eventually(registrationProcess.Wait()).Should(Receive(MatchError(`time: invalid duration "a minute or so"`)))
 			})
 
 			It("does not become ready", func() {
