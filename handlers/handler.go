@@ -3,7 +3,7 @@ package handlers
 import (
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/diegosqldb"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration"
@@ -33,7 +33,7 @@ func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.Loc
 }
 
 func (h *locketHandler) exitIfUnrecoverable(err error) {
-	if err != helpers.ErrUnrecoverableError {
+	if err != diegosqldb.ErrUnrecoverableError {
 		return
 	}
 

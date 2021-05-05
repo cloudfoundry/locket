@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/diegosqldb/test_helpers"
+	"code.cloudfoundry.org/diegosqldb/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 

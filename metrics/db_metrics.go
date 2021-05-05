@@ -4,10 +4,10 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/diegosqldb"
+	"code.cloudfoundry.org/diegosqldb/monitor"
 	"code.cloudfoundry.org/lager"
 	"github.com/tedsuo/ifrit"
 )
@@ -27,12 +27,12 @@ type dbMetricsNotifier struct {
 	logger          lager.Logger
 	ticker          clock.Clock
 	metricsInterval time.Duration
-	lockDB          helpers.QueryableDB
+	lockDB          diegosqldb.QueryableDB
 	metronClient    loggingclient.IngressClient
 	queryMonitor    monitor.Monitor
 }
 
-func NewDBMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB helpers.QueryableDB, queryMonitor monitor.Monitor) ifrit.Runner {
+func NewDBMetricsNotifier(logger lager.Logger, ticker clock.Clock, metronClient loggingclient.IngressClient, metricsInterval time.Duration, lockDB diegosqldb.QueryableDB, queryMonitor monitor.Monitor) ifrit.Runner {
 	return &dbMetricsNotifier{
 		logger:          logger,
 		ticker:          ticker,

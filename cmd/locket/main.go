@@ -7,13 +7,12 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
-	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/diegosqldb"
+	"code.cloudfoundry.org/diegosqldb/monitor"
 	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -22,6 +21,7 @@ import (
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration"
 	"code.cloudfoundry.org/locket/grpcserver"
+	"code.cloudfoundry.org/locket/guidprovider"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics"
 	metrics_helpers "code.cloudfoundry.org/locket/metrics/helpers"
@@ -56,7 +56,7 @@ func main() {
 
 	clock := clock.NewClock()
 
-	sqlConn, err := helpers.Connect(
+	sqlConn, err := diegosqldb.Connect(
 		logger,
 		cfg.DatabaseDriver,
 		cfg.DatabaseConnectionString,
@@ -79,7 +79,7 @@ func main() {
 	}
 
 	dbMonitor := monitor.New()
-	monitoredDB := helpers.NewMonitoredDB(sqlConn, dbMonitor)
+	monitoredDB := diegosqldb.NewMonitoredDB(sqlConn, dbMonitor)
 
 	sqlDB := db.NewSQLDB(
 		monitoredDB,

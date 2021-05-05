@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
-	"code.cloudfoundry.org/bbs/guidprovider/fakes"
-	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/diegosqldb"
+	"code.cloudfoundry.org/diegosqldb/monitor"
+	"code.cloudfoundry.org/diegosqldb/test_helpers"
 	"code.cloudfoundry.org/lager/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
+	"code.cloudfoundry.org/locket/guidprovider/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -25,7 +25,7 @@ var (
 	fakeGUIDProvider                     *fakes.FakeGUIDProvider
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
-	sqlHelper                            helpers.SQLHelper
+	sqlHelper                            diegosqldb.SQLHelper
 )
 
 func TestSql(t *testing.T) {
@@ -42,18 +42,18 @@ var _ = BeforeSuite(func() {
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
 		dbBaseConnectionString = "postgres://diego:diego_pw@localhost/"
-		dbFlavor = helpers.Postgres
+		dbFlavor = diegosqldb.Postgres
 	} else if test_helpers.UseMySQL() {
 		dbDriverName = "mysql"
 		dbBaseConnectionString = "diego:diego_password@/"
-		dbFlavor = helpers.MySQL
+		dbFlavor = diegosqldb.MySQL
 	} else {
 		panic("Unsupported driver")
 	}
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
-	rawDB, err = helpers.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
+	rawDB, err = diegosqldb.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
 
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
@@ -63,17 +63,17 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	connStringWithDB := fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode())
-	rawDB, err = helpers.Connect(logger, dbDriverName, connStringWithDB, "", false)
+	rawDB, err = diegosqldb.Connect(logger, dbDriverName, connStringWithDB, "", false)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
 	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
-	db := helpers.NewMonitoredDB(rawDB, monitor.New())
+	db := diegosqldb.NewMonitoredDB(rawDB, monitor.New())
 	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(ctx, logger)
 	Expect(err).NotTo(HaveOccurred())
 
-	sqlHelper = helpers.NewSQLHelper(dbFlavor)
+	sqlHelper = diegosqldb.NewSQLHelper(dbFlavor)
 
 	// ensures sqlDB matches the db.DB interface
 	var _ sqldb.LockDB = sqlDB
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 var _ = BeforeEach(func() {
 
 	// ensure that all sqldb functions being tested only require one connection
-	// to operate, otherwise a deadlock can be caused in bbs. For more
+	// to operate, otherwise a deadlock can be caused in diegosqldb. For more
 	// information see https://www.pivotaltracker.com/story/show/136754083
 	rawDB.SetMaxOpenConns(1)
 })
@@ -93,7 +93,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	Expect(rawDB.Close()).NotTo(HaveOccurred())
-	rawDB, err := helpers.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
+	rawDB, err := diegosqldb.Connect(logger, dbDriverName, dbBaseConnectionString, "", false)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 	_, err = rawDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS diego_%d", GinkgoParallelNode()))

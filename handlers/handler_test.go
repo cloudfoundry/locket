@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/diegosqldb"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
@@ -290,7 +290,7 @@ var _ = Describe("LocketHandler", func() {
 
 		Context("when an unrecoverable error is returned", func() {
 			BeforeEach(func() {
-				fakeLockDB.LockReturns(nil, helpers.ErrUnrecoverableError)
+				fakeLockDB.LockReturns(nil, diegosqldb.ErrUnrecoverableError)
 			})
 
 			It("logs and writes to the exit channel", func() {
@@ -442,7 +442,7 @@ var _ = Describe("LocketHandler", func() {
 
 		Context("when an unrecoverable error is returned", func() {
 			BeforeEach(func() {
-				fakeLockDB.ReleaseReturns(helpers.ErrUnrecoverableError)
+				fakeLockDB.ReleaseReturns(diegosqldb.ErrUnrecoverableError)
 			})
 
 			It("logs and writes to the exit channel", func() {
@@ -544,7 +544,7 @@ var _ = Describe("LocketHandler", func() {
 
 		Context("when an unrecoverable error is returned", func() {
 			BeforeEach(func() {
-				fakeLockDB.FetchReturns(nil, helpers.ErrUnrecoverableError)
+				fakeLockDB.FetchReturns(nil, diegosqldb.ErrUnrecoverableError)
 			})
 
 			It("logs and writes to the exit channel", func() {
@@ -786,7 +786,7 @@ var _ = Describe("LocketHandler", func() {
 
 		Context("when an unrecoverable error is returned", func() {
 			BeforeEach(func() {
-				fakeLockDB.FetchAllReturns(nil, helpers.ErrUnrecoverableError)
+				fakeLockDB.FetchAllReturns(nil, diegosqldb.ErrUnrecoverableError)
 			})
 
 			It("logs and writes to the exit channel", func() {

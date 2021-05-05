@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/diegosqldb"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/models"
 )
@@ -23,12 +23,12 @@ func (db *SQLDB) Lock(ctx context.Context, logger lager.Logger, resource *models
 
 	var newLock bool
 
-	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx diegosqldb.Tx) error {
 		newLock = false
 		res, index, id, _, err := db.fetchLock(ctx, logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
-			if sqlErr != helpers.ErrResourceNotFound {
+			if sqlErr != diegosqldb.ErrResourceNotFound {
 				logger.Error("failed-to-fetch-lock", err)
 				return err
 			}
@@ -58,7 +58,7 @@ func (db *SQLDB) Lock(ctx context.Context, logger lager.Logger, resource *models
 
 		if newLock {
 			_, err = db.helper.Insert(ctx, logger, tx, "locks",
-				helpers.SQLAttributes{
+				diegosqldb.SQLAttributes{
 					"path":           lock.Key,
 					"owner":          lock.Owner,
 					"value":          lock.Value,
@@ -70,7 +70,7 @@ func (db *SQLDB) Lock(ctx context.Context, logger lager.Logger, resource *models
 			)
 		} else {
 			_, err = db.helper.Update(ctx, logger, tx, "locks",
-				helpers.SQLAttributes{
+				diegosqldb.SQLAttributes{
 					"owner":          lock.Owner,
 					"value":          lock.Value,
 					"type":           lock.Type,
@@ -100,11 +100,11 @@ func (db *SQLDB) Lock(ctx context.Context, logger lager.Logger, resource *models
 func (db *SQLDB) Release(ctx context.Context, logger lager.Logger, resource *models.Resource) error {
 	logger = logger.Session("release-lock", lagerDataFromLock(resource))
 
-	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx diegosqldb.Tx) error {
 		res, _, _, _, err := db.fetchLock(ctx, logger, tx, resource.Key)
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
-			if sqlErr == helpers.ErrResourceNotFound {
+			if sqlErr == diegosqldb.ErrResourceNotFound {
 				logger.Debug("lock-does-not-exist")
 				return nil
 			}
@@ -134,12 +134,12 @@ func (db *SQLDB) Fetch(ctx context.Context, logger lager.Logger, key string) (*L
 	logger = logger.Session("fetch-lock", lager.Data{"key": key})
 	var lock *Lock
 
-	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx diegosqldb.Tx) error {
 		res, index, id, ttl, err := db.fetchLock(ctx, logger, tx, key)
 		if err != nil {
 			logger.Error("failed-to-fetch-lock", err)
 			sqlErr := db.helper.ConvertSQLError(err)
-			if sqlErr == helpers.ErrResourceNotFound {
+			if sqlErr == diegosqldb.ErrResourceNotFound {
 				return models.ErrResourceNotFound
 			}
 			return sqlErr
@@ -161,7 +161,7 @@ func (db *SQLDB) FetchAll(ctx context.Context, logger lager.Logger, lockType str
 	logger = logger.Session("fetch-all-locks", lager.Data{"type": lockType})
 	var locks []*Lock
 
-	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx diegosqldb.Tx) error {
 		var where string
 		whereBindings := make([]interface{}, 0)
 
@@ -171,8 +171,8 @@ func (db *SQLDB) FetchAll(ctx context.Context, logger lager.Logger, lockType str
 		}
 
 		rows, err := db.helper.All(ctx, logger, tx, "locks",
-			helpers.ColumnList{"path", "owner", "value", "type", "modified_index", "modified_id", "ttl"},
-			helpers.NoLockRow, where, whereBindings...,
+			diegosqldb.ColumnList{"path", "owner", "value", "type", "modified_index", "modified_id", "ttl"},
+			diegosqldb.NoLockRow, where, whereBindings...,
 		)
 		if err != nil {
 			logger.Error("failed-to-fetch-locks", err)
@@ -229,10 +229,10 @@ func (db *SQLDB) Count(ctx context.Context, logger lager.Logger, lockType string
 	return count, db.helper.ConvertSQLError(err)
 }
 
-func (db *SQLDB) fetchLock(ctx context.Context, logger lager.Logger, q helpers.Queryable, key string) (*models.Resource, int64, string, int64, error) {
+func (db *SQLDB) fetchLock(ctx context.Context, logger lager.Logger, q diegosqldb.Queryable, key string) (*models.Resource, int64, string, int64, error) {
 	row := db.helper.One(ctx, logger, q, "locks",
-		helpers.ColumnList{"owner", "value", "type", "modified_index", "modified_id", "ttl"},
-		helpers.LockRow,
+		diegosqldb.ColumnList{"owner", "value", "type", "modified_index", "modified_id", "ttl"},
+		diegosqldb.LockRow,
 		"path = ?", key,
 	)
 
@@ -255,12 +255,12 @@ func (db *SQLDB) fetchLock(ctx context.Context, logger lager.Logger, q helpers.Q
 func (db *SQLDB) FetchAndRelease(ctx context.Context, logger lager.Logger, lock *Lock) (bool, error) {
 	logger = logger.Session("fetch-and-release-lock", lagerDataFromLock(lock.Resource))
 
-	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx helpers.Tx) error {
+	err := db.helper.Transact(ctx, logger, db, func(logger lager.Logger, tx diegosqldb.Tx) error {
 		res, index, id, ttl, err := db.fetchLock(ctx, logger, tx, lock.Resource.Key)
 
 		if err != nil {
 			sqlErr := db.helper.ConvertSQLError(err)
-			if sqlErr == helpers.ErrResourceNotFound {
+			if sqlErr == diegosqldb.ErrResourceNotFound {
 				logger.Debug("lock-does-not-exist")
 				return models.ErrResourceNotFound
 			}

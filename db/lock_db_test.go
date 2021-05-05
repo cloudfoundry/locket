@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/diegosqldb"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo"
@@ -16,7 +16,7 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 	var key, owner, value, lockType, modifiedId string
 	var index, ttl int64
 
-	lockQuery := helpers.RebindForFlavor(
+	lockQuery := diegosqldb.RebindForFlavor(
 		"SELECT path, owner, value, type, modified_index, ttl, modified_id FROM locks WHERE path = ?",
 		dbFlavor,
 	)
@@ -54,7 +54,7 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 }
 
 func validateLockNotInDB(rawDB *sql.DB, res *models.Resource) error {
-	lockQuery := helpers.RebindForFlavor(
+	lockQuery := diegosqldb.RebindForFlavor(
 		"SELECT owner FROM locks WHERE path = ?",
 		dbFlavor,
 	)
@@ -63,7 +63,7 @@ func validateLockNotInDB(rawDB *sql.DB, res *models.Resource) error {
 	err := row.Scan(&owner)
 	if err != nil {
 		err = sqlHelper.ConvertSQLError(err)
-		if err == helpers.ErrResourceNotFound {
+		if err == diegosqldb.ErrResourceNotFound {
 			return nil
 		}
 		return err
@@ -142,7 +142,7 @@ var _ = Describe("Lock", func() {
 
 			Context("because the contents of the lock are empty", func() {
 				BeforeEach(func() {
-					query := helpers.RebindForFlavor(
+					query := diegosqldb.RebindForFlavor(
 						`INSERT INTO locks (path, owner, value, modified_index) VALUES (?, ?, ?, ?);`,
 						dbFlavor,
 					)
@@ -216,7 +216,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an unrecoverable error", func() {
 				_, err := sqlDB.Lock(ctx, logger, resource, 10)
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 	})
@@ -228,7 +228,7 @@ var _ = Describe("Lock", func() {
 			BeforeEach(func() {
 				currentIndex = 500
 				currentTTL = 501
-				query := helpers.RebindForFlavor(
+				query := diegosqldb.RebindForFlavor(
 					`INSERT INTO locks (path, owner, value, modified_index, ttl) VALUES (?, ?, ?, ?, ?);`,
 					dbFlavor,
 				)
@@ -269,7 +269,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an error", func() {
 				err := sqlDB.Release(ctx, logger, resource)
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 
@@ -286,7 +286,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the lock exists", func() {
 			JustBeforeEach(func() {
-				query := helpers.RebindForFlavor(
+				query := diegosqldb.RebindForFlavor(
 					`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 					dbFlavor,
 				)
@@ -431,7 +431,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an error", func() {
 				_, err := sqlDB.Fetch(ctx, logger, "test")
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 
@@ -445,7 +445,7 @@ var _ = Describe("Lock", func() {
 
 			Context("because the contents of the lock are empty", func() {
 				BeforeEach(func() {
-					query := helpers.RebindForFlavor(
+					query := diegosqldb.RebindForFlavor(
 						`INSERT INTO locks (path, owner, value) VALUES (?, ?, ?);`,
 						dbFlavor,
 					)
@@ -466,7 +466,7 @@ var _ = Describe("Lock", func() {
 		var dogLock, humanLock *db.Lock
 
 		BeforeEach(func() {
-			query := helpers.RebindForFlavor(
+			query := diegosqldb.RebindForFlavor(
 				`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 				dbFlavor,
 			)
@@ -534,7 +534,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an unrecoverable error", func() {
 				_, err := sqlDB.FetchAll(ctx, logger, "")
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 	})
@@ -549,7 +549,7 @@ var _ = Describe("Lock", func() {
 			currentTTL = 501
 			modifiedId = "new-guid"
 
-			query := helpers.RebindForFlavor(
+			query := diegosqldb.RebindForFlavor(
 				`INSERT INTO locks (path, owner, value, modified_index, ttl, modified_id, type) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 				dbFlavor,
 			)
@@ -564,7 +564,7 @@ var _ = Describe("Lock", func() {
 		})
 
 		AfterEach(func() {
-			query := helpers.RebindForFlavor(
+			query := diegosqldb.RebindForFlavor(
 				`DELETE FROM locks WHERE path = ?;`,
 				dbFlavor,
 			)
@@ -584,7 +584,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the modified index has changed", func() {
 			BeforeEach(func() {
-				query := helpers.RebindForFlavor(
+				query := diegosqldb.RebindForFlavor(
 					`UPDATE locks SET modified_index=? WHERE path = ?;`,
 					dbFlavor,
 				)
@@ -605,7 +605,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the modified id has changed", func() {
 			BeforeEach(func() {
-				query := helpers.RebindForFlavor(
+				query := diegosqldb.RebindForFlavor(
 					`UPDATE locks SET modified_id=? WHERE path = ?;`,
 					dbFlavor,
 				)
@@ -628,7 +628,7 @@ var _ = Describe("Lock", func() {
 
 		Context("when the lock is owned by another owner", func() {
 			BeforeEach(func() {
-				query := helpers.RebindForFlavor(
+				query := diegosqldb.RebindForFlavor(
 					`UPDATE locks SET owner=? WHERE path = ?;`,
 					dbFlavor,
 				)
@@ -667,7 +667,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an error", func() {
 				_, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 
@@ -682,7 +682,7 @@ var _ = Describe("Lock", func() {
 
 	Context("Count", func() {
 		BeforeEach(func() {
-			query := helpers.RebindForFlavor(
+			query := diegosqldb.RebindForFlavor(
 				`INSERT INTO locks (path, owner, value, type, modified_index, ttl) VALUES (?, ?, ?, ?, ?, ?);`,
 				dbFlavor,
 			)
@@ -724,7 +724,7 @@ var _ = Describe("Lock", func() {
 
 			It("returns an error", func() {
 				_, err := sqlDB.Count(ctx, logger, "")
-				Expect(err).To(Equal(helpers.ErrUnrecoverableError))
+				Expect(err).To(Equal(diegosqldb.ErrUnrecoverableError))
 			})
 		})
 	})

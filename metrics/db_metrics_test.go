@@ -3,10 +3,10 @@ package metrics_test
 import (
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/helpersfakes"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor/monitorfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
+	"code.cloudfoundry.org/diegosqldb/diegosqldbfakes"
+	"code.cloudfoundry.org/diegosqldb/monitor/monitorfakes"
 	loggregator "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/metrics"
@@ -29,7 +29,7 @@ var _ = Describe("DBMetrics", func() {
 		logger           *lagertest.TestLogger
 		fakeClock        *fakeclock.FakeClock
 		metricsInterval  time.Duration
-		lockDB           *helpersfakes.FakeQueryableDB
+		lockDB           *diegosqldbfakes.FakeQueryableDB
 		fakeMonitor      *monitorfakes.FakeMonitor
 		metricsChan      chan FakeGauge
 	)
@@ -42,7 +42,7 @@ var _ = Describe("DBMetrics", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		metricsInterval = 10 * time.Second
 
-		lockDB = new(helpersfakes.FakeQueryableDB)
+		lockDB = new(diegosqldbfakes.FakeQueryableDB)
 		fakeMonitor = new(monitorfakes.FakeMonitor)
 
 		fakeMetronClient.SendMetricStub = func(name string, value int, opts ...loggregator.EmitGaugeOption) error {

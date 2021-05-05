@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
-	"code.cloudfoundry.org/bbs/guidprovider"
-	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/diegosqldb"
+	"code.cloudfoundry.org/diegosqldb/monitor"
+	"code.cloudfoundry.org/diegosqldb/test_helpers"
+	"code.cloudfoundry.org/diegosqldb/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration/expirationfakes"
+	"code.cloudfoundry.org/locket/guidprovider"
 	"code.cloudfoundry.org/locket/handlers"
 	"code.cloudfoundry.org/locket/metrics/helpers/helpersfakes"
 	"code.cloudfoundry.org/locket/models"
@@ -46,11 +46,11 @@ var _ = Describe("LocketHandler", func() {
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 
 		var err error
-		sqlConn, err = helpers.Connect(logger, sqlRunner.DriverName(), sqlRunner.ConnectionString(), "", false)
+		sqlConn, err = diegosqldb.Connect(logger, sqlRunner.DriverName(), sqlRunner.ConnectionString(), "", false)
 		Expect(err).NotTo(HaveOccurred())
 
 		dbMonitor := monitor.New()
-		monitoredDB := helpers.NewMonitoredDB(sqlConn, dbMonitor)
+		monitoredDB := diegosqldb.NewMonitoredDB(sqlConn, dbMonitor)
 
 		lockDB = db.NewSQLDB(
 			monitoredDB,

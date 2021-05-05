@@ -59,6 +59,9 @@ var _ = Describe("Locket", func() {
 				cfg.DatabaseDriver = sqlRunner.DriverName()
 				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
 				cfg.ReportInterval = durationjson.Duration(time.Second)
+				cfg.CaFile = "fixtures/ca.crt"
+				cfg.CertFile = "fixtures/cert.crt"
+				cfg.KeyFile = "fixtures/cert.key"
 			},
 		}
 	})
@@ -115,7 +118,11 @@ var _ = Describe("Locket", func() {
 		JustBeforeEach(func() {
 			locketProcess = ginkgomon.Invoke(locketRunner)
 
-			config := testrunner.ClientLocketConfig()
+			config := testrunner.ClientLocketConfig(
+				"fixtures/ca.crt",
+				"fixtures/cert.crt",
+				"fixtures/cert.key",
+			)
 			config.LocketAddress = locketAddress
 
 			var err error
