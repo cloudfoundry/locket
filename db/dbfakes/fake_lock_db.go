@@ -112,16 +112,16 @@ func (fake *FakeLockDB) Count(arg1 context.Context, arg2 lager.Logger, arg3 stri
 		arg2 lager.Logger
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.CountStub
+	fakeReturns := fake.countReturns
 	fake.recordInvocation("Count", []interface{}{arg1, arg2, arg3})
-	countStubCopy := fake.CountStub
 	fake.countMutex.Unlock()
-	if countStubCopy != nil {
-		return countStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.countReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -178,16 +178,16 @@ func (fake *FakeLockDB) Fetch(arg1 context.Context, arg2 lager.Logger, arg3 stri
 		arg2 lager.Logger
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.FetchStub
+	fakeReturns := fake.fetchReturns
 	fake.recordInvocation("Fetch", []interface{}{arg1, arg2, arg3})
-	fetchStubCopy := fake.FetchStub
 	fake.fetchMutex.Unlock()
-	if fetchStubCopy != nil {
-		return fetchStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -244,16 +244,16 @@ func (fake *FakeLockDB) FetchAll(arg1 context.Context, arg2 lager.Logger, arg3 s
 		arg2 lager.Logger
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.FetchAllStub
+	fakeReturns := fake.fetchAllReturns
 	fake.recordInvocation("FetchAll", []interface{}{arg1, arg2, arg3})
-	fetchAllStubCopy := fake.FetchAllStub
 	fake.fetchAllMutex.Unlock()
-	if fetchAllStubCopy != nil {
-		return fetchAllStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchAllReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -310,16 +310,16 @@ func (fake *FakeLockDB) FetchAndRelease(arg1 context.Context, arg2 lager.Logger,
 		arg2 lager.Logger
 		arg3 *db.Lock
 	}{arg1, arg2, arg3})
+	stub := fake.FetchAndReleaseStub
+	fakeReturns := fake.fetchAndReleaseReturns
 	fake.recordInvocation("FetchAndRelease", []interface{}{arg1, arg2, arg3})
-	fetchAndReleaseStubCopy := fake.FetchAndReleaseStub
 	fake.fetchAndReleaseMutex.Unlock()
-	if fetchAndReleaseStubCopy != nil {
-		return fetchAndReleaseStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchAndReleaseReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -377,16 +377,16 @@ func (fake *FakeLockDB) Lock(arg1 context.Context, arg2 lager.Logger, arg3 *mode
 		arg3 *models.Resource
 		arg4 int64
 	}{arg1, arg2, arg3, arg4})
+	stub := fake.LockStub
+	fakeReturns := fake.lockReturns
 	fake.recordInvocation("Lock", []interface{}{arg1, arg2, arg3, arg4})
-	lockStubCopy := fake.LockStub
 	fake.lockMutex.Unlock()
-	if lockStubCopy != nil {
-		return lockStubCopy(arg1, arg2, arg3, arg4)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.lockReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -443,16 +443,16 @@ func (fake *FakeLockDB) Release(arg1 context.Context, arg2 lager.Logger, arg3 *m
 		arg2 lager.Logger
 		arg3 *models.Resource
 	}{arg1, arg2, arg3})
+	stub := fake.ReleaseStub
+	fakeReturns := fake.releaseReturns
 	fake.recordInvocation("Release", []interface{}{arg1, arg2, arg3})
-	releaseStubCopy := fake.ReleaseStub
 	fake.releaseMutex.Unlock()
-	if releaseStubCopy != nil {
-		return releaseStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.releaseReturns
 	return fakeReturns.result1
 }
 

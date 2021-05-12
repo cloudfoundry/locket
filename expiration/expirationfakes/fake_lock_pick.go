@@ -37,16 +37,16 @@ func (fake *FakeLockPick) ExpirationCounts() (uint32, uint32) {
 	ret, specificReturn := fake.expirationCountsReturnsOnCall[len(fake.expirationCountsArgsForCall)]
 	fake.expirationCountsArgsForCall = append(fake.expirationCountsArgsForCall, struct {
 	}{})
+	stub := fake.ExpirationCountsStub
+	fakeReturns := fake.expirationCountsReturns
 	fake.recordInvocation("ExpirationCounts", []interface{}{})
-	expirationCountsStubCopy := fake.ExpirationCountsStub
 	fake.expirationCountsMutex.Unlock()
-	if expirationCountsStubCopy != nil {
-		return expirationCountsStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.expirationCountsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -94,11 +94,11 @@ func (fake *FakeLockPick) RegisterTTL(arg1 lager.Logger, arg2 *db.Lock) {
 		arg1 lager.Logger
 		arg2 *db.Lock
 	}{arg1, arg2})
+	stub := fake.RegisterTTLStub
 	fake.recordInvocation("RegisterTTL", []interface{}{arg1, arg2})
-	registerTTLStubCopy := fake.RegisterTTLStub
 	fake.registerTTLMutex.Unlock()
-	if registerTTLStubCopy != nil {
-		registerTTLStubCopy(arg1, arg2)
+	if stub != nil {
+		fake.RegisterTTLStub(arg1, arg2)
 	}
 }
 

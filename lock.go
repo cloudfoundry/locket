@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/consuladapter"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 const (

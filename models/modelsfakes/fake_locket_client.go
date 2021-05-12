@@ -82,16 +82,16 @@ func (fake *FakeLocketClient) Fetch(arg1 context.Context, arg2 *models.FetchRequ
 		arg2 *models.FetchRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
+	stub := fake.FetchStub
+	fakeReturns := fake.fetchReturns
 	fake.recordInvocation("Fetch", []interface{}{arg1, arg2, arg3})
-	fetchStubCopy := fake.FetchStub
 	fake.fetchMutex.Unlock()
-	if fetchStubCopy != nil {
-		return fetchStubCopy(arg1, arg2, arg3...)
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -148,16 +148,16 @@ func (fake *FakeLocketClient) FetchAll(arg1 context.Context, arg2 *models.FetchA
 		arg2 *models.FetchAllRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
+	stub := fake.FetchAllStub
+	fakeReturns := fake.fetchAllReturns
 	fake.recordInvocation("FetchAll", []interface{}{arg1, arg2, arg3})
-	fetchAllStubCopy := fake.FetchAllStub
 	fake.fetchAllMutex.Unlock()
-	if fetchAllStubCopy != nil {
-		return fetchAllStubCopy(arg1, arg2, arg3...)
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchAllReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -214,16 +214,16 @@ func (fake *FakeLocketClient) Lock(arg1 context.Context, arg2 *models.LockReques
 		arg2 *models.LockRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
+	stub := fake.LockStub
+	fakeReturns := fake.lockReturns
 	fake.recordInvocation("Lock", []interface{}{arg1, arg2, arg3})
-	lockStubCopy := fake.LockStub
 	fake.lockMutex.Unlock()
-	if lockStubCopy != nil {
-		return lockStubCopy(arg1, arg2, arg3...)
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.lockReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -280,16 +280,16 @@ func (fake *FakeLocketClient) Release(arg1 context.Context, arg2 *models.Release
 		arg2 *models.ReleaseRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
+	stub := fake.ReleaseStub
+	fakeReturns := fake.releaseReturns
 	fake.recordInvocation("Release", []interface{}{arg1, arg2, arg3})
-	releaseStubCopy := fake.ReleaseStub
 	fake.releaseMutex.Unlock()
-	if releaseStubCopy != nil {
-		return releaseStubCopy(arg1, arg2, arg3...)
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.releaseReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
