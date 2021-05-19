@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	fixturesPath = filepath.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/locket/cmd/locket/fixtures")
+	fixturesPath = filepath.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/locket/cmd/locket/fixtures")
 
 	caCertFile = filepath.Join(fixturesPath, "ca.crt")
 	certFile   = filepath.Join(fixturesPath, "cert.crt")
