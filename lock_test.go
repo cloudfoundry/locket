@@ -10,7 +10,7 @@ import (
 
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/consuladapter"
-	loggregator "code.cloudfoundry.org/go-loggregator"
+	loggregator "code.cloudfoundry.org/go-loggregator/v8"
 	"code.cloudfoundry.org/locket"
 	"github.com/hashicorp/consul/api"
 

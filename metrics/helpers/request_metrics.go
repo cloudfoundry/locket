@@ -8,7 +8,7 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
-	loggregator "code.cloudfoundry.org/go-loggregator"
+	loggregator "code.cloudfoundry.org/go-loggregator/v8"
 	"code.cloudfoundry.org/lager"
 )
 

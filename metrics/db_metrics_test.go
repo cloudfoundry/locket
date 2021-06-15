@@ -7,7 +7,7 @@ import (
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor/monitorfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
-	loggregator "code.cloudfoundry.org/go-loggregator"
+	loggregator "code.cloudfoundry.org/go-loggregator/v8"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket/metrics"
 	. "github.com/onsi/ginkgo"
