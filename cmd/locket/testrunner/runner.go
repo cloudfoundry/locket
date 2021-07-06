@@ -6,12 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
+	"code.cloudfoundry.org/locket/cmd/locket/certauthority"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/gomega"
@@ -19,14 +19,27 @@ import (
 )
 
 var (
-	fixturesPath = filepath.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/locket/cmd/locket/fixtures")
-
-	caCertFile = filepath.Join(fixturesPath, "ca.crt")
-	certFile   = filepath.Join(fixturesPath, "cert.crt")
-	keyFile    = filepath.Join(fixturesPath, "cert.key")
+	caCertFile, certFile, keyFile string
 )
 
+func init() {
+	certDepot, err := ioutil.TempDir("", "cert-depot")
+	if err != nil {
+		panic(err)
+	}
+	certAuthority, err := certauthority.NewCertAuthority(certDepot, "ca")
+	if err != nil {
+		panic(err)
+	}
+	_, caCertFile = certAuthority.CAAndKey()
+	keyFile, certFile, err = certAuthority.GenerateSelfSignedCertAndKey("locket", []string{"localhost"}, false)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func NewLocketRunner(locketBinPath string, fs ...func(cfg *config.LocketConfig)) *ginkgomon.Runner {
+
 	cfg := &config.LocketConfig{
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   lagerflags.INFO,
