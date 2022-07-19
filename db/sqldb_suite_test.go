@@ -60,7 +60,7 @@ var _ = BeforeSuite(func() {
 		}
 		password, ok := os.LookupEnv("MYSQL_PASSWORD")
 		if !ok {
-			password = "diego_pw"
+			password = "diego_password"
 		}
 		dbBaseConnectionString = fmt.Sprintf("%s:%s@/", user, password)
 		dbFlavor = helpers.MySQL
