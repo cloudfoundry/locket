@@ -45,7 +45,7 @@ var _ = SynchronizedBeforeSuite(
 		return []byte(locketBinPathData)
 	},
 	func(locketBinPathData []byte) {
-		node := GinkgoParallelNode()
+		node := GinkgoParallelProcess()
 		startPort := 1050 * node
 		portRange := 1000
 		endPort := startPort + portRange
@@ -59,7 +59,7 @@ var _ = SynchronizedBeforeSuite(
 		locketBinPath = string(locketBinPathData)
 		SetDefaultEventuallyTimeout(15 * time.Second)
 
-		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
 		sqlRunner = test_helpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 

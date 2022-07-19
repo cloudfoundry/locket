@@ -41,7 +41,7 @@ var _ = Describe("LocketHandler", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("locket-handler")
 
-		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
 		sqlRunner = test_helpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 
