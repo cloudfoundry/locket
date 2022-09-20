@@ -27,10 +27,8 @@ var _ = Describe("LocketConfig", func() {
 			"max_database_connection_lifetime": "1h",
 			"database_connection_string": "stuff",
 			"debug_address": "some-more-stuff",
-			"consul_cluster": "http://127.0.0.1:1234,http://127.0.0.1:12345",
 			"ca_file": "i am a ca file",
 			"cert_file": "i am a cert file",
-			"enable_consul_service_registration": false,
 			"key_file": "i am a key file",
 			"sql_ca_cert_file": "/var/vcap/jobs/locket/config/sql.ca",
 			"sql_enable_identity_verification": true,
@@ -69,13 +67,11 @@ var _ = Describe("LocketConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config := config.LocketConfig{
-			DatabaseDriver:                  "mysql",
-			ListenAddress:                   "1.2.3.4:9090",
-			DatabaseConnectionString:        "stuff",
-			MaxOpenDatabaseConnections:      1000,
-			MaxDatabaseConnectionLifetime:   durationjson.Duration(time.Hour),
-			ConsulCluster:                   "http://127.0.0.1:1234,http://127.0.0.1:12345",
-			EnableConsulServiceRegistration: false,
+			DatabaseDriver:                "mysql",
+			ListenAddress:                 "1.2.3.4:9090",
+			DatabaseConnectionString:      "stuff",
+			MaxOpenDatabaseConnections:    1000,
+			MaxDatabaseConnectionLifetime: durationjson.Duration(time.Hour),
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},

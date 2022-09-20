@@ -20,7 +20,6 @@ import (
 	"code.cloudfoundry.org/locket/models"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -55,7 +54,6 @@ var _ = Describe("Locket", func() {
 		configOverrides = []func(cfg *config.LocketConfig){
 			func(cfg *config.LocketConfig) {
 				cfg.ListenAddress = locketAddress
-				cfg.ConsulCluster = consulRunner.ConsulCluster()
 				cfg.DatabaseDriver = sqlRunner.DriverName()
 				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
 				cfg.ReportInterval = durationjson.Duration(time.Second)
@@ -322,61 +320,6 @@ var _ = Describe("Locket", func() {
 			It("listens on the debug address specified", func() {
 				_, err := net.Dial("tcp", debugAddress)
 				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-
-		Context("ServiceRegistration", func() {
-			Context("with EnableConsulServiceRegistration set to false", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.EnableConsulServiceRegistration = false
-					})
-				})
-
-				It("does not register itself with consul", func() {
-					consulClient := consulRunner.NewClient()
-					services, err := consulClient.Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).NotTo(HaveKey("locket"))
-				})
-			})
-
-			Context("with EnableConsulServiceRegistration set to true", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.EnableConsulServiceRegistration = true
-					})
-				})
-
-				It("registers itself with consul", func() {
-					consulClient := consulRunner.NewClient()
-					services, err := consulClient.Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).To(HaveKeyWithValue("locket",
-						&api.AgentService{
-							Service: "locket",
-							ID:      "locket",
-							Port:    int(locketPort),
-						}))
-				})
-
-				It("registers a TTL healthcheck", func() {
-					consulClient := consulRunner.NewClient()
-					checks, err := consulClient.Agent().Checks()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(checks).To(HaveKeyWithValue("service:locket",
-						&api.AgentCheck{
-							Node:        "0",
-							CheckID:     "service:locket",
-							Name:        "Service 'locket' check",
-							Status:      "passing",
-							ServiceID:   "locket",
-							ServiceName: "locket",
-						}))
-				})
 			})
 		})
 
