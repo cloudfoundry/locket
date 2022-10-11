@@ -60,6 +60,7 @@ func newClientInternal(logger lager.Logger, config ClientLocketConfig, skipCertV
 		grpc.WithTimeout(10*time.Second), // ensure that grpc won't keep retrying forever
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time: 10 * time.Second,
+			Timeout: 10 * time.Second, 
 		}),
 	)
 	if err != nil {
