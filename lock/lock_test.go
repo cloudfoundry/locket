@@ -14,11 +14,11 @@ import (
 	"code.cloudfoundry.org/locket/lock"
 	"code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/locket/models/modelsfakes"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"golang.org/x/net/context"
 )
 
