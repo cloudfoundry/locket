@@ -36,8 +36,8 @@ var _ = Describe("Jointlock", func() {
 		jointLock = jointlock.NewJointLock(
 			fakeClock,
 			timeout,
-			grouper.Member{"test1", testRunner1},
-			grouper.Member{"test2", testRunner2},
+			grouper.Member{Name: "test1", Runner: testRunner1},
+			grouper.Member{Name: "test2", Runner: testRunner2},
 		)
 		jointLockProcess = ifrit.Background(jointLock)
 	})

@@ -31,7 +31,7 @@ var _ = Describe("TimeoutRunner", func() {
 		timeoutRunner = jointlock.NewTimeoutRunner(
 			fakeClock,
 			timeout,
-			grouper.Member{"test", testRunner},
+			grouper.Member{Name: "test", Runner: testRunner},
 		)
 	})
 

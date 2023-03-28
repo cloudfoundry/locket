@@ -73,5 +73,4 @@ func (notifier *lockMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- 
 			logger.Debug("emitted-metrics")
 		}
 	}
-	return nil
 }

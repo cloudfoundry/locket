@@ -110,5 +110,4 @@ func (notifier *dbMetricsNotifier) Run(signals <-chan os.Signal, ready chan<- st
 			logger.Debug("emitted-metrics")
 		}
 	}
-	return nil
 }
