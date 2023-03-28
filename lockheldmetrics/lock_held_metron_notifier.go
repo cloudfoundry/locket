@@ -57,8 +57,6 @@ func (notifier *LockHeldMetronNotifier) Run(signals <-chan os.Signal, ready chan
 			return nil
 		}
 	}
-
-	return nil
 }
 
 func SetLockHeldRunner(logger lager.Logger, notifier LockHeldMetronNotifier) ifrit.Runner {

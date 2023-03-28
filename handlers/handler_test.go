@@ -340,8 +340,9 @@ var _ = Describe("LocketHandler", func() {
 
 			Context("when the context was closed due to an exceeded deadline", func() {
 				BeforeEach(func() {
-					// This context should expire immediately, so we don't care about the cancel func
-					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					defer cancel()
 				})
 
 				It("logs the context deadline exceeded error", func() {
@@ -491,8 +492,9 @@ var _ = Describe("LocketHandler", func() {
 
 			Context("when the context was closed due to an exceeded deadline", func() {
 				BeforeEach(func() {
-					// This context should expire immediately, so we don't care about the cancel func
-					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					defer cancel()
 				})
 
 				It("logs the context deadline exceeded error", func() {
@@ -592,8 +594,9 @@ var _ = Describe("LocketHandler", func() {
 
 			Context("when the context was closed due to an exceeded deadline", func() {
 				BeforeEach(func() {
-					// This context should expire immediately, so we don't care about the cancel func
-					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					defer cancel()
 				})
 
 				It("logs the context deadline exceeded error", func() {
@@ -833,8 +836,9 @@ var _ = Describe("LocketHandler", func() {
 
 			Context("when the context was closed due to an exceeded deadline", func() {
 				BeforeEach(func() {
-					// This context should expire immediately, so we don't care about the cancel func
-					ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithDeadline(ctx, time.Unix(0, 0)) // nolint
+					defer cancel()
 				})
 
 				It("logs the context deadline exceeded error", func() {
