@@ -13,7 +13,7 @@ import (
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/v8/rpc/loggregator_v2"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"

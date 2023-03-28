@@ -8,7 +8,7 @@ import (
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	loggregator "code.cloudfoundry.org/go-loggregator/v8"
 	"code.cloudfoundry.org/go-loggregator/v8/rpc/loggregator_v2"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/metrics/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

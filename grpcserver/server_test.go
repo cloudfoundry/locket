@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/tlsconfig"

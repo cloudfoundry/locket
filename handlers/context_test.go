@@ -11,7 +11,7 @@ import (
 	"code.cloudfoundry.org/bbs/guidprovider"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/expiration/expirationfakes"
 	"code.cloudfoundry.org/locket/handlers"

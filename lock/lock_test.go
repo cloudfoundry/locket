@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/lock"
 	"code.cloudfoundry.org/locket/models"
