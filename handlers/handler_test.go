@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/locket/expiration/expirationfakes"

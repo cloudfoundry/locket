@@ -8,8 +8,8 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/locket/expiration"
