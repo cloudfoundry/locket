@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/grpcserver"
 	"code.cloudfoundry.org/locket/models"
@@ -28,19 +27,7 @@ var _ = Describe("GRPCServer", func() {
 		tlsConfig     *tls.Config
 
 		certFixture, keyFixture, caCertFixture string
-		portAllocator                          portauthority.PortAllocator
 	)
-
-	BeforeSuite(func() {
-		node := GinkgoParallelProcess()
-		startPort := 1050 * node
-		portRange := 1000
-		endPort := startPort + portRange
-
-		var err error
-		portAllocator, err = portauthority.New(startPort, endPort)
-		Expect(err).NotTo(HaveOccurred())
-	})
 
 	BeforeEach(func() {
 		var err error
