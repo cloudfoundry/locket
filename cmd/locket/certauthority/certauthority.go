@@ -49,6 +49,10 @@ func (c certAuthority) CAAndKey() (string, string) {
 
 func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []string, intermediateCA bool) (string, string, error) {
 	key, err := pkix.CreateRSAKey(4096)
+	if err != nil {
+		return handleError(err)
+
+	}
 	keyBytes, err := key.ExportPrivate()
 	if err != nil {
 		return handleError(err)
