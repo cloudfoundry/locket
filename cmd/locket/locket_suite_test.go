@@ -2,7 +2,7 @@ package main_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"time"
 
@@ -52,7 +52,7 @@ var _ = SynchronizedBeforeSuite(
 		portAllocator, err = portauthority.New(startPort, endPort)
 		Expect(err).NotTo(HaveOccurred())
 
-		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+		grpclog.SetLogger(log.New(io.Discard, "", 0))
 
 		locketBinPath = string(locketBinPathData)
 		SetDefaultEventuallyTimeout(15 * time.Second)

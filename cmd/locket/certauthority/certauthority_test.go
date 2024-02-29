@@ -3,7 +3,6 @@ package certauthority_test
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/locket/cmd/locket/certauthority"
@@ -20,7 +19,7 @@ var _ = Describe("Cert Allocator", func() {
 
 	Context("when commonName and depotDir are provided", func() {
 		BeforeEach(func() {
-			depotDir, err = ioutil.TempDir("", "depot")
+			depotDir, err = os.MkdirTemp("", "depot")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -94,7 +93,7 @@ var _ = Describe("Cert Allocator", func() {
 func parseCert(certPath string) (*x509.Certificate, []byte) {
 	var block *pem.Block
 	var rest []byte
-	certBytes, err := ioutil.ReadFile(certPath)
+	certBytes, err := os.ReadFile(certPath)
 	Expect(err).NotTo(HaveOccurred())
 	block, rest = pem.Decode(certBytes)
 	Expect(block).NotTo(BeNil())

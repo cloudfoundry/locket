@@ -3,7 +3,6 @@ package main_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -91,7 +90,7 @@ var _ = Describe("Locket", func() {
 			)
 
 			BeforeEach(func() {
-				locketConfigFilePath, err := ioutil.TempFile(os.TempDir(), "locket-config")
+				locketConfigFilePath, err := os.CreateTemp(os.TempDir(), "locket-config")
 				Expect(err).NotTo(HaveOccurred())
 				_, err = locketConfigFilePath.Write([]byte(`{"foo":`))
 				Expect(err).NotTo(HaveOccurred())
