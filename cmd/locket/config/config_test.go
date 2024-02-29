@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -47,7 +46,7 @@ var _ = Describe("LocketConfig", func() {
 	})
 
 	JustBeforeEach(func() {
-		configFile, err := ioutil.TempFile("", "config-file")
+		configFile, err := os.CreateTemp("", "config-file")
 		Expect(err).NotTo(HaveOccurred())
 
 		n, err := configFile.WriteString(configData)
