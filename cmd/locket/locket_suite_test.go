@@ -52,7 +52,7 @@ var _ = SynchronizedBeforeSuite(
 		portAllocator, err = portauthority.New(startPort, endPort)
 		Expect(err).NotTo(HaveOccurred())
 
-		grpclog.SetLogger(log.New(io.Discard, "", 0))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
 
 		locketBinPath = string(locketBinPathData)
 		SetDefaultEventuallyTimeout(15 * time.Second)
