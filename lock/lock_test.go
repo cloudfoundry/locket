@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/v3/lagertest"
@@ -144,7 +145,7 @@ var _ = Describe("Lock", func() {
 				BeforeEach(func() {
 					// do not use models.ErrLockCollision because in practice from the wire that
 					// variable instance cannot be returned
-					fakeLocker.LockReturns(nil, grpc.Errorf(codes.AlreadyExists, "lock-collision"))
+					fakeLocker.LockReturns(nil, status.Errorf(codes.AlreadyExists, "lock-collision"))
 
 					fakeLocker.FetchReturns(&models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}, nil)
 				})
@@ -285,7 +286,7 @@ var _ = Describe("Lock", func() {
 
 				Context("when the lock request fails with a DeadlineExceeded error", func() {
 					BeforeEach(func() {
-						lockErr = grpc.Errorf(codes.DeadlineExceeded, "error")
+						lockErr = status.Errorf(codes.DeadlineExceeded, "error")
 					})
 
 					It("exits with a descriptive error", func() {
