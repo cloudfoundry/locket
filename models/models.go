@@ -1,8 +1,8 @@
 package models
 
 import (
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 //go:generate bash ../scripts/generate_protos.sh
