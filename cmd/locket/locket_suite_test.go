@@ -3,7 +3,6 @@ package main_test
 import (
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"google.golang.org/grpc/grpclog"
