@@ -66,10 +66,10 @@ var _ = Describe("LocketHandler", func() {
 		exitCh = make(chan struct{}, 1)
 
 		resource = &models.Resource{
-			Key:   "test",
-			Value: "test-value",
-			Owner: "myself",
-			Type:  "lock",
+			Key:      "test",
+			Value:    "test-value",
+			Owner:    "myself",
+			TypeCode: models.LOCK,
 		}
 
 		locketHandler = handlers.NewLocketHandler(
