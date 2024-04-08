@@ -65,7 +65,7 @@ var _ = Describe("GRPCServer", func() {
 		).Client(tlsconfig.WithAuthorityFromFile(caCertFixture))
 		Expect(err).NotTo(HaveOccurred())
 
-		conn, err := grpc.Dial(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)))
+		conn, err := grpc.NewClient(listenAddress, grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)))
 		Expect(err).NotTo(HaveOccurred())
 
 		locketClient := models.NewLocketClient(conn)
