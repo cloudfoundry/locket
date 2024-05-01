@@ -9,7 +9,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
-	"code.cloudfoundry.org/inigo/helpers/portauthority"
+	"code.cloudfoundry.org/cf-networking-helpers/portauthority"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
