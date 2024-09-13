@@ -9,17 +9,17 @@ import (
 var _ = Describe("helpers", func() {
 	Describe("GetType", func() {
 		It("matches the correct type to the type code", func() {
-			Expect(models.GetType(&models.Resource{TypeCode: models.PRESENCE})).To(Equal("presence"))
-			Expect(models.GetType(&models.Resource{TypeCode: models.LOCK})).To(Equal("lock"))
-			Expect(models.GetType(&models.Resource{Type: "sandwich", TypeCode: models.UNKNOWN})).To(Equal("sandwich"))
+			Expect(models.GetType(&models.Resource{TypeCode: models.TypeCode_PRESENCE})).To(Equal("presence"))
+			Expect(models.GetType(&models.Resource{TypeCode: models.TypeCode_LOCK})).To(Equal("lock"))
+			Expect(models.GetType(&models.Resource{Type: "sandwich", TypeCode: models.TypeCode_UNKNOWN})).To(Equal("sandwich"))
 		})
 	})
 
 	Describe("GetTypeCode", func() {
 		It("matches the correct type code to the type", func() {
-			Expect(models.GetTypeCode("presence")).To(Equal(models.PRESENCE))
-			Expect(models.GetTypeCode("lock")).To(Equal(models.LOCK))
-			Expect(models.GetTypeCode("sandwich")).To(Equal(models.UNKNOWN))
+			Expect(models.GetTypeCode("presence")).To(Equal(models.TypeCode_PRESENCE))
+			Expect(models.GetTypeCode("lock")).To(Equal(models.TypeCode_LOCK))
+			Expect(models.GetTypeCode("sandwich")).To(Equal(models.TypeCode_UNKNOWN))
 		})
 	})
 
@@ -29,7 +29,7 @@ var _ = Describe("helpers", func() {
 				Owner:    "thelizardking",
 				Value:    "candoanything",
 				Key:      "sandwich",
-				TypeCode: models.UNKNOWN,
+				TypeCode: models.TypeCode_UNKNOWN,
 				Type:     "lock",
 			}
 
@@ -37,14 +37,14 @@ var _ = Describe("helpers", func() {
 				Owner:    "thelizardking",
 				Value:    "candoanything",
 				Key:      "sandwich",
-				TypeCode: models.UNKNOWN,
+				TypeCode: models.TypeCode_UNKNOWN,
 				Type:     "whut",
 			}
 
-			Expect(models.GetResource(resource1).TypeCode).To(Equal(models.LOCK))
+			Expect(models.GetResource(resource1).TypeCode).To(Equal(models.TypeCode_LOCK))
 			Expect(models.GetResource(resource1).Type).To(Equal("lock"))
 
-			Expect(models.GetResource(resource2).TypeCode).To(Equal(models.UNKNOWN))
+			Expect(models.GetResource(resource2).TypeCode).To(Equal(models.TypeCode_UNKNOWN))
 			Expect(models.GetResource(resource2).Type).To(Equal("whut"))
 		})
 
@@ -53,7 +53,7 @@ var _ = Describe("helpers", func() {
 				Owner:    "thelizardking",
 				Value:    "candoanything",
 				Key:      "sandwich",
-				TypeCode: models.LOCK,
+				TypeCode: models.TypeCode_LOCK,
 				Type:     "whut",
 			}
 
@@ -61,14 +61,14 @@ var _ = Describe("helpers", func() {
 				Owner:    "thelizardking",
 				Value:    "candoanything",
 				Key:      "sandwich",
-				TypeCode: models.PRESENCE,
+				TypeCode: models.TypeCode_PRESENCE,
 				Type:     "whut",
 			}
 
-			Expect(models.GetResource(resource1).TypeCode).To(Equal(models.LOCK))
+			Expect(models.GetResource(resource1).TypeCode).To(Equal(models.TypeCode_LOCK))
 			Expect(models.GetResource(resource1).Type).To(Equal("lock"))
 
-			Expect(models.GetResource(resource2).TypeCode).To(Equal(models.PRESENCE))
+			Expect(models.GetResource(resource2).TypeCode).To(Equal(models.TypeCode_PRESENCE))
 			Expect(models.GetResource(resource2).Type).To(Equal("presence"))
 		})
 	})
