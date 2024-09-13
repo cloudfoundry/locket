@@ -98,7 +98,9 @@ var _ = Describe("GRPCServer", func() {
 	})
 })
 
-type testHandler struct{}
+type testHandler struct {
+	models.UnimplementedLocketServer
+}
 
 func (h *testHandler) Lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
 	return &models.LockResponse{}, nil

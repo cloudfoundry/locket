@@ -69,7 +69,7 @@ var _ = Describe("LocketHandler", func() {
 			Key:      "test",
 			Value:    "test-value",
 			Owner:    "myself",
-			TypeCode: models.LOCK,
+			TypeCode: models.TypeCode_LOCK,
 		}
 
 		locketHandler = handlers.NewLocketHandler(
