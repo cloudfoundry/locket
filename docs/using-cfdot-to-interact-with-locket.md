@@ -1,3 +1,9 @@
+---
+title: Using cfdot with Locket
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # Using cfdot to interact with Locket
 
 cfdot command line tool provides the following commands to interact with Locket

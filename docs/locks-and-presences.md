@@ -1,3 +1,9 @@
+---
+title: Understanding Locks and Presences
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # Locks And Presences
 
 There are to types of entities that are managed by Locket:

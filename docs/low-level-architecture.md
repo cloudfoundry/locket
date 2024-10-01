@@ -1,3 +1,9 @@
+---
+title: Low-level Architecture
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # Low-level Architecture
 
 Locket is a grpc server. golang clients can communicate with the Locket service using [LocketClient](https://godoc.org/code.cloudfoundry.org/locket/models#LocketClient). Clients in other languages can use the [.proto files](../models/locket.proto) to generate a client.

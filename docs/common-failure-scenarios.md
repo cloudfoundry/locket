@@ -1,3 +1,9 @@
+---
+title: Common failure scenarios
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # Common failure scenarios
 
 - `Context deadline exceeded` error in bbs logs. This means that the locket
