@@ -110,4 +110,4 @@ A [FetchResponse](https://godoc.org/code.cloudfoundry.org/locket/models#FetchRes
 
 ## SQL
 
-For a description of Locket database schema see [how-locket-is-using-database.md](https://github.com/cloudfoundry/locket/blob/main/doc/how-locket-is-using-database.md)
+For a description of Locket database schema see [how-locket-is-using-database.md](https://github.com/cloudfoundry/locket/blob/main/docs/020-how-locket-is-using-database.md)
