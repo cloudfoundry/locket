@@ -51,7 +51,10 @@ func (notifier *LockHeldMetronNotifier) Run(signals <-chan os.Signal, ready chan
 		select {
 		case <-notifier.ticker.C():
 			value := atomic.LoadUint64(notifier.lockHeld)
-			notifier.metronClient.SendMetric(lockHeldMetric, int(value))
+			err := notifier.metronClient.SendMetric(lockHeldMetric, int(value))
+			if err != nil {
+				logger.Debug("failed-to-emit-lock-heldmetric", lager.Data{"error": err})
+			}
 
 		case <-signals:
 			return nil

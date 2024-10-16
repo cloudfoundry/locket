@@ -1,3 +1,9 @@
+---
+title: Common failure scenarios
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # Common failure scenarios
 
 - `Context deadline exceeded` error in bbs logs. This means that the locket
@@ -7,7 +13,7 @@
   RequestId to locket Server. Using the failed RequestId, we can then filter
   the locket server jobs to see more information. If the issue is still
   happening at the time of debugging, we can use the [`cfdot`
-  cli](using-cfdot-to-interact-with-locket.md) to replicate the lock acquiring
+  cli](030-using-cfdot-to-interact-with-locket.md) to replicate the lock acquiring
   process.
 - `Failed to acquire lock`. This message usually comes with error description
   in Locket client logs. 

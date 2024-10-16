@@ -1,3 +1,9 @@
+---
+title: How Locket is using a database
+expires_at : never
+tags: [diego-release, locket]
+---
+
 # How Locket is using database
 
 Locket is using database to acquire component locks and update presences, which means that it will insert/update the locks table. 
