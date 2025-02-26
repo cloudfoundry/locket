@@ -90,7 +90,7 @@ var _ = Describe("Lock", func() {
 			Value: resource.Value,
 			//lint:ignore SA1019 - testing deprecated functionality
 			Type:     resource.Type,
-			TypeCode: models.TypeCode_LOCK,
+			TypeCode: models.LOCK,
 		}
 
 		fakeGUIDProvider.NextGUIDReturns("new-guid", nil)
@@ -105,7 +105,7 @@ var _ = Describe("Lock", func() {
 							Key:      "quack",
 							Owner:    "iamthelizardking",
 							Value:    "i can do anything",
-							TypeCode: models.TypeCode_LOCK,
+							TypeCode: models.LOCK,
 						}
 						lock, err := sqlDB.Lock(ctx, logger, typeCodeResource, 10)
 						Expect(err).NotTo(HaveOccurred())
@@ -333,7 +333,7 @@ var _ = Describe("Lock", func() {
 							Type:  "lock",
 						}
 						expectedLock = lock
-						expectedLock.TypeCode = models.TypeCode_LOCK
+						expectedLock.TypeCode = models.LOCK
 					})
 
 					It("returns the lock from the database", func() {
@@ -357,7 +357,7 @@ var _ = Describe("Lock", func() {
 							Type:  "presence",
 						}
 						expectedLock = lock
-						expectedLock.TypeCode = models.TypeCode_PRESENCE
+						expectedLock.TypeCode = models.PRESENCE
 					})
 
 					It("returns the lock from the database", func() {
@@ -378,7 +378,7 @@ var _ = Describe("Lock", func() {
 							Key:      "test",
 							Owner:    "jim",
 							Value:    "locks stuff for days",
-							TypeCode: models.TypeCode_LOCK,
+							TypeCode: models.LOCK,
 						}
 						expectedLock = lock
 						//lint:ignore SA1019 - testing deprecated functionality
@@ -403,7 +403,7 @@ var _ = Describe("Lock", func() {
 							Key:      "test",
 							Owner:    "jim",
 							Value:    "locks stuff for days",
-							TypeCode: models.TypeCode_PRESENCE,
+							TypeCode: models.PRESENCE,
 						}
 						expectedLock = lock
 						//lint:ignore SA1019 - testing deprecated functionality
@@ -505,7 +505,7 @@ var _ = Describe("Lock", func() {
 					Owner:    "finn",
 					Value:    "thehuman",
 					Type:     "presence",
-					TypeCode: models.TypeCode_PRESENCE,
+					TypeCode: models.PRESENCE,
 				},
 				ModifiedIndex: 10,
 				ModifiedId:    "hello",

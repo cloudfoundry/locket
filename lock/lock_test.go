@@ -87,7 +87,8 @@ var _ = Describe("Lock", func() {
 		Context("when the lock cannot be acquired", func() {
 			BeforeEach(func() {
 				fakeLocker.LockReturns(nil, errors.New("no-lock-for-you"))
-				fakeLocker.FetchReturns(&models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}, nil)
+				fetchResponse := &models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}
+				fakeLocker.FetchReturns(fetchResponse.ToProto(), nil)
 			})
 
 			JustBeforeEach(func() {
@@ -146,8 +147,8 @@ var _ = Describe("Lock", func() {
 					// do not use models.ErrLockCollision because in practice from the wire that
 					// variable instance cannot be returned
 					fakeLocker.LockReturns(nil, status.Errorf(codes.AlreadyExists, "lock-collision"))
-
-					fakeLocker.FetchReturns(&models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}, nil)
+					fetchResponse := &models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}
+					fakeLocker.FetchReturns(fetchResponse.ToProto(), nil)
 				})
 
 				It("logs the initial error", func() {
@@ -188,7 +189,7 @@ var _ = Describe("Lock", func() {
 				BeforeEach(func() {
 					done = make(chan struct{})
 
-					fakeLocker.LockStub = func(ctx context.Context, res *models.LockRequest, opts ...grpc.CallOption) (*models.LockResponse, error) {
+					fakeLocker.LockStub = func(ctx context.Context, res *models.ProtoLockRequest, opts ...grpc.CallOption) (*models.ProtoLockResponse, error) {
 						select {
 						case <-done:
 							return nil, nil
@@ -248,7 +249,7 @@ var _ = Describe("Lock", func() {
 					done = make(chan struct{})
 					lockErr = errors.New("no-lock-for-you")
 
-					fakeLocker.LockStub = func(ctx context.Context, res *models.LockRequest, opts ...grpc.CallOption) (*models.LockResponse, error) {
+					fakeLocker.LockStub = func(ctx context.Context, res *models.ProtoLockRequest, opts ...grpc.CallOption) (*models.ProtoLockResponse, error) {
 						select {
 						case <-done:
 							return nil, lockErr
@@ -358,7 +359,7 @@ var _ = Describe("Lock", func() {
 				BeforeEach(func() {
 					lockResult = make(chan bool, 1)
 
-					fakeLocker.LockStub = func(ctx context.Context, res *models.LockRequest, opts ...grpc.CallOption) (*models.LockResponse, error) {
+					fakeLocker.LockStub = func(ctx context.Context, res *models.ProtoLockRequest, opts ...grpc.CallOption) (*models.ProtoLockResponse, error) {
 						defer GinkgoRecover()
 						var shouldError bool
 						Eventually(lockResult).Should(Receive(&shouldError))

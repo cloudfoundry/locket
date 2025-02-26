@@ -69,16 +69,16 @@ var _ = Describe("GRPCServer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		locketClient := models.NewLocketClient(conn)
-		_, err = locketClient.Lock(context.Background(), &models.LockRequest{})
+		_, err = locketClient.Lock(context.Background(), &models.ProtoLockRequest{})
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = locketClient.Release(context.Background(), &models.ReleaseRequest{})
+		_, err = locketClient.Release(context.Background(), &models.ProtoReleaseRequest{})
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = locketClient.Fetch(context.Background(), &models.FetchRequest{})
+		_, err = locketClient.Fetch(context.Background(), &models.ProtoFetchRequest{})
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = locketClient.FetchAll(context.Background(), &models.FetchAllRequest{})
+		_, err = locketClient.FetchAll(context.Background(), &models.ProtoFetchAllRequest{})
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -102,15 +102,15 @@ type testHandler struct {
 	models.UnimplementedLocketServer
 }
 
-func (h *testHandler) Lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
-	return &models.LockResponse{}, nil
+func (h *testHandler) Lock(ctx context.Context, req *models.ProtoLockRequest) (*models.ProtoLockResponse, error) {
+	return &models.ProtoLockResponse{}, nil
 }
-func (h *testHandler) Release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
-	return &models.ReleaseResponse{}, nil
+func (h *testHandler) Release(ctx context.Context, req *models.ProtoReleaseRequest) (*models.ProtoReleaseResponse, error) {
+	return &models.ProtoReleaseResponse{}, nil
 }
-func (h *testHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
-	return &models.FetchResponse{}, nil
+func (h *testHandler) Fetch(ctx context.Context, req *models.ProtoFetchRequest) (*models.ProtoFetchResponse, error) {
+	return &models.ProtoFetchResponse{}, nil
 }
-func (h *testHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
-	return &models.FetchAllResponse{}, nil
+func (h *testHandler) FetchAll(ctx context.Context, req *models.ProtoFetchAllRequest) (*models.ProtoFetchAllResponse, error) {
+	return &models.ProtoFetchAllResponse{}, nil
 }

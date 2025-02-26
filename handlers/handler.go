@@ -84,9 +84,9 @@ func (h *locketHandler) monitorRequest(requestType string, ctx context.Context, 
 	return err
 }
 
-func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
+func (h *locketHandler) Lock(ctx context.Context, req *models.ProtoLockRequest) (*models.ProtoLockResponse, error) {
 	var (
-		response *models.LockResponse
+		response *models.ProtoLockResponse
 		err      error
 	)
 
@@ -98,9 +98,9 @@ func (h *locketHandler) Lock(ctx context.Context, req *models.LockRequest) (*mod
 	return response, err
 }
 
-func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
+func (h *locketHandler) Release(ctx context.Context, req *models.ProtoReleaseRequest) (*models.ProtoReleaseResponse, error) {
 	var (
-		response *models.ReleaseResponse
+		response *models.ProtoReleaseResponse
 		err      error
 	)
 
@@ -112,9 +112,9 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 	return response, err
 }
 
-func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
+func (h *locketHandler) Fetch(ctx context.Context, req *models.ProtoFetchRequest) (*models.ProtoFetchResponse, error) {
 	var (
-		response *models.FetchResponse
+		response *models.ProtoFetchResponse
 		err      error
 	)
 
@@ -126,9 +126,9 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 	return response, err
 }
 
-func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+func (h *locketHandler) FetchAll(ctx context.Context, req *models.ProtoFetchAllRequest) (*models.ProtoFetchAllResponse, error) {
 	var (
-		response *models.FetchAllResponse
+		response *models.ProtoFetchAllResponse
 		err      error
 	)
 
@@ -140,7 +140,7 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 	return response, err
 }
 
-func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*models.LockResponse, error) {
+func (h *locketHandler) lock(ctx context.Context, req *models.ProtoLockRequest) (*models.ProtoLockResponse, error) {
 	logger := h.logger.Session("lock")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -174,7 +174,7 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 		logger = logger.WithData(lager.Data{"request-uuid": requestUUID[0]})
 	}
 
-	lock, err := h.db.Lock(ctx, logger, req.Resource, req.TtlInSeconds)
+	lock, err := h.db.Lock(ctx, logger, req.Resource.FromProto(), req.TtlInSeconds)
 	if err != nil {
 		if err != models.ErrLockCollision {
 			logger.Error("failed-locking-lock", err, lager.Data{
@@ -187,23 +187,23 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 
 	h.lockPick.RegisterTTL(logger, lock)
 
-	return &models.LockResponse{}, nil
+	return &models.ProtoLockResponse{}, nil
 }
 
-func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
+func (h *locketHandler) release(ctx context.Context, req *models.ProtoReleaseRequest) (*models.ProtoReleaseResponse, error) {
 	logger := h.logger.Session("release")
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	err := h.db.Release(ctx, logger, req.Resource)
+	err := h.db.Release(ctx, logger, req.Resource.FromProto())
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.ReleaseResponse{}, nil
+	return &models.ProtoReleaseResponse{}, nil
 }
 
-func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
+func (h *locketHandler) fetch(ctx context.Context, req *models.ProtoFetchRequest) (*models.ProtoFetchResponse, error) {
 	logger := h.logger.Session("fetch")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -213,12 +213,12 @@ func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*m
 		return nil, err
 	}
 
-	return &models.FetchResponse{
-		Resource: lock.Resource,
+	return &models.ProtoFetchResponse{
+		Resource: lock.Resource.ToProto(),
 	}, nil
 }
 
-func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+func (h *locketHandler) fetchAll(ctx context.Context, req *models.ProtoFetchAllRequest) (*models.ProtoFetchAllResponse, error) {
 	logger := h.logger.Session("fetch-all")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -229,7 +229,8 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		return nil, err
 	}
 
-	locks, err := h.db.FetchAll(ctx, logger, models.GetType(&models.Resource{TypeCode: req.TypeCode}))
+	resource := &models.ProtoResource{TypeCode: req.TypeCode}
+	locks, err := h.db.FetchAll(ctx, logger, models.GetType(resource.FromProto()))
 	if err != nil {
 		return nil, err
 	}
@@ -239,9 +240,10 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		responses = append(responses, lock.Resource)
 	}
 
-	return &models.FetchAllResponse{
+	response := &models.FetchAllResponse{
 		Resources: responses,
-	}, nil
+	}
+	return response.ToProto(), nil
 }
 
 func validate(req interface{}) error {
@@ -260,7 +262,7 @@ func validate(req interface{}) error {
 		return models.ErrInvalidType
 	}
 
-	if reqTypeCode == models.TypeCode_UNKNOWN {
+	if reqTypeCode == models.UNKNOWN {
 		return models.ErrInvalidType
 	}
 

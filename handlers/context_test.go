@@ -69,7 +69,7 @@ var _ = Describe("LocketHandler", func() {
 			Key:      "test",
 			Value:    "test-value",
 			Owner:    "myself",
-			TypeCode: models.TypeCode_LOCK,
+			TypeCode: models.LOCK,
 		}
 
 		locketHandler = handlers.NewLocketHandler(
@@ -122,10 +122,11 @@ var _ = Describe("LocketHandler", func() {
 			finishedRequest := make(chan struct{}, 1)
 			go func() {
 				defer GinkgoRecover()
-				_, err := locketHandler.Lock(ctxWithCancel, &models.LockRequest{
+				lockRequest := &models.LockRequest{
 					Resource:     resource,
 					TtlInSeconds: 10,
-				})
+				}
+				_, err := locketHandler.Lock(ctxWithCancel, lockRequest.ToProto())
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(context.Canceled))
 				close(finishedRequest)

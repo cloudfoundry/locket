@@ -10,76 +10,76 @@ import (
 )
 
 type FakeLocketClient struct {
-	FetchStub        func(context.Context, *models.FetchRequest, ...grpc.CallOption) (*models.FetchResponse, error)
+	FetchStub        func(context.Context, *models.ProtoFetchRequest, ...grpc.CallOption) (*models.ProtoFetchResponse, error)
 	fetchMutex       sync.RWMutex
 	fetchArgsForCall []struct {
 		arg1 context.Context
-		arg2 *models.FetchRequest
+		arg2 *models.ProtoFetchRequest
 		arg3 []grpc.CallOption
 	}
 	fetchReturns struct {
-		result1 *models.FetchResponse
+		result1 *models.ProtoFetchResponse
 		result2 error
 	}
 	fetchReturnsOnCall map[int]struct {
-		result1 *models.FetchResponse
+		result1 *models.ProtoFetchResponse
 		result2 error
 	}
-	FetchAllStub        func(context.Context, *models.FetchAllRequest, ...grpc.CallOption) (*models.FetchAllResponse, error)
+	FetchAllStub        func(context.Context, *models.ProtoFetchAllRequest, ...grpc.CallOption) (*models.ProtoFetchAllResponse, error)
 	fetchAllMutex       sync.RWMutex
 	fetchAllArgsForCall []struct {
 		arg1 context.Context
-		arg2 *models.FetchAllRequest
+		arg2 *models.ProtoFetchAllRequest
 		arg3 []grpc.CallOption
 	}
 	fetchAllReturns struct {
-		result1 *models.FetchAllResponse
+		result1 *models.ProtoFetchAllResponse
 		result2 error
 	}
 	fetchAllReturnsOnCall map[int]struct {
-		result1 *models.FetchAllResponse
+		result1 *models.ProtoFetchAllResponse
 		result2 error
 	}
-	LockStub        func(context.Context, *models.LockRequest, ...grpc.CallOption) (*models.LockResponse, error)
+	LockStub        func(context.Context, *models.ProtoLockRequest, ...grpc.CallOption) (*models.ProtoLockResponse, error)
 	lockMutex       sync.RWMutex
 	lockArgsForCall []struct {
 		arg1 context.Context
-		arg2 *models.LockRequest
+		arg2 *models.ProtoLockRequest
 		arg3 []grpc.CallOption
 	}
 	lockReturns struct {
-		result1 *models.LockResponse
+		result1 *models.ProtoLockResponse
 		result2 error
 	}
 	lockReturnsOnCall map[int]struct {
-		result1 *models.LockResponse
+		result1 *models.ProtoLockResponse
 		result2 error
 	}
-	ReleaseStub        func(context.Context, *models.ReleaseRequest, ...grpc.CallOption) (*models.ReleaseResponse, error)
+	ReleaseStub        func(context.Context, *models.ProtoReleaseRequest, ...grpc.CallOption) (*models.ProtoReleaseResponse, error)
 	releaseMutex       sync.RWMutex
 	releaseArgsForCall []struct {
 		arg1 context.Context
-		arg2 *models.ReleaseRequest
+		arg2 *models.ProtoReleaseRequest
 		arg3 []grpc.CallOption
 	}
 	releaseReturns struct {
-		result1 *models.ReleaseResponse
+		result1 *models.ProtoReleaseResponse
 		result2 error
 	}
 	releaseReturnsOnCall map[int]struct {
-		result1 *models.ReleaseResponse
+		result1 *models.ProtoReleaseResponse
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeLocketClient) Fetch(arg1 context.Context, arg2 *models.FetchRequest, arg3 ...grpc.CallOption) (*models.FetchResponse, error) {
+func (fake *FakeLocketClient) Fetch(arg1 context.Context, arg2 *models.ProtoFetchRequest, arg3 ...grpc.CallOption) (*models.ProtoFetchResponse, error) {
 	fake.fetchMutex.Lock()
 	ret, specificReturn := fake.fetchReturnsOnCall[len(fake.fetchArgsForCall)]
 	fake.fetchArgsForCall = append(fake.fetchArgsForCall, struct {
 		arg1 context.Context
-		arg2 *models.FetchRequest
+		arg2 *models.ProtoFetchRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	stub := fake.FetchStub
@@ -101,51 +101,51 @@ func (fake *FakeLocketClient) FetchCallCount() int {
 	return len(fake.fetchArgsForCall)
 }
 
-func (fake *FakeLocketClient) FetchCalls(stub func(context.Context, *models.FetchRequest, ...grpc.CallOption) (*models.FetchResponse, error)) {
+func (fake *FakeLocketClient) FetchCalls(stub func(context.Context, *models.ProtoFetchRequest, ...grpc.CallOption) (*models.ProtoFetchResponse, error)) {
 	fake.fetchMutex.Lock()
 	defer fake.fetchMutex.Unlock()
 	fake.FetchStub = stub
 }
 
-func (fake *FakeLocketClient) FetchArgsForCall(i int) (context.Context, *models.FetchRequest, []grpc.CallOption) {
+func (fake *FakeLocketClient) FetchArgsForCall(i int) (context.Context, *models.ProtoFetchRequest, []grpc.CallOption) {
 	fake.fetchMutex.RLock()
 	defer fake.fetchMutex.RUnlock()
 	argsForCall := fake.fetchArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeLocketClient) FetchReturns(result1 *models.FetchResponse, result2 error) {
+func (fake *FakeLocketClient) FetchReturns(result1 *models.ProtoFetchResponse, result2 error) {
 	fake.fetchMutex.Lock()
 	defer fake.fetchMutex.Unlock()
 	fake.FetchStub = nil
 	fake.fetchReturns = struct {
-		result1 *models.FetchResponse
+		result1 *models.ProtoFetchResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) FetchReturnsOnCall(i int, result1 *models.FetchResponse, result2 error) {
+func (fake *FakeLocketClient) FetchReturnsOnCall(i int, result1 *models.ProtoFetchResponse, result2 error) {
 	fake.fetchMutex.Lock()
 	defer fake.fetchMutex.Unlock()
 	fake.FetchStub = nil
 	if fake.fetchReturnsOnCall == nil {
 		fake.fetchReturnsOnCall = make(map[int]struct {
-			result1 *models.FetchResponse
+			result1 *models.ProtoFetchResponse
 			result2 error
 		})
 	}
 	fake.fetchReturnsOnCall[i] = struct {
-		result1 *models.FetchResponse
+		result1 *models.ProtoFetchResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) FetchAll(arg1 context.Context, arg2 *models.FetchAllRequest, arg3 ...grpc.CallOption) (*models.FetchAllResponse, error) {
+func (fake *FakeLocketClient) FetchAll(arg1 context.Context, arg2 *models.ProtoFetchAllRequest, arg3 ...grpc.CallOption) (*models.ProtoFetchAllResponse, error) {
 	fake.fetchAllMutex.Lock()
 	ret, specificReturn := fake.fetchAllReturnsOnCall[len(fake.fetchAllArgsForCall)]
 	fake.fetchAllArgsForCall = append(fake.fetchAllArgsForCall, struct {
 		arg1 context.Context
-		arg2 *models.FetchAllRequest
+		arg2 *models.ProtoFetchAllRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	stub := fake.FetchAllStub
@@ -167,51 +167,51 @@ func (fake *FakeLocketClient) FetchAllCallCount() int {
 	return len(fake.fetchAllArgsForCall)
 }
 
-func (fake *FakeLocketClient) FetchAllCalls(stub func(context.Context, *models.FetchAllRequest, ...grpc.CallOption) (*models.FetchAllResponse, error)) {
+func (fake *FakeLocketClient) FetchAllCalls(stub func(context.Context, *models.ProtoFetchAllRequest, ...grpc.CallOption) (*models.ProtoFetchAllResponse, error)) {
 	fake.fetchAllMutex.Lock()
 	defer fake.fetchAllMutex.Unlock()
 	fake.FetchAllStub = stub
 }
 
-func (fake *FakeLocketClient) FetchAllArgsForCall(i int) (context.Context, *models.FetchAllRequest, []grpc.CallOption) {
+func (fake *FakeLocketClient) FetchAllArgsForCall(i int) (context.Context, *models.ProtoFetchAllRequest, []grpc.CallOption) {
 	fake.fetchAllMutex.RLock()
 	defer fake.fetchAllMutex.RUnlock()
 	argsForCall := fake.fetchAllArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeLocketClient) FetchAllReturns(result1 *models.FetchAllResponse, result2 error) {
+func (fake *FakeLocketClient) FetchAllReturns(result1 *models.ProtoFetchAllResponse, result2 error) {
 	fake.fetchAllMutex.Lock()
 	defer fake.fetchAllMutex.Unlock()
 	fake.FetchAllStub = nil
 	fake.fetchAllReturns = struct {
-		result1 *models.FetchAllResponse
+		result1 *models.ProtoFetchAllResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) FetchAllReturnsOnCall(i int, result1 *models.FetchAllResponse, result2 error) {
+func (fake *FakeLocketClient) FetchAllReturnsOnCall(i int, result1 *models.ProtoFetchAllResponse, result2 error) {
 	fake.fetchAllMutex.Lock()
 	defer fake.fetchAllMutex.Unlock()
 	fake.FetchAllStub = nil
 	if fake.fetchAllReturnsOnCall == nil {
 		fake.fetchAllReturnsOnCall = make(map[int]struct {
-			result1 *models.FetchAllResponse
+			result1 *models.ProtoFetchAllResponse
 			result2 error
 		})
 	}
 	fake.fetchAllReturnsOnCall[i] = struct {
-		result1 *models.FetchAllResponse
+		result1 *models.ProtoFetchAllResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) Lock(arg1 context.Context, arg2 *models.LockRequest, arg3 ...grpc.CallOption) (*models.LockResponse, error) {
+func (fake *FakeLocketClient) Lock(arg1 context.Context, arg2 *models.ProtoLockRequest, arg3 ...grpc.CallOption) (*models.ProtoLockResponse, error) {
 	fake.lockMutex.Lock()
 	ret, specificReturn := fake.lockReturnsOnCall[len(fake.lockArgsForCall)]
 	fake.lockArgsForCall = append(fake.lockArgsForCall, struct {
 		arg1 context.Context
-		arg2 *models.LockRequest
+		arg2 *models.ProtoLockRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	stub := fake.LockStub
@@ -233,51 +233,51 @@ func (fake *FakeLocketClient) LockCallCount() int {
 	return len(fake.lockArgsForCall)
 }
 
-func (fake *FakeLocketClient) LockCalls(stub func(context.Context, *models.LockRequest, ...grpc.CallOption) (*models.LockResponse, error)) {
+func (fake *FakeLocketClient) LockCalls(stub func(context.Context, *models.ProtoLockRequest, ...grpc.CallOption) (*models.ProtoLockResponse, error)) {
 	fake.lockMutex.Lock()
 	defer fake.lockMutex.Unlock()
 	fake.LockStub = stub
 }
 
-func (fake *FakeLocketClient) LockArgsForCall(i int) (context.Context, *models.LockRequest, []grpc.CallOption) {
+func (fake *FakeLocketClient) LockArgsForCall(i int) (context.Context, *models.ProtoLockRequest, []grpc.CallOption) {
 	fake.lockMutex.RLock()
 	defer fake.lockMutex.RUnlock()
 	argsForCall := fake.lockArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeLocketClient) LockReturns(result1 *models.LockResponse, result2 error) {
+func (fake *FakeLocketClient) LockReturns(result1 *models.ProtoLockResponse, result2 error) {
 	fake.lockMutex.Lock()
 	defer fake.lockMutex.Unlock()
 	fake.LockStub = nil
 	fake.lockReturns = struct {
-		result1 *models.LockResponse
+		result1 *models.ProtoLockResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) LockReturnsOnCall(i int, result1 *models.LockResponse, result2 error) {
+func (fake *FakeLocketClient) LockReturnsOnCall(i int, result1 *models.ProtoLockResponse, result2 error) {
 	fake.lockMutex.Lock()
 	defer fake.lockMutex.Unlock()
 	fake.LockStub = nil
 	if fake.lockReturnsOnCall == nil {
 		fake.lockReturnsOnCall = make(map[int]struct {
-			result1 *models.LockResponse
+			result1 *models.ProtoLockResponse
 			result2 error
 		})
 	}
 	fake.lockReturnsOnCall[i] = struct {
-		result1 *models.LockResponse
+		result1 *models.ProtoLockResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) Release(arg1 context.Context, arg2 *models.ReleaseRequest, arg3 ...grpc.CallOption) (*models.ReleaseResponse, error) {
+func (fake *FakeLocketClient) Release(arg1 context.Context, arg2 *models.ProtoReleaseRequest, arg3 ...grpc.CallOption) (*models.ProtoReleaseResponse, error) {
 	fake.releaseMutex.Lock()
 	ret, specificReturn := fake.releaseReturnsOnCall[len(fake.releaseArgsForCall)]
 	fake.releaseArgsForCall = append(fake.releaseArgsForCall, struct {
 		arg1 context.Context
-		arg2 *models.ReleaseRequest
+		arg2 *models.ProtoReleaseRequest
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
 	stub := fake.ReleaseStub
@@ -299,41 +299,41 @@ func (fake *FakeLocketClient) ReleaseCallCount() int {
 	return len(fake.releaseArgsForCall)
 }
 
-func (fake *FakeLocketClient) ReleaseCalls(stub func(context.Context, *models.ReleaseRequest, ...grpc.CallOption) (*models.ReleaseResponse, error)) {
+func (fake *FakeLocketClient) ReleaseCalls(stub func(context.Context, *models.ProtoReleaseRequest, ...grpc.CallOption) (*models.ProtoReleaseResponse, error)) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = stub
 }
 
-func (fake *FakeLocketClient) ReleaseArgsForCall(i int) (context.Context, *models.ReleaseRequest, []grpc.CallOption) {
+func (fake *FakeLocketClient) ReleaseArgsForCall(i int) (context.Context, *models.ProtoReleaseRequest, []grpc.CallOption) {
 	fake.releaseMutex.RLock()
 	defer fake.releaseMutex.RUnlock()
 	argsForCall := fake.releaseArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeLocketClient) ReleaseReturns(result1 *models.ReleaseResponse, result2 error) {
+func (fake *FakeLocketClient) ReleaseReturns(result1 *models.ProtoReleaseResponse, result2 error) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = nil
 	fake.releaseReturns = struct {
-		result1 *models.ReleaseResponse
+		result1 *models.ProtoReleaseResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLocketClient) ReleaseReturnsOnCall(i int, result1 *models.ReleaseResponse, result2 error) {
+func (fake *FakeLocketClient) ReleaseReturnsOnCall(i int, result1 *models.ProtoReleaseResponse, result2 error) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = nil
 	if fake.releaseReturnsOnCall == nil {
 		fake.releaseReturnsOnCall = make(map[int]struct {
-			result1 *models.ReleaseResponse
+			result1 *models.ProtoReleaseResponse
 			result2 error
 		})
 	}
 	fake.releaseReturnsOnCall[i] = struct {
-		result1 *models.ReleaseResponse
+		result1 *models.ProtoReleaseResponse
 		result2 error
 	}{result1, result2}
 }

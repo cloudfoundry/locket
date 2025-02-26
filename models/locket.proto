@@ -3,53 +3,55 @@ syntax = "proto3";
 package models;
 option go_package="code.cloudfoundry.org/locket/models";
 
+import "bbs.proto";
+
 service Locket {
-  rpc Lock(LockRequest) returns (LockResponse) {}
-  rpc Fetch(FetchRequest) returns (FetchResponse) {}
-  rpc Release(ReleaseRequest) returns (ReleaseResponse) {}
-  rpc FetchAll(FetchAllRequest) returns (FetchAllResponse) {}
+  rpc Lock(ProtoLockRequest) returns (ProtoLockResponse) {}
+  rpc Fetch(ProtoFetchRequest) returns (ProtoFetchResponse) {}
+  rpc Release(ProtoReleaseRequest) returns (ProtoReleaseResponse) {}
+  rpc FetchAll(ProtoFetchAllRequest) returns (ProtoFetchAllResponse) {}
 }
 
-enum TypeCode {
-  UNKNOWN = 0;
-  LOCK = 1;
-  PRESENCE = 2;
+enum ProtoTypeCode {
+  UNKNOWN = 0 [(bbs.bbs_enumvalue_customname) = "UNKNOWN"];
+  LOCK = 1 [(bbs.bbs_enumvalue_customname) = "LOCK"];
+  PRESENCE = 2 [(bbs.bbs_enumvalue_customname) = "PRESENCE"];
 }
 
-message Resource {
+message ProtoResource {
   string key = 1;
   string owner = 2;
   string value = 3;
   string type = 4 [deprecated=true];
-  TypeCode type_code = 5;
+  ProtoTypeCode type_code = 5;
 }
 
-message LockRequest {
-  Resource resource = 1;
+message ProtoLockRequest {
+  ProtoResource resource = 1;
   int64 ttl_in_seconds = 2;
 }
 
-message LockResponse {}
+message ProtoLockResponse {}
 
-message ReleaseRequest {
-  Resource resource = 1;
+message ProtoReleaseRequest {
+  ProtoResource resource = 1;
 }
 
-message ReleaseResponse {}
+message ProtoReleaseResponse {}
 
-message FetchRequest {
+message ProtoFetchRequest {
   string key = 1;
 }
 
-message FetchResponse {
-  Resource resource = 1;
+message ProtoFetchResponse {
+  ProtoResource resource = 1;
 }
 
-message FetchAllRequest {
+message ProtoFetchAllRequest {
   string type = 1 [deprecated=true];
-  TypeCode type_code = 2;
+  ProtoTypeCode type_code = 2;
 }
 
-message FetchAllResponse {
-  repeated Resource resources = 1;
+message ProtoFetchAllResponse {
+  repeated ProtoResource resources = 1;
 }
