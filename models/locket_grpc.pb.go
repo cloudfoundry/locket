@@ -19,215 +19,215 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Locket_Lock_FullMethodName     = "/models.Locket/Lock"
-	Locket_Fetch_FullMethodName    = "/models.Locket/Fetch"
-	Locket_Release_FullMethodName  = "/models.Locket/Release"
-	Locket_FetchAll_FullMethodName = "/models.Locket/FetchAll"
+	ProtoLocket_ProtoLock_FullMethodName     = "/models.ProtoLocket/ProtoLock"
+	ProtoLocket_ProtoFetch_FullMethodName    = "/models.ProtoLocket/ProtoFetch"
+	ProtoLocket_ProtoRelease_FullMethodName  = "/models.ProtoLocket/ProtoRelease"
+	ProtoLocket_ProtoFetchAll_FullMethodName = "/models.ProtoLocket/ProtoFetchAll"
 )
 
-// LocketClient is the client API for Locket service.
+// ProtoLocketClient is the client API for ProtoLocket service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type LocketClient interface {
-	Lock(ctx context.Context, in *ProtoLockRequest, opts ...grpc.CallOption) (*ProtoLockResponse, error)
-	Fetch(ctx context.Context, in *ProtoFetchRequest, opts ...grpc.CallOption) (*ProtoFetchResponse, error)
-	Release(ctx context.Context, in *ProtoReleaseRequest, opts ...grpc.CallOption) (*ProtoReleaseResponse, error)
-	FetchAll(ctx context.Context, in *ProtoFetchAllRequest, opts ...grpc.CallOption) (*ProtoFetchAllResponse, error)
+type ProtoLocketClient interface {
+	ProtoLock(ctx context.Context, in *ProtoLockRequest, opts ...grpc.CallOption) (*ProtoLockResponse, error)
+	ProtoFetch(ctx context.Context, in *ProtoFetchRequest, opts ...grpc.CallOption) (*ProtoFetchResponse, error)
+	ProtoRelease(ctx context.Context, in *ProtoReleaseRequest, opts ...grpc.CallOption) (*ProtoReleaseResponse, error)
+	ProtoFetchAll(ctx context.Context, in *ProtoFetchAllRequest, opts ...grpc.CallOption) (*ProtoFetchAllResponse, error)
 }
 
-type locketClient struct {
+type protoLocketClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewLocketClient(cc grpc.ClientConnInterface) LocketClient {
-	return &locketClient{cc}
+func NewProtoLocketClient(cc grpc.ClientConnInterface) ProtoLocketClient {
+	return &protoLocketClient{cc}
 }
 
-func (c *locketClient) Lock(ctx context.Context, in *ProtoLockRequest, opts ...grpc.CallOption) (*ProtoLockResponse, error) {
+func (c *protoLocketClient) ProtoLock(ctx context.Context, in *ProtoLockRequest, opts ...grpc.CallOption) (*ProtoLockResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProtoLockResponse)
-	err := c.cc.Invoke(ctx, Locket_Lock_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ProtoLocket_ProtoLock_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *locketClient) Fetch(ctx context.Context, in *ProtoFetchRequest, opts ...grpc.CallOption) (*ProtoFetchResponse, error) {
+func (c *protoLocketClient) ProtoFetch(ctx context.Context, in *ProtoFetchRequest, opts ...grpc.CallOption) (*ProtoFetchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProtoFetchResponse)
-	err := c.cc.Invoke(ctx, Locket_Fetch_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ProtoLocket_ProtoFetch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *locketClient) Release(ctx context.Context, in *ProtoReleaseRequest, opts ...grpc.CallOption) (*ProtoReleaseResponse, error) {
+func (c *protoLocketClient) ProtoRelease(ctx context.Context, in *ProtoReleaseRequest, opts ...grpc.CallOption) (*ProtoReleaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProtoReleaseResponse)
-	err := c.cc.Invoke(ctx, Locket_Release_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ProtoLocket_ProtoRelease_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *locketClient) FetchAll(ctx context.Context, in *ProtoFetchAllRequest, opts ...grpc.CallOption) (*ProtoFetchAllResponse, error) {
+func (c *protoLocketClient) ProtoFetchAll(ctx context.Context, in *ProtoFetchAllRequest, opts ...grpc.CallOption) (*ProtoFetchAllResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProtoFetchAllResponse)
-	err := c.cc.Invoke(ctx, Locket_FetchAll_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ProtoLocket_ProtoFetchAll_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// LocketServer is the server API for Locket service.
-// All implementations must embed UnimplementedLocketServer
+// ProtoLocketServer is the server API for ProtoLocket service.
+// All implementations must embed UnimplementedProtoLocketServer
 // for forward compatibility.
-type LocketServer interface {
-	Lock(context.Context, *ProtoLockRequest) (*ProtoLockResponse, error)
-	Fetch(context.Context, *ProtoFetchRequest) (*ProtoFetchResponse, error)
-	Release(context.Context, *ProtoReleaseRequest) (*ProtoReleaseResponse, error)
-	FetchAll(context.Context, *ProtoFetchAllRequest) (*ProtoFetchAllResponse, error)
-	mustEmbedUnimplementedLocketServer()
+type ProtoLocketServer interface {
+	ProtoLock(context.Context, *ProtoLockRequest) (*ProtoLockResponse, error)
+	ProtoFetch(context.Context, *ProtoFetchRequest) (*ProtoFetchResponse, error)
+	ProtoRelease(context.Context, *ProtoReleaseRequest) (*ProtoReleaseResponse, error)
+	ProtoFetchAll(context.Context, *ProtoFetchAllRequest) (*ProtoFetchAllResponse, error)
+	mustEmbedUnimplementedProtoLocketServer()
 }
 
-// UnimplementedLocketServer must be embedded to have
+// UnimplementedProtoLocketServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedLocketServer struct{}
+type UnimplementedProtoLocketServer struct{}
 
-func (UnimplementedLocketServer) Lock(context.Context, *ProtoLockRequest) (*ProtoLockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Lock not implemented")
+func (UnimplementedProtoLocketServer) ProtoLock(context.Context, *ProtoLockRequest) (*ProtoLockResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProtoLock not implemented")
 }
-func (UnimplementedLocketServer) Fetch(context.Context, *ProtoFetchRequest) (*ProtoFetchResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Fetch not implemented")
+func (UnimplementedProtoLocketServer) ProtoFetch(context.Context, *ProtoFetchRequest) (*ProtoFetchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProtoFetch not implemented")
 }
-func (UnimplementedLocketServer) Release(context.Context, *ProtoReleaseRequest) (*ProtoReleaseResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Release not implemented")
+func (UnimplementedProtoLocketServer) ProtoRelease(context.Context, *ProtoReleaseRequest) (*ProtoReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProtoRelease not implemented")
 }
-func (UnimplementedLocketServer) FetchAll(context.Context, *ProtoFetchAllRequest) (*ProtoFetchAllResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchAll not implemented")
+func (UnimplementedProtoLocketServer) ProtoFetchAll(context.Context, *ProtoFetchAllRequest) (*ProtoFetchAllResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProtoFetchAll not implemented")
 }
-func (UnimplementedLocketServer) mustEmbedUnimplementedLocketServer() {}
-func (UnimplementedLocketServer) testEmbeddedByValue()                {}
+func (UnimplementedProtoLocketServer) mustEmbedUnimplementedProtoLocketServer() {}
+func (UnimplementedProtoLocketServer) testEmbeddedByValue()                     {}
 
-// UnsafeLocketServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to LocketServer will
+// UnsafeProtoLocketServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ProtoLocketServer will
 // result in compilation errors.
-type UnsafeLocketServer interface {
-	mustEmbedUnimplementedLocketServer()
+type UnsafeProtoLocketServer interface {
+	mustEmbedUnimplementedProtoLocketServer()
 }
 
-func RegisterLocketServer(s grpc.ServiceRegistrar, srv LocketServer) {
-	// If the following call pancis, it indicates UnimplementedLocketServer was
+func RegisterProtoLocketServer(s grpc.ServiceRegistrar, srv ProtoLocketServer) {
+	// If the following call pancis, it indicates UnimplementedProtoLocketServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Locket_ServiceDesc, srv)
+	s.RegisterService(&ProtoLocket_ServiceDesc, srv)
 }
 
-func _Locket_Lock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProtoLocket_ProtoLock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProtoLockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Lock(ctx, in)
+		return srv.(ProtoLocketServer).ProtoLock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Locket_Lock_FullMethodName,
+		FullMethod: ProtoLocket_ProtoLock_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Lock(ctx, req.(*ProtoLockRequest))
+		return srv.(ProtoLocketServer).ProtoLock(ctx, req.(*ProtoLockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Locket_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProtoLocket_ProtoFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProtoFetchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Fetch(ctx, in)
+		return srv.(ProtoLocketServer).ProtoFetch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Locket_Fetch_FullMethodName,
+		FullMethod: ProtoLocket_ProtoFetch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Fetch(ctx, req.(*ProtoFetchRequest))
+		return srv.(ProtoLocketServer).ProtoFetch(ctx, req.(*ProtoFetchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Locket_Release_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProtoLocket_ProtoRelease_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProtoReleaseRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Release(ctx, in)
+		return srv.(ProtoLocketServer).ProtoRelease(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Locket_Release_FullMethodName,
+		FullMethod: ProtoLocket_ProtoRelease_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Release(ctx, req.(*ProtoReleaseRequest))
+		return srv.(ProtoLocketServer).ProtoRelease(ctx, req.(*ProtoReleaseRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Locket_FetchAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProtoLocket_ProtoFetchAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProtoFetchAllRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).FetchAll(ctx, in)
+		return srv.(ProtoLocketServer).ProtoFetchAll(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Locket_FetchAll_FullMethodName,
+		FullMethod: ProtoLocket_ProtoFetchAll_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).FetchAll(ctx, req.(*ProtoFetchAllRequest))
+		return srv.(ProtoLocketServer).ProtoFetchAll(ctx, req.(*ProtoFetchAllRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Locket_ServiceDesc is the grpc.ServiceDesc for Locket service.
+// ProtoLocket_ServiceDesc is the grpc.ServiceDesc for ProtoLocket service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Locket_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "models.Locket",
-	HandlerType: (*LocketServer)(nil),
+var ProtoLocket_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "models.ProtoLocket",
+	HandlerType: (*ProtoLocketServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Lock",
-			Handler:    _Locket_Lock_Handler,
+			MethodName: "ProtoLock",
+			Handler:    _ProtoLocket_ProtoLock_Handler,
 		},
 		{
-			MethodName: "Fetch",
-			Handler:    _Locket_Fetch_Handler,
+			MethodName: "ProtoFetch",
+			Handler:    _ProtoLocket_ProtoFetch_Handler,
 		},
 		{
-			MethodName: "Release",
-			Handler:    _Locket_Release_Handler,
+			MethodName: "ProtoRelease",
+			Handler:    _ProtoLocket_ProtoRelease_Handler,
 		},
 		{
-			MethodName: "FetchAll",
-			Handler:    _Locket_FetchAll_Handler,
+			MethodName: "ProtoFetchAll",
+			Handler:    _ProtoLocket_ProtoFetchAll_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

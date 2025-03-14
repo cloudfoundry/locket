@@ -5,11 +5,11 @@ option go_package="code.cloudfoundry.org/locket/models";
 
 import "bbs.proto";
 
-service Locket {
-  rpc Lock(ProtoLockRequest) returns (ProtoLockResponse) {}
-  rpc Fetch(ProtoFetchRequest) returns (ProtoFetchResponse) {}
-  rpc Release(ProtoReleaseRequest) returns (ProtoReleaseResponse) {}
-  rpc FetchAll(ProtoFetchAllRequest) returns (ProtoFetchAllResponse) {}
+service ProtoLocket {
+  rpc ProtoLock(ProtoLockRequest) returns (ProtoLockResponse) {}
+  rpc ProtoFetch(ProtoFetchRequest) returns (ProtoFetchResponse) {}
+  rpc ProtoRelease(ProtoReleaseRequest) returns (ProtoReleaseResponse) {}
+  rpc ProtoFetchAll(ProtoFetchAllRequest) returns (ProtoFetchAllResponse) {}
 }
 
 enum ProtoTypeCode {
