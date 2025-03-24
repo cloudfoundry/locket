@@ -89,11 +89,11 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 		return err
 	}
 	lockRequest := &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}
-	_, err = l.locker.Lock(ctx, lockRequest.ToProto())
+	_, err = l.locker.Lock(ctx, lockRequest)
 	if err != nil {
 		lagerData := lager.Data{"request-uuid": uuid}
 		fetchRequest := &models.FetchRequest{Key: l.lock.Key}
-		resp, fErr := l.locker.Fetch(ctx, fetchRequest.ToProto())
+		resp, fErr := l.locker.Fetch(ctx, fetchRequest)
 		if fErr != nil {
 			logger.Error("failed-fetching-lock-owner", fErr)
 		} else {
@@ -115,7 +115,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			logger.Info("signalled", lager.Data{"signal": sig})
 
 			releaseRequest := &models.ReleaseRequest{Resource: l.lock}
-			_, err := l.locker.Release(context.Background(), releaseRequest.ToProto())
+			_, err := l.locker.Release(context.Background(), releaseRequest)
 			if err != nil {
 				logger.Error("failed-to-release-lock", err)
 			} else {
@@ -133,7 +133,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 			ctx, cancel := context.WithTimeout(ctx, time.Duration(l.ttlInSeconds)*time.Second)
 			start := time.Now()
 			lockRequest := &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}
-			_, err = l.locker.Lock(ctx, lockRequest.ToProto(), grpc.WaitForReady(true))
+			_, err = l.locker.Lock(ctx, lockRequest, grpc.WaitForReady(true))
 			cancel()
 			if err != nil {
 				if acquired {
