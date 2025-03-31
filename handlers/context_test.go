@@ -126,7 +126,7 @@ var _ = Describe("LocketHandler", func() {
 					Resource:     resource,
 					TtlInSeconds: 10,
 				}
-				_, err := locketHandler.Lock(ctxWithCancel, lockRequest.ToProto())
+				_, err := locketHandler.Lock(ctxWithCancel, lockRequest)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(context.Canceled))
 				close(finishedRequest)

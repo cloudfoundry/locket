@@ -77,7 +77,7 @@ var _ = Describe("LocketHandler", func() {
 		})
 
 		It("reserves the lock in the database", func() {
-			_, err := locketHandler.Lock(context.Background(), request.ToProto())
+			_, err := locketHandler.Lock(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeLockDB.LockCallCount()).To(Equal(1))
 
@@ -90,7 +90,7 @@ var _ = Describe("LocketHandler", func() {
 		})
 
 		It("increments the in-flight counter and then decrements it when done", func() {
-			_, err := locketHandler.Lock(context.Background(), request.ToProto())
+			_, err := locketHandler.Lock(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeLockDB.LockCallCount()).To(Equal(1))
 
@@ -101,7 +101,7 @@ var _ = Describe("LocketHandler", func() {
 		})
 
 		It("registers the lock and ttl with the lock pick", func() {
-			_, err := locketHandler.Lock(context.Background(), request.ToProto())
+			_, err := locketHandler.Lock(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLockPick.RegisterTTLCallCount()).To(Equal(1))
@@ -118,7 +118,7 @@ var _ = Describe("LocketHandler", func() {
 					//lint:ignore SA1019 - testing deprecated functionality
 					request.Resource.Type = ""
 					request.Resource.TypeCode = models.LOCK
-					_, err := locketHandler.Lock(context.Background(), request.ToProto())
+					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
 
 					metricsRecordSuccess(fakeRequestMetrics)
@@ -129,7 +129,7 @@ var _ = Describe("LocketHandler", func() {
 					//lint:ignore SA1019 - testing deprecated functionality
 					request.Resource.Type = ""
 					request.Resource.TypeCode = models.UNKNOWN
-					_, err := locketHandler.Lock(context.Background(), request.ToProto())
+					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
 
 					metricsRecordFailure(fakeRequestMetrics)
@@ -140,7 +140,7 @@ var _ = Describe("LocketHandler", func() {
 					//lint:ignore SA1019 - testing deprecated functionality
 					request.Resource.Type = ""
 					request.Resource.TypeCode = 4
-					_, err := locketHandler.Lock(context.Background(), request.ToProto())
+					_, err := locketHandler.Lock(context.Background(), request)
 					Expect(err).To(HaveOccurred())
 
 					metricsRecordFailure(fakeRequestMetrics)
@@ -157,7 +157,7 @@ var _ = Describe("LocketHandler", func() {
 			})
 
 			It("returns a validation error", func() {
-				_, err := locketHandler.Lock(context.Background(), request.ToProto())
+				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(models.ErrInvalidTTL))
 				Expect(logger).To(gbytes.Say(models.ErrInvalidTTL.Error()))
@@ -175,7 +175,7 @@ var _ = Describe("LocketHandler", func() {
 			})
 
 			It("returns a validation error", func() {
-				_, err := locketHandler.Lock(context.Background(), request.ToProto())
+				_, err := locketHandler.Lock(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(models.ErrInvalidOwner))
 				Expect(logger).To(gbytes.Say(models.ErrInvalidOwner.Error()))
@@ -197,7 +197,7 @@ var _ = Describe("LocketHandler", func() {
 			})
 
 			JustBeforeEach(func() {
-				_, err = locketHandler.Lock(context.Background(), request.ToProto())
+				_, err = locketHandler.Lock(context.Background(), request)
 			})
 
 			It("returns the error", func() {
@@ -234,7 +234,7 @@ var _ = Describe("LocketHandler", func() {
 			})
 
 			It("logs and writes to the exit channel", func() {
-				locketHandler.Lock(context.Background(), request.ToProto())
+				locketHandler.Lock(context.Background(), request)
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -253,7 +253,7 @@ var _ = Describe("LocketHandler", func() {
 
 			JustBeforeEach(func() {
 				fakeLockDB.LockReturns(nil, errors.New("Boom."))
-				locketHandler.Lock(ctx, request.ToProto())
+				locketHandler.Lock(ctx, request)
 			})
 
 			Context("when the context was closed due to a client cancellation", func() {
@@ -325,7 +325,7 @@ var _ = Describe("LocketHandler", func() {
 			JustBeforeEach(func() {
 				go func() {
 					releaseRequest := &models.ReleaseRequest{Resource: resource}
-					_, err := locketHandler.Release(context.Background(), releaseRequest.ToProto())
+					_, err := locketHandler.Release(context.Background(), releaseRequest)
 					Expect(err).NotTo(HaveOccurred())
 				}()
 			})
@@ -358,7 +358,7 @@ var _ = Describe("LocketHandler", func() {
 
 		It("releases the lock in the database", func() {
 			releaseRequest := &models.ReleaseRequest{Resource: resource}
-			_, err := locketHandler.Release(context.Background(), releaseRequest.ToProto())
+			_, err := locketHandler.Release(context.Background(), releaseRequest)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLockDB.ReleaseCallCount()).Should(Equal(1))
@@ -376,7 +376,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("returns the error", func() {
 				releaseRequest := &models.ReleaseRequest{Resource: resource}
-				_, err := locketHandler.Release(context.Background(), releaseRequest.ToProto())
+				_, err := locketHandler.Release(context.Background(), releaseRequest)
 				Expect(err).To(HaveOccurred())
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -391,7 +391,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("logs and writes to the exit channel", func() {
 				releaseRequest := &models.ReleaseRequest{Resource: resource}
-				locketHandler.Release(context.Background(), releaseRequest.ToProto())
+				locketHandler.Release(context.Background(), releaseRequest)
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -410,7 +410,7 @@ var _ = Describe("LocketHandler", func() {
 			JustBeforeEach(func() {
 				fakeLockDB.ReleaseReturns(errors.New("Boom."))
 				releaseRequest := &models.ReleaseRequest{Resource: resource}
-				locketHandler.Release(ctx, releaseRequest.ToProto())
+				locketHandler.Release(ctx, releaseRequest)
 			})
 
 			Context("when the context was closed due to a client cancellation", func() {
@@ -464,7 +464,7 @@ var _ = Describe("LocketHandler", func() {
 
 		It("fetches the lock in the database", func() {
 			fetchRequest := &models.FetchRequest{Key: "test-fetch"}
-			fetchResp, err := locketHandler.Fetch(context.Background(), fetchRequest.ToProto())
+			fetchResp, err := locketHandler.Fetch(context.Background(), fetchRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fetchResp.Resource).To(Equal(resource))
 
@@ -483,7 +483,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("returns the error", func() {
 				fetchRequest := &models.FetchRequest{Key: "test-fetch"}
-				_, err := locketHandler.Fetch(context.Background(), fetchRequest.ToProto())
+				_, err := locketHandler.Fetch(context.Background(), fetchRequest)
 				Expect(err).To(HaveOccurred())
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -498,7 +498,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("logs and writes to the exit channel", func() {
 				fetchRequest := &models.FetchRequest{Key: "test-fetch"}
-				locketHandler.Fetch(context.Background(), fetchRequest.ToProto())
+				locketHandler.Fetch(context.Background(), fetchRequest)
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -517,7 +517,7 @@ var _ = Describe("LocketHandler", func() {
 			JustBeforeEach(func() {
 				fakeLockDB.FetchReturns(nil, errors.New("boom"))
 				fetchRequest := &models.FetchRequest{Key: "test-fetch"}
-				locketHandler.Fetch(ctx, fetchRequest.ToProto())
+				locketHandler.Fetch(ctx, fetchRequest)
 			})
 
 			Context("when the context was closed due to a client cancellation", func() {
@@ -581,20 +581,20 @@ var _ = Describe("LocketHandler", func() {
 			Context("when type_code is set", func() {
 				It("should be valid on a valid type code and empty type", func() {
 					fetchAllLockRequest := &models.FetchAllRequest{TypeCode: models.LOCK}
-					_, err := locketHandler.FetchAll(context.Background(), fetchAllLockRequest.ToProto())
+					_, err := locketHandler.FetchAll(context.Background(), fetchAllLockRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					metricsRecordSuccess(fakeRequestMetrics)
 					metricsUseCorrectCallTags(fakeRequestMetrics, "FetchAll")
 
 					fetchAllPresenceRequest := &models.FetchAllRequest{TypeCode: models.PRESENCE}
-					_, err = locketHandler.FetchAll(context.Background(), fetchAllPresenceRequest.ToProto())
+					_, err = locketHandler.FetchAll(context.Background(), fetchAllPresenceRequest)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("should be invalid on an UNKNOWN type code and empty type", func() {
 					fetchAllRequest := &models.FetchAllRequest{}
-					_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+					_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 					Expect(err).To(HaveOccurred())
 
 					metricsRecordFailure(fakeRequestMetrics)
@@ -606,7 +606,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the type is valid", func() {
 			It("fetches all the presence locks in the database by type", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.PRESENCE}
-				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				metricsRecordSuccess(fakeRequestMetrics)
@@ -620,7 +620,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("fetches all the lock locks in the database by type", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.LOCK}
-				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				metricsRecordSuccess(fakeRequestMetrics)
@@ -634,7 +634,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("fetches all the presence locks in the database by type code", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.PRESENCE}
-				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				metricsRecordSuccess(fakeRequestMetrics)
@@ -648,7 +648,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("fetches all the lock locks in the database by type code", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.LOCK}
-				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				fetchResp, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				metricsRecordSuccess(fakeRequestMetrics)
@@ -664,7 +664,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the type is invalid", func() {
 			It("returns an invalid type error", func() {
 				fetchAllRequest := &models.FetchAllRequest{Type: "dawg"}
-				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).To(HaveOccurred())
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -675,7 +675,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the type code is UNKNOWN", func() {
 			It("returns an invalid type error", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.UNKNOWN}
-				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).To(HaveOccurred())
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -690,7 +690,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("returns the error", func() {
 				fetchAllRequest := &models.FetchAllRequest{}
-				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				_, err := locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(err).To(HaveOccurred())
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -705,7 +705,7 @@ var _ = Describe("LocketHandler", func() {
 
 			It("logs and writes to the exit channel", func() {
 				fetchAllRequest := &models.FetchAllRequest{TypeCode: models.PRESENCE}
-				locketHandler.FetchAll(context.Background(), fetchAllRequest.ToProto())
+				locketHandler.FetchAll(context.Background(), fetchAllRequest)
 				Expect(logger).To(gbytes.Say("unrecoverable-error"))
 
 				metricsRecordFailure(fakeRequestMetrics)
@@ -724,7 +724,7 @@ var _ = Describe("LocketHandler", func() {
 			JustBeforeEach(func() {
 				fakeLockDB.FetchAllReturns(nil, errors.New("boom"))
 				fetchAllRequest := &models.FetchAllRequest{}
-				locketHandler.FetchAll(ctx, fetchAllRequest.ToProto())
+				locketHandler.FetchAll(ctx, fetchAllRequest)
 			})
 
 			Context("when the context was closed due to a client cancellation", func() {
