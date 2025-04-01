@@ -46,42 +46,42 @@ func NewLocketClient(cc grpc.ClientConnInterface) LocketClient {
 
 func (c *locketClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.CallOption) (*LockResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(LockResponse)
-	err := c.cc.Invoke(ctx, Locket_Lock_FullMethodName, in, out, cOpts...)
+	out := new(ProtoLockResponse)
+	err := c.cc.Invoke(ctx, Locket_Lock_FullMethodName, in.ToProto(), out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return out.FromProto(), nil
 }
 
 func (c *locketClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FetchResponse)
-	err := c.cc.Invoke(ctx, Locket_Fetch_FullMethodName, in, out, cOpts...)
+	out := new(ProtoFetchResponse)
+	err := c.cc.Invoke(ctx, Locket_Fetch_FullMethodName, in.ToProto(), out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return out.FromProto(), nil
 }
 
 func (c *locketClient) Release(ctx context.Context, in *ReleaseRequest, opts ...grpc.CallOption) (*ReleaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReleaseResponse)
-	err := c.cc.Invoke(ctx, Locket_Release_FullMethodName, in, out, cOpts...)
+	out := new(ProtoReleaseResponse)
+	err := c.cc.Invoke(ctx, Locket_Release_FullMethodName, in.ToProto(), out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return out.FromProto(), nil
 }
 
 func (c *locketClient) FetchAll(ctx context.Context, in *FetchAllRequest, opts ...grpc.CallOption) (*FetchAllResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FetchAllResponse)
-	err := c.cc.Invoke(ctx, Locket_FetchAll_FullMethodName, in, out, cOpts...)
+	out := new(ProtoFetchAllResponse)
+	err := c.cc.Invoke(ctx, Locket_FetchAll_FullMethodName, in.ToProto(), out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return out.FromProto(), nil
 }
 
 type LocketServer interface {
