@@ -37,17 +37,18 @@ type LocketClient interface {
 }
 
 type locketClient struct {
-	cc grpc.ClientConnInterface
+	cc  grpc.ClientConnInterface
+	plc ProtoLocketClient
 }
 
 func NewLocketClient(cc grpc.ClientConnInterface) LocketClient {
-	return &locketClient{cc}
+	proto := NewProtoLocketClient(cc)
+	return &locketClient{cc, proto}
 }
 
 func (c *locketClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.CallOption) (*LockResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ProtoLockResponse)
-	err := c.cc.Invoke(ctx, Locket_Lock_FullMethodName, in.ToProto(), out, cOpts...)
+	out, err := c.plc.ProtoLock(ctx, in.ToProto(), cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +57,7 @@ func (c *locketClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.C
 
 func (c *locketClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ProtoFetchResponse)
-	err := c.cc.Invoke(ctx, Locket_Fetch_FullMethodName, in.ToProto(), out, cOpts...)
+	out, err := c.plc.ProtoFetch(ctx, in.ToProto(), cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +66,7 @@ func (c *locketClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc
 
 func (c *locketClient) Release(ctx context.Context, in *ReleaseRequest, opts ...grpc.CallOption) (*ReleaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ProtoReleaseResponse)
-	err := c.cc.Invoke(ctx, Locket_Release_FullMethodName, in.ToProto(), out, cOpts...)
+	out, err := c.plc.ProtoRelease(ctx, in.ToProto(), cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,8 +75,7 @@ func (c *locketClient) Release(ctx context.Context, in *ReleaseRequest, opts ...
 
 func (c *locketClient) FetchAll(ctx context.Context, in *FetchAllRequest, opts ...grpc.CallOption) (*FetchAllResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ProtoFetchAllResponse)
-	err := c.cc.Invoke(ctx, Locket_FetchAll_FullMethodName, in.ToProto(), out, cOpts...)
+	out, err := c.plc.ProtoFetchAll(ctx, in.ToProto(), cOpts...)
 	if err != nil {
 		return nil, err
 	}
