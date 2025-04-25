@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: Confirm go version
+        run: go version
       - name: Run `go vet`
         run: go vet ./...
       - name: Run `staticcheck`
