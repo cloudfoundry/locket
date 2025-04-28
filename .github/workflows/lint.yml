@@ -23,6 +23,7 @@ jobs:
       - name: Confirm location
         run: pwd && ls -al
       - name: Run `go vet`
+        working-directory: src/code.cloudfoundry.org
         run: go vet ./...
       - name: Confirm go version
         run: go version
