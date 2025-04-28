@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           name: cloudfoundry/diego-release
-          ref: refs/head/develop
+          ref: refs/heads/develop
       - name: Confirm go version
         run: go version
       - name: Run `go vet`
