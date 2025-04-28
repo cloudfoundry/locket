@@ -26,8 +26,8 @@ jobs:
       - name: Confirm go version
         run: go version
       - name: Run `go vet`
-        working-directory: "src/code.cloudfoundry.org/${SUBMODULE}"
+        working-directory: "src/code.cloudfoundry.org/${{ env.SUBMODULE }}"
         run: go vet ./...
       - name: Run `staticcheck`
-        working-directory: "src/code.cloudfoundry.org/${SUBMODULE}"
+        working-directory: "src/code.cloudfoundry.org/${{ env.SUBMODULE }}"
         run: GOFLAGS="-buildvcs=false" staticcheck ./...
