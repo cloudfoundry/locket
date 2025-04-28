@@ -9,9 +9,6 @@ on:
   pull_request:
     branches: [ "actions-lint" ]
 
-env:
-  SUBMODULE: locket
-
 jobs:
   lint:
     runs-on: ubuntu-latest
