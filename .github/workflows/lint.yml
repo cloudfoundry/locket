@@ -16,9 +16,14 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          name: cloudfoundry/diego-release
+          ref: refs/head/develop
       - name: Confirm go version
         run: go version
       - name: Run `go vet`
-        run: go vet
+        working-directory: src/code.cloudfoundry.org/locket
+        run: go vet ./...
       - name: Run `staticcheck`
+        working-directory: src/code.cloudfoundry.org/locket
         run: staticcheck ./...
