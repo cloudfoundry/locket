@@ -21,6 +21,8 @@ jobs:
           ref: refs/heads/develop
       - name: Confirm go version
         run: go version
+      - name: Init submodules
+        run: git submodule init locket
       - name: Run `go vet`
         working-directory: src/code.cloudfoundry.org/locket
         run: pwd && ls -al && go vet ./...
