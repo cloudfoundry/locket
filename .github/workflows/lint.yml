@@ -22,6 +22,8 @@ jobs:
           submodules: recursive
       - name: Confirm go version
         run: go version
+      - name: Confirm location
+        run: pwd && ls -al
       - name: Run `go vet`
         working-directory: src/code.cloudfoundry.org/locket
         run: go vet ./...
