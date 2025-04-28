@@ -28,8 +28,7 @@ jobs:
         working-directory: src/code.cloudfoundry.org/locket
         run: pwd && ls -al
       - name: Run `go vet`
-        working-directory: src/code.cloudfoundry.org/locket
-        run: go vet 
+        run: go vet ./src/code.cloudfoundry.org/locket
       - name: Run `staticcheck`
         working-directory: src/code.cloudfoundry.org/locket
         run: GOFLAGS="-buildvcs=false" staticcheck ./...
