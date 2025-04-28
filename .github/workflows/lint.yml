@@ -14,22 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     container: cloudfoundry/tas-runtime-build
     steps:
-      - name: Check out repository code
+      - name: Check out release code
         uses: actions/checkout@v4
         with:
           repository: cloudfoundry/diego-release
           ref: refs/heads/develop
           submodules: recursive
-      - name: Confirm go version
-        run: go version
       - name: Confirm location
         run: pwd && ls -al
+      - name: Check out submodule code
+        uses: actions/checkout@v4
+      - name: Confirm go version
+        run: go version
       - name: Confirm working-directory location
-        working-directory: src/code.cloudfoundry.org/locket
         run: pwd && ls -al
       - name: Run `go vet`
-        working-directory: src/code.cloudfoundry.org
         run: ls -al ./locket && cd locket && go vet ./...
       - name: Run `staticcheck`
-        working-directory: src/code.cloudfoundry.org/locket
         run: GOFLAGS="-buildvcs=false" staticcheck ./...
