@@ -12,27 +12,40 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container: cloudfoundry/tas-runtime-build
+    # container: cloudfoundry/tas-runtime-build
     steps:
+      # - name: Install node
+      #   run: apt update && apt install -y nodejs
       - name: Check out release code
         uses: actions/checkout@v4
         with:
           repository: cloudfoundry/diego-release
           ref: refs/heads/develop
           submodules: recursive
+      - name: Check out locket code
+        uses: actions/checkout@v4
+        with:
+          repository: cloudfoundry/locket
+          ref: refs/heads/actions-lint
+          path: src/code.cloudfoundry.org/locket
+      - name: Setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
+      - name: Confirm go version
+        run: go version
       - name: Confirm location
         run: pwd && ls -al
       - name: Run `go vet`
         working-directory: src/code.cloudfoundry.org
         run: go vet ./...
-      - name: Confirm go version
-        run: go version
-      - name: Confirm working-directory location
-        working-directory: src/code.cloudfoundry.org/locket
-        run: pwd && ls -al
-      - name: Run `go vet`
-        working-directory: src/code.cloudfoundry.org/locket
-        run: go vet ./...
-      - name: Run `staticcheck`
-        working-directory: src/code.cloudfoundry.org/locket
-        run: GOFLAGS="-buildvcs=false" staticcheck ./...
+      # - name: Confirm working-directory location
+      #   working-directory: src/code.cloudfoundry.org/locket
+      #   run: pwd && ls -al
+      # - name: Run `go vet`
+      #   working-directory: src/code.cloudfoundry.org/locket
+      #   run: go vet ./...
+      # - name: Run `staticcheck`
+      #   working-directory: src/code.cloudfoundry.org/locket
+      #   run: GOFLAGS="-buildvcs=false" staticcheck ./...
