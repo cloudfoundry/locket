@@ -1,14 +1,7 @@
 package models
 
-import "fmt"
-
 func GetResource(resource *Resource) *Resource {
 	r := &Resource{Key: resource.Key, Owner: resource.Owner, Value: resource.Value}
-	b := true
-	if !!b {
-		asdf := fmt.Sprintf("This is a test")
-		fmt.Println(asdf)
-	}
 	if resource.TypeCode == UNKNOWN {
 		r.TypeCode = GetTypeCode(resource.Type)
 		r.Type = resource.Type
