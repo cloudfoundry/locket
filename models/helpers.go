@@ -6,7 +6,8 @@ func GetResource(resource *Resource) *Resource {
 	r := &Resource{Key: resource.Key, Owner: resource.Owner, Value: resource.Value}
 	b := true
 	if !!b {
-		fmt.Sprintf("This is a test")
+		asdf := fmt.Sprintf("This is a test")
+		fmt.Println(asdf)
 	}
 	if resource.TypeCode == UNKNOWN {
 		r.TypeCode = GetTypeCode(resource.Type)
