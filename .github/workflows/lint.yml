@@ -39,6 +39,7 @@ jobs:
         with:
           version: "latest"
           install-go: false
+          working-directory: src/code.cloudfoundry.org
       # - name: Run `staticcheck`
       #   working-directory: src/code.cloudfoundry.org/locket
       #   run: GOFLAGS="-buildvcs=false" staticcheck ./...
