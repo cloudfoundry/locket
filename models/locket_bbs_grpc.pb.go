@@ -9,7 +9,6 @@ package models
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -138,10 +137,12 @@ func RegisterLocketServer(s grpc.ServiceRegistrar, srv LocketServer) {
 }
 
 func _Locket_Lock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LockRequest)
-	if err := dec(in.ToProto()); err != nil {
+	protoIn := new(ProtoLockRequest)
+	if err := dec(protoIn); err != nil {
 		return nil, err
 	}
+	in := protoIn.FromProto()
+
 	if interceptor == nil {
 		response, err := srv.(LocketServer).Lock(ctx, in)
 		return response.ToProto(), err
@@ -158,10 +159,12 @@ func _Locket_Lock_Handler(srv interface{}, ctx context.Context, dec func(interfa
 }
 
 func _Locket_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchRequest)
-	if err := dec(in.ToProto()); err != nil {
+	protoIn := new(ProtoFetchRequest)
+	if err := dec(protoIn); err != nil {
 		return nil, err
 	}
+	in := protoIn.FromProto()
+
 	if interceptor == nil {
 		response, err := srv.(LocketServer).Fetch(ctx, in)
 		return response.ToProto(), err
@@ -178,10 +181,12 @@ func _Locket_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Locket_Release_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReleaseRequest)
-	if err := dec(in.ToProto()); err != nil {
+	protoIn := new(ProtoReleaseRequest)
+	if err := dec(protoIn); err != nil {
 		return nil, err
 	}
+	in := protoIn.FromProto()
+
 	if interceptor == nil {
 		response, err := srv.(LocketServer).Release(ctx, in)
 		return response.ToProto(), err
@@ -198,10 +203,12 @@ func _Locket_Release_Handler(srv interface{}, ctx context.Context, dec func(inte
 }
 
 func _Locket_FetchAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchAllRequest)
-	if err := dec(in.ToProto()); err != nil {
+	protoIn := new(ProtoFetchAllRequest)
+	if err := dec(protoIn); err != nil {
 		return nil, err
 	}
+	in := protoIn.FromProto()
+
 	if interceptor == nil {
 		response, err := srv.(LocketServer).FetchAll(ctx, in)
 		return response.ToProto(), err
