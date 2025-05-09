@@ -9,6 +9,7 @@ package models
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -37,18 +38,18 @@ type LocketClient interface {
 }
 
 type locketClient struct {
-	cc  grpc.ClientConnInterface
-	plc ProtoLocketClient
+	cc grpc.ClientConnInterface
 }
 
 func NewLocketClient(cc grpc.ClientConnInterface) LocketClient {
-	proto := NewProtoLocketClient(cc)
-	return &locketClient{cc, proto}
+	return &locketClient{cc}
 }
 
 func (c *locketClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.CallOption) (*LockResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out, err := c.plc.ProtoLock(ctx, in.ToProto(), cOpts...)
+	out := new(ProtoLockResponse)
+	protoIn := in.ToProto()
+	err := c.cc.Invoke(ctx, Locket_Lock_FullMethodName, protoIn, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,9 @@ func (c *locketClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.C
 
 func (c *locketClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out, err := c.plc.ProtoFetch(ctx, in.ToProto(), cOpts...)
+	out := new(ProtoFetchResponse)
+	protoIn := in.ToProto()
+	err := c.cc.Invoke(ctx, Locket_Fetch_FullMethodName, protoIn, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +69,9 @@ func (c *locketClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc
 
 func (c *locketClient) Release(ctx context.Context, in *ReleaseRequest, opts ...grpc.CallOption) (*ReleaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out, err := c.plc.ProtoRelease(ctx, in.ToProto(), cOpts...)
+	out := new(ProtoReleaseResponse)
+	protoIn := in.ToProto()
+	err := c.cc.Invoke(ctx, Locket_Release_FullMethodName, protoIn, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +80,9 @@ func (c *locketClient) Release(ctx context.Context, in *ReleaseRequest, opts ...
 
 func (c *locketClient) FetchAll(ctx context.Context, in *FetchAllRequest, opts ...grpc.CallOption) (*FetchAllResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out, err := c.plc.ProtoFetchAll(ctx, in.ToProto(), cOpts...)
+	out := new(ProtoFetchAllResponse)
+	protoIn := in.ToProto()
+	err := c.cc.Invoke(ctx, Locket_FetchAll_FullMethodName, protoIn, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,72 +139,80 @@ func RegisterLocketServer(s grpc.ServiceRegistrar, srv LocketServer) {
 
 func _Locket_Lock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LockRequest)
-	if err := dec(in); err != nil {
+	if err := dec(in.ToProto()); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Lock(ctx, in)
+		response, err := srv.(LocketServer).Lock(ctx, in)
+		return response.ToProto(), err
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: Locket_Lock_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Lock(ctx, req.(*LockRequest))
+		response, err := srv.(LocketServer).Lock(ctx, req.(*LockRequest))
+		return response.ToProto(), err
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Locket_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FetchRequest)
-	if err := dec(in); err != nil {
+	if err := dec(in.ToProto()); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Fetch(ctx, in)
+		response, err := srv.(LocketServer).Fetch(ctx, in)
+		return response.ToProto(), err
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: Locket_Fetch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Fetch(ctx, req.(*FetchRequest))
+		response, err := srv.(LocketServer).Fetch(ctx, req.(*FetchRequest))
+		return response.ToProto(), err
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Locket_Release_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReleaseRequest)
-	if err := dec(in); err != nil {
+	if err := dec(in.ToProto()); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).Release(ctx, in)
+		response, err := srv.(LocketServer).Release(ctx, in)
+		return response.ToProto(), err
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: Locket_Release_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).Release(ctx, req.(*ReleaseRequest))
+		response, err := srv.(LocketServer).Release(ctx, req.(*ReleaseRequest))
+		return response.ToProto(), err
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Locket_FetchAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FetchAllRequest)
-	if err := dec(in); err != nil {
+	if err := dec(in.ToProto()); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocketServer).FetchAll(ctx, in)
+		response, err := srv.(LocketServer).FetchAll(ctx, in)
+		return response.ToProto(), err
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: Locket_FetchAll_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocketServer).FetchAll(ctx, req.(*FetchAllRequest))
+		response, err := srv.(LocketServer).FetchAll(ctx, req.(*FetchAllRequest))
+		return response.ToProto(), err
 	}
 	return interceptor(ctx, in, info, handler)
 }
