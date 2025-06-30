@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-bbs v0.0.1
 // - protoc-gen-go-grpc TODO: get version
-// - protoc            v6.30.2
+// - protoc            v6.31.1
 // source: locket.proto
 
 package models
