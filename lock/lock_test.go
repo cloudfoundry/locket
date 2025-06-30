@@ -87,7 +87,8 @@ var _ = Describe("Lock", func() {
 		Context("when the lock cannot be acquired", func() {
 			BeforeEach(func() {
 				fakeLocker.LockReturns(nil, errors.New("no-lock-for-you"))
-				fakeLocker.FetchReturns(&models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}, nil)
+				fetchResponse := &models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}
+				fakeLocker.FetchReturns(fetchResponse, nil)
 			})
 
 			JustBeforeEach(func() {
@@ -146,8 +147,8 @@ var _ = Describe("Lock", func() {
 					// do not use models.ErrLockCollision because in practice from the wire that
 					// variable instance cannot be returned
 					fakeLocker.LockReturns(nil, status.Errorf(codes.AlreadyExists, "lock-collision"))
-
-					fakeLocker.FetchReturns(&models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}, nil)
+					fetchResponse := &models.FetchResponse{Resource: &models.Resource{Owner: "joe"}}
+					fakeLocker.FetchReturns(fetchResponse, nil)
 				})
 
 				It("logs the initial error", func() {
