@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -139,15 +140,14 @@ func main() {
 }
 
 func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggingclient.IngressClient, error) {
+	fmt.Println("** Get metron client")
 	client, err := loggingclient.NewIngressClient(locketConfig.LoggregatorConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if locketConfig.LoggregatorConfig.UseV2API {
-		emitter := runtimeemitter.NewV1(client)
-		go emitter.Run()
-	}
+	emitter := runtimeemitter.NewV1(client)
+	go emitter.Run()
 
 	return client, nil
 }

@@ -70,7 +70,6 @@ var _ = Describe("Locket", func() {
 				port, err := portAllocator.ClaimPorts(1)
 				Expect(err).NotTo(HaveOccurred())
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-					cfg.LoggregatorConfig.UseV2API = true
 					cfg.LoggregatorConfig.APIPort = int(port)
 					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
 					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
@@ -158,7 +157,6 @@ var _ = Describe("Locket", func() {
 			Context("when using the v2 api", func() {
 				BeforeEach(func() {
 					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.UseV2API = true
 						cfg.LoggregatorConfig.APIPort = testMetricsPort
 						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
 						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
@@ -289,7 +287,6 @@ var _ = Describe("Locket", func() {
 			Context("when not using the v2 api", func() {
 				BeforeEach(func() {
 					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.UseV2API = false
 						cfg.LoggregatorConfig.APIPort = testMetricsPort
 						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
 						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
