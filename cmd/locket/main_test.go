@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/fixtures"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
@@ -56,6 +57,10 @@ var _ = Describe("Locket", func() {
 				cfg.DatabaseDriver = sqlRunner.DriverName()
 				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
 				cfg.ReportInterval = durationjson.Duration(time.Second)
+				cfg.LoggregatorConfig.APIPort = metronIngressSetup.Port
+				cfg.LoggregatorConfig.CACertPath = fixtures.Path("CA.crt")
+				cfg.LoggregatorConfig.CertPath = fixtures.Path("metron.crt")
+				cfg.LoggregatorConfig.KeyPath = fixtures.Path("metron.key")
 			},
 		}
 	})
@@ -71,9 +76,9 @@ var _ = Describe("Locket", func() {
 				Expect(err).NotTo(HaveOccurred())
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
 					cfg.LoggregatorConfig.APIPort = int(port)
-					cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-					cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-					cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+					cfg.LoggregatorConfig.CACertPath = fixtures.Path("CA.crt")
+					cfg.LoggregatorConfig.CertPath = fixtures.Path("metron.crt")
+					cfg.LoggregatorConfig.KeyPath = fixtures.Path("metron.key")
 				})
 			})
 
@@ -126,117 +131,105 @@ var _ = Describe("Locket", func() {
 
 		Context("metrics", func() {
 
-			var (
-				testIngressServer *testhelpers.TestIngressServer
-				testMetricsChan   chan *loggregator_v2.Envelope
-				testMetricsPort   int
-				signalMetricsChan chan struct{}
-			)
-
-			BeforeEach(func() {
-				var err error
-				testIngressServer, err = testhelpers.NewTestIngressServer(
-					"fixtures/metron/metron.crt",
-					"fixtures/metron/metron.key",
-					"fixtures/metron/CA.crt",
-				)
-				Expect(err).NotTo(HaveOccurred())
-				receiversChan := testIngressServer.Receivers()
-				Expect(testIngressServer.Start()).To(Succeed())
-				testMetricsPort, err = testIngressServer.Port()
-				Expect(err).NotTo(HaveOccurred())
-
-				testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+			It("emits metrics", func() {
+				Eventually(testMetricsChan).Should(Receive())
 			})
 
-			AfterEach(func() {
-				testIngressServer.Stop()
-				close(signalMetricsChan)
+			Context("when a lock is acquired", func() {
+				JustBeforeEach(func() {
+					requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
+					_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+						Resource:     requestedResource,
+						TtlInSeconds: 10,
+					})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("emits DBQueriesTotal metric", func() {
+					metricName := "DBQueriesTotal"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
+				})
+
+				It("increases the RequestsSucceeded metric", func() {
+					metricName := "RequestsSucceeded"
+					Eventually(testMetricsChan).Should(Receive(
+						SatisfyAll(
+							testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
+							WithTransform(func(source *loggregator_v2.Envelope) float64 {
+								return source.GetGauge().GetMetrics()[metricName].Value
+							}, BeNumerically(">", 0)),
+						),
+					))
+				})
 			})
 
-			Context("when using the v2 api", func() {
+			Context("when the locket server is encountering a high load", func() {
 				BeforeEach(func() {
 					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.APIPort = testMetricsPort
-						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-						cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
+						cfg.MaxOpenDatabaseConnections = 100
+						cfg.MaxDatabaseConnectionLifetime = 0
 					})
 				})
 
-				It("emits metrics", func() {
-					Eventually(testMetricsChan).Should(Receive())
+				JustBeforeEach(func() {
+					var wg sync.WaitGroup
+					wg.Add(10)
+					for i := 0; i < 10; i++ {
+						key := fmt.Sprintf("test%d", i)
+						requestedResource := &models.Resource{Key: key, Value: "test-data", Owner: key, TypeCode: models.LOCK}
+						go func() {
+							defer GinkgoRecover()
+							defer wg.Done()
+							var err error
+							for j := 0; j < 3; j++ {
+								_, err := locketClient.Lock(context.Background(), &models.LockRequest{
+									Resource:     requestedResource,
+									TtlInSeconds: 10,
+								})
+								if err == nil {
+									break
+								}
+							}
+							Expect(err).NotTo(HaveOccurred())
+						}()
+					}
+					wg.Wait()
 				})
 
-				Context("when a lock is acquired", func() {
-					JustBeforeEach(func() {
-						requestedResource := &models.Resource{Key: "test", Value: "test-data", Owner: "jim", TypeCode: models.LOCK}
-						_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-							Resource:     requestedResource,
-							TtlInSeconds: 10,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("emits DBQueriesTotal metric", func() {
-						metricName := "DBQueriesTotal"
-						Eventually(testMetricsChan).Should(Receive(
-							SatisfyAll(
-								testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
-								WithTransform(func(source *loggregator_v2.Envelope) float64 {
-									return source.GetGauge().GetMetrics()[metricName].Value
-								}, BeNumerically(">", 0)),
-							),
-						))
-					})
-
-					It("increases the RequestsSucceeded metric", func() {
-						metricName := "RequestsSucceeded"
-						Eventually(testMetricsChan).Should(Receive(
-							SatisfyAll(
-								testhelpers.MatchV2Metric(testhelpers.MetricAndValue{Name: metricName}),
-								WithTransform(func(source *loggregator_v2.Envelope) float64 {
-									return source.GetGauge().GetMetrics()[metricName].Value
-								}, BeNumerically(">", 0)),
-							),
-						))
-					})
+				It("increases the DBOpenConnections metric", func() {
+					metricName := "DBOpenConnections"
+					openConnections := make(chan float64, 10)
+					go func() {
+						for {
+							metric := <-testMetricsChan
+							gauge := metric.GetGauge()
+							if gauge != nil {
+								metrics := gauge.GetMetrics()
+								if m, found := metrics[metricName]; found {
+									openConnections <- m.Value
+								}
+							}
+						}
+					}()
+					Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
+					Consistently(func() float64 { return <-openConnections }, 10*time.Second).Should(BeNumerically(">", 5))
 				})
 
-				Context("when the locket server is encountering a high load", func() {
+				Context("when the max database connection lifetime is set", func() {
 					BeforeEach(func() {
 						configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-							cfg.MaxOpenDatabaseConnections = 100
-							cfg.MaxDatabaseConnectionLifetime = 0
+							cfg.MaxDatabaseConnectionLifetime = durationjson.Duration(5 * time.Second)
 						})
 					})
 
-					JustBeforeEach(func() {
-						var wg sync.WaitGroup
-						wg.Add(10)
-						for i := 0; i < 10; i++ {
-							key := fmt.Sprintf("test%d", i)
-							requestedResource := &models.Resource{Key: key, Value: "test-data", Owner: key, TypeCode: models.LOCK}
-							go func() {
-								defer GinkgoRecover()
-								defer wg.Done()
-								var err error
-								for j := 0; j < 3; j++ {
-									_, err := locketClient.Lock(context.Background(), &models.LockRequest{
-										Resource:     requestedResource,
-										TtlInSeconds: 10,
-									})
-									if err == nil {
-										break
-									}
-								}
-								Expect(err).NotTo(HaveOccurred())
-							}()
-						}
-						wg.Wait()
-					})
-
-					It("increases the DBOpenConnections metric", func() {
+					It("eventually decreases the DBOpenConnections metric", func() {
 						metricName := "DBOpenConnections"
 						openConnections := make(chan float64, 10)
 						go func() {
@@ -252,50 +245,8 @@ var _ = Describe("Locket", func() {
 							}
 						}()
 						Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
-						Consistently(func() float64 { return <-openConnections }, 10*time.Second).Should(BeNumerically(">", 5))
+						Eventually(openConnections).Should(Receive(BeNumerically("<", 5)))
 					})
-
-					Context("when the max database connection lifetime is set", func() {
-						BeforeEach(func() {
-							configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-								cfg.MaxDatabaseConnectionLifetime = durationjson.Duration(5 * time.Second)
-							})
-						})
-
-						It("eventually decreases the DBOpenConnections metric", func() {
-							metricName := "DBOpenConnections"
-							openConnections := make(chan float64, 10)
-							go func() {
-								for {
-									metric := <-testMetricsChan
-									gauge := metric.GetGauge()
-									if gauge != nil {
-										metrics := gauge.GetMetrics()
-										if m, found := metrics[metricName]; found {
-											openConnections <- m.Value
-										}
-									}
-								}
-							}()
-							Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
-							Eventually(openConnections).Should(Receive(BeNumerically("<", 5)))
-						})
-					})
-				})
-			})
-
-			Context("when not using the v2 api", func() {
-				BeforeEach(func() {
-					configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
-						cfg.LoggregatorConfig.APIPort = testMetricsPort
-						cfg.LoggregatorConfig.CACertPath = "fixtures/metron/CA.crt"
-						cfg.LoggregatorConfig.KeyPath = "fixtures/metron/client.key"
-						cfg.LoggregatorConfig.CertPath = "fixtures/metron/client.crt"
-					})
-				})
-
-				It("does not emit metrics", func() {
-					Consistently(testMetricsChan).ShouldNot(Receive())
 				})
 			})
 		})

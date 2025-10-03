@@ -9,6 +9,8 @@ import (
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
+	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -25,6 +27,11 @@ var (
 
 	sqlProcess ifrit.Process
 	sqlRunner  sqlrunner.SQLRunner
+
+	testMetricsChan    chan *loggregator_v2.Envelope
+	signalMetricsChan  chan struct{}
+	metronIngressSetup *test_helpers.MetronIngressSetup
+	testIngressServer  *testhelpers.TestIngressServer
 
 	TruncateTableList = []string{"locks"}
 	portAllocator     portauthority.PortAllocator
@@ -61,6 +68,22 @@ var _ = SynchronizedBeforeSuite(
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 	},
 )
+
+var _ = BeforeEach(func() {
+
+	var err error
+	metronIngressSetup, err = test_helpers.StartMetronIngress()
+	Expect(err).NotTo(HaveOccurred())
+	testIngressServer = metronIngressSetup.Server
+	signalMetricsChan = metronIngressSetup.SignalMetricsChan
+	testMetricsChan = metronIngressSetup.TestMetricsChan
+
+})
+
+var _ = AfterEach(func() {
+	testIngressServer.Stop()
+	close(signalMetricsChan)
+})
 
 var _ = SynchronizedAfterSuite(func() {
 	ginkgomon.Kill(sqlProcess)
