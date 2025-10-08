@@ -46,7 +46,16 @@ var _ = Describe("LocketHandler", func() {
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 
 		var err error
-		sqlConn, err = helpers.Connect(logger, sqlRunner.DriverName(), sqlRunner.ConnectionString(), "", false)
+		dbParams := &helpers.BBSDBParam{
+			DriverName:                    sqlRunner.DriverName(),
+			DatabaseConnectionString:      sqlRunner.ConnectionString(),
+			SqlCACertFile:                 "",
+			SqlEnableIdentityVerification: false,
+			ConnectionTimeout:             time.Duration(600),
+			ReadTimeout:                   time.Duration(600),
+			WriteTimeout:                  time.Duration(600),
+		}
+		sqlConn, err = helpers.Connect(logger, dbParams)
 		Expect(err).NotTo(HaveOccurred())
 
 		dbMonitor := monitor.New()

@@ -53,12 +53,19 @@ func main() {
 
 	clock := clock.NewClock()
 
+	dbParams := &helpers.BBSDBParam{
+		DriverName:                    cfg.DatabaseDriver,
+		DatabaseConnectionString:      cfg.DatabaseConnectionString,
+		SqlCACertFile:                 cfg.SQLCACertFile,
+		SqlEnableIdentityVerification: cfg.SQLEnableIdentityVerification,
+		ConnectionTimeout:             time.Duration(600),
+		ReadTimeout:                   time.Duration(600),
+		WriteTimeout:                  time.Duration(600),
+	}
+
 	sqlConn, err := helpers.Connect(
 		logger,
-		cfg.DatabaseDriver,
-		cfg.DatabaseConnectionString,
-		cfg.SQLCACertFile,
-		cfg.SQLEnableIdentityVerification,
+		dbParams,
 	)
 
 	if err != nil {
