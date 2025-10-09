@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
@@ -77,9 +76,6 @@ var _ = BeforeSuite(func() {
 		DatabaseConnectionString:      dbBaseConnectionString,
 		SqlCACertFile:                 "",
 		SqlEnableIdentityVerification: false,
-		ConnectionTimeout:             time.Duration(600),
-		ReadTimeout:                   time.Duration(600),
-		WriteTimeout:                  time.Duration(600),
 	}
 	rawDB, err = helpers.Connect(logger, dbParams)
 
