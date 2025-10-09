@@ -58,9 +58,6 @@ func main() {
 		DatabaseConnectionString:      cfg.DatabaseConnectionString,
 		SqlCACertFile:                 cfg.SQLCACertFile,
 		SqlEnableIdentityVerification: cfg.SQLEnableIdentityVerification,
-		ConnectionTimeout:             time.Duration(600),
-		ReadTimeout:                   time.Duration(600),
-		WriteTimeout:                  time.Duration(600),
 	}
 
 	sqlConn, err := helpers.Connect(
