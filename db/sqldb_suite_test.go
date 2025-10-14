@@ -119,6 +119,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	Expect(rawDB.Close()).NotTo(HaveOccurred())
+	dbParams.DatabaseConnectionString = dbBaseConnectionString
 	rawDB, err := helpers.Connect(logger, dbParams)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
