@@ -56,6 +56,9 @@ func main() {
 	dbParams := &helpers.BBSDBParam{
 		DriverName:                    cfg.DatabaseDriver,
 		DatabaseConnectionString:      cfg.DatabaseConnectionString,
+		ConnectionTimeout:             time.Duration(cfg.DBConnectionTimeout),
+		ReadTimeout:                   time.Duration(cfg.DBReadTimeout),
+		WriteTimeout:                  time.Duration(cfg.DBWriteTimeout),
 		SqlCACertFile:                 cfg.SQLCACertFile,
 		SqlEnableIdentityVerification: cfg.SQLEnableIdentityVerification,
 	}
