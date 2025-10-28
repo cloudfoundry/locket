@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"io"
+	"path"
 	"time"
 
 	"google.golang.org/grpc/grpclog"
@@ -28,13 +29,13 @@ var (
 	sqlProcess ifrit.Process
 	sqlRunner  sqlrunner.SQLRunner
 
-	testMetricsChan    chan *loggregator_v2.Envelope
-	signalMetricsChan  chan struct{}
-	metronIngressSetup *test_helpers.MetronIngressSetup
-	testIngressServer  *testhelpers.TestIngressServer
+	testMetricsChan   chan *loggregator_v2.Envelope
+	signalMetricsChan chan struct{}
+	testIngressServer *testhelpers.TestIngressServer
 
-	TruncateTableList = []string{"locks"}
-	portAllocator     portauthority.PortAllocator
+	TruncateTableList                                       = []string{"locks"}
+	portAllocator                                           portauthority.PortAllocator
+	metronCAFile, metronServerCertFile, metronServerKeyFile string
 )
 
 func TestLocket(t *testing.T) {
@@ -71,12 +72,18 @@ var _ = SynchronizedBeforeSuite(
 
 var _ = BeforeEach(func() {
 
+	fixturesPath := "fixtures"
+
 	var err error
-	metronIngressSetup, err = test_helpers.StartMetronIngress()
+	metronCAFile = path.Join(fixturesPath, "metron", "CA.crt")
+	metronServerCertFile = path.Join(fixturesPath, "metron", "metron.crt")
+	metronServerKeyFile = path.Join(fixturesPath, "metron", "metron.key")
+	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
 	Expect(err).NotTo(HaveOccurred())
-	testIngressServer = metronIngressSetup.Server
-	signalMetricsChan = metronIngressSetup.SignalMetricsChan
-	testMetricsChan = metronIngressSetup.TestMetricsChan
+	receiversChan := testIngressServer.Receivers()
+	testIngressServer.Start()
+
+	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
 
 })
 

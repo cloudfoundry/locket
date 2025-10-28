@@ -11,7 +11,6 @@ import (
 
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
-	"code.cloudfoundry.org/fixtures"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
@@ -57,10 +56,10 @@ var _ = Describe("Locket", func() {
 				cfg.DatabaseDriver = sqlRunner.DriverName()
 				cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
 				cfg.ReportInterval = durationjson.Duration(time.Second)
-				cfg.LoggregatorConfig.APIPort = metronIngressSetup.Port
-				cfg.LoggregatorConfig.CACertPath = fixtures.Path("CA.crt")
-				cfg.LoggregatorConfig.CertPath = fixtures.Path("metron.crt")
-				cfg.LoggregatorConfig.KeyPath = fixtures.Path("metron.key")
+				cfg.LoggregatorConfig.APIPort, _ = testIngressServer.Port()
+				cfg.LoggregatorConfig.CACertPath = metronCAFile
+				cfg.LoggregatorConfig.CertPath = metronServerCertFile
+				cfg.LoggregatorConfig.KeyPath = metronServerKeyFile
 			},
 		}
 	})
@@ -76,9 +75,9 @@ var _ = Describe("Locket", func() {
 				Expect(err).NotTo(HaveOccurred())
 				configOverrides = append(configOverrides, func(cfg *config.LocketConfig) {
 					cfg.LoggregatorConfig.APIPort = int(port)
-					cfg.LoggregatorConfig.CACertPath = fixtures.Path("CA.crt")
-					cfg.LoggregatorConfig.CertPath = fixtures.Path("metron.crt")
-					cfg.LoggregatorConfig.KeyPath = fixtures.Path("metron.key")
+					cfg.LoggregatorConfig.CACertPath = metronCAFile
+					cfg.LoggregatorConfig.CertPath = metronServerCertFile
+					cfg.LoggregatorConfig.KeyPath = metronServerKeyFile
 				})
 			})
 
