@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"context"
+
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
@@ -20,7 +22,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
-	"golang.org/x/net/context"
 )
 
 var _ = Describe("Lock", func() {
