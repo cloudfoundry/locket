@@ -3,12 +3,15 @@ package main_test
 import (
 	"fmt"
 	"io"
+	"path"
 	"time"
 
 	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
+	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -26,8 +29,13 @@ var (
 	sqlProcess ifrit.Process
 	sqlRunner  sqlrunner.SQLRunner
 
-	TruncateTableList = []string{"locks"}
-	portAllocator     portauthority.PortAllocator
+	testMetricsChan   chan *loggregator_v2.Envelope
+	signalMetricsChan chan struct{}
+	testIngressServer *testhelpers.TestIngressServer
+
+	TruncateTableList                                       = []string{"locks"}
+	portAllocator                                           portauthority.PortAllocator
+	metronCAFile, metronServerCertFile, metronServerKeyFile string
 )
 
 func TestLocket(t *testing.T) {
@@ -61,6 +69,28 @@ var _ = SynchronizedBeforeSuite(
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 	},
 )
+
+var _ = BeforeEach(func() {
+
+	fixturesPath := "fixtures"
+
+	var err error
+	metronCAFile = path.Join(fixturesPath, "metron", "CA.crt")
+	metronServerCertFile = path.Join(fixturesPath, "metron", "metron.crt")
+	metronServerKeyFile = path.Join(fixturesPath, "metron", "metron.key")
+	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
+	Expect(err).NotTo(HaveOccurred())
+	receiversChan := testIngressServer.Receivers()
+	testIngressServer.Start()
+
+	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+
+})
+
+var _ = AfterEach(func() {
+	testIngressServer.Stop()
+	close(signalMetricsChan)
+})
 
 var _ = SynchronizedAfterSuite(func() {
 	ginkgomon.Kill(sqlProcess)

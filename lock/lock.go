@@ -4,12 +4,13 @@ import (
 	"os"
 	"time"
 
+	"context"
+
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/models"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -130,7 +131,7 @@ func (l *lockRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 				logger.Error("failed-to-create-context", err)
 				return err
 			}
-			ctx, cancel := context.WithTimeout(ctx, time.Duration(l.ttlInSeconds)*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, l.retryInterval)
 			start := time.Now()
 			lockRequest := &models.LockRequest{Resource: l.lock, TtlInSeconds: l.ttlInSeconds}
 			_, err = l.locker.Lock(ctx, lockRequest, grpc.WaitForReady(true))

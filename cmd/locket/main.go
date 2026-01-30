@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -53,12 +54,19 @@ func main() {
 
 	clock := clock.NewClock()
 
+	dbParams := &helpers.BBSDBParam{
+		DriverName:                    cfg.DatabaseDriver,
+		DatabaseConnectionString:      cfg.DatabaseConnectionString,
+		ConnectionTimeout:             time.Duration(cfg.DBConnectionTimeout),
+		ReadTimeout:                   time.Duration(cfg.DBReadTimeout),
+		WriteTimeout:                  time.Duration(cfg.DBWriteTimeout),
+		SqlCACertFile:                 cfg.SQLCACertFile,
+		SqlEnableIdentityVerification: cfg.SQLEnableIdentityVerification,
+	}
+
 	sqlConn, err := helpers.Connect(
 		logger,
-		cfg.DatabaseDriver,
-		cfg.DatabaseConnectionString,
-		cfg.SQLCACertFile,
-		cfg.SQLEnableIdentityVerification,
+		dbParams,
 	)
 
 	if err != nil {
@@ -139,15 +147,14 @@ func main() {
 }
 
 func initializeMetron(logger lager.Logger, locketConfig config.LocketConfig) (loggingclient.IngressClient, error) {
+	fmt.Println("** Get metron client")
 	client, err := loggingclient.NewIngressClient(locketConfig.LoggregatorConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if locketConfig.LoggregatorConfig.UseV2API {
-		emitter := runtimeemitter.NewV1(client)
-		go emitter.Run()
-	}
+	emitter := runtimeemitter.NewV1(client)
+	go emitter.Run()
 
 	return client, nil
 }
