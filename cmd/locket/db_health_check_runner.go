@@ -63,9 +63,9 @@ func (runner *DBHealthCheckRunner) Run(signals <-chan os.Signal, ready chan<- st
 				runner.logger.Error("database-failure-detected-restarting-locket", err)
 				return err
 			}
-			runner.logger.Debug("health-check-succeeded")
+			runner.logger.Info("health-check-succeeded")
 		case <-signals:
-			runner.logger.Debug("exiting-due-to-signal")
+			runner.logger.Info("exiting-due-to-signal")
 			return nil
 		case <-ticker.C():
 			runner.lock.Lock()
