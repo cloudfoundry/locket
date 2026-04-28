@@ -52,6 +52,7 @@ var _ = Describe("LocketHandler", func() {
 			fakeLockPick,
 			fakeRequestMetrics,
 			exitCh,
+			handlers.DefaultDBOperationTimeout,
 		)
 	})
 
@@ -740,6 +741,133 @@ var _ = Describe("LocketHandler", func() {
 					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
 				})
 			})
+		})
+	})
+
+	Context("DB context isolation", func() {
+		var (
+			blockDB chan struct{}
+		)
+
+		BeforeEach(func() {
+			blockDB = make(chan struct{})
+		})
+
+		AfterEach(func() {
+			select {
+			case <-blockDB:
+			default:
+				close(blockDB)
+			}
+		})
+
+		verifyDBContextIsolation := func(
+			waitForDBCall func(),
+			callHandler func(ctx context.Context),
+			getDBContext func() context.Context,
+		) {
+			grpcCtx, grpcCancel := context.WithCancel(context.Background())
+
+			done := make(chan struct{})
+			go func() {
+				defer GinkgoRecover()
+				callHandler(grpcCtx)
+				close(done)
+			}()
+
+			waitForDBCall()
+			grpcCancel()
+
+			Consistently(done, 200*time.Millisecond).ShouldNot(BeClosed())
+			Expect(getDBContext().Err()).To(BeNil())
+
+			close(blockDB)
+			Eventually(done).Should(BeClosed())
+		}
+
+		It("Lock: does not cancel the DB operation when the gRPC context is cancelled", func() {
+			fakeLockDB.LockStub = func(ctx context.Context, logger lager.Logger, resource *models.Resource, ttl int64) (*db.Lock, error) {
+				<-blockDB
+				return &db.Lock{Resource: resource, TtlInSeconds: ttl, ModifiedIndex: 1}, nil
+			}
+			verifyDBContextIsolation(
+				func() { Eventually(fakeLockDB.LockCallCount).Should(Equal(1)) },
+				func(ctx context.Context) {
+					_, err := locketHandler.Lock(ctx, &models.LockRequest{Resource: resource, TtlInSeconds: 10})
+					Expect(err).NotTo(HaveOccurred())
+				},
+				func() context.Context { ctx, _, _, _ := fakeLockDB.LockArgsForCall(0); return ctx },
+			)
+		})
+
+		It("Release: does not cancel the DB operation when the gRPC context is cancelled", func() {
+			fakeLockDB.ReleaseStub = func(ctx context.Context, logger lager.Logger, resource *models.Resource) error {
+				<-blockDB
+				return nil
+			}
+			verifyDBContextIsolation(
+				func() { Eventually(fakeLockDB.ReleaseCallCount).Should(Equal(1)) },
+				func(ctx context.Context) {
+					_, err := locketHandler.Release(ctx, &models.ReleaseRequest{Resource: resource})
+					Expect(err).NotTo(HaveOccurred())
+				},
+				func() context.Context { ctx, _, _ := fakeLockDB.ReleaseArgsForCall(0); return ctx },
+			)
+		})
+
+		It("Fetch: does not cancel the DB operation when the gRPC context is cancelled", func() {
+			fakeLockDB.FetchStub = func(ctx context.Context, logger lager.Logger, key string) (*db.Lock, error) {
+				<-blockDB
+				return &db.Lock{Resource: resource}, nil
+			}
+			verifyDBContextIsolation(
+				func() { Eventually(fakeLockDB.FetchCallCount).Should(Equal(1)) },
+				func(ctx context.Context) {
+					_, err := locketHandler.Fetch(ctx, &models.FetchRequest{Key: "test"})
+					Expect(err).NotTo(HaveOccurred())
+				},
+				func() context.Context { ctx, _, _ := fakeLockDB.FetchArgsForCall(0); return ctx },
+			)
+		})
+
+		It("FetchAll: does not cancel the DB operation when the gRPC context is cancelled", func() {
+			fakeLockDB.FetchAllStub = func(ctx context.Context, logger lager.Logger, lockType string) ([]*db.Lock, error) {
+				<-blockDB
+				return []*db.Lock{{Resource: resource}}, nil
+			}
+			verifyDBContextIsolation(
+				func() { Eventually(fakeLockDB.FetchAllCallCount).Should(Equal(1)) },
+				func(ctx context.Context) {
+					_, err := locketHandler.FetchAll(ctx, &models.FetchAllRequest{TypeCode: models.LOCK})
+					Expect(err).NotTo(HaveOccurred())
+				},
+				func() context.Context { ctx, _, _ := fakeLockDB.FetchAllArgsForCall(0); return ctx },
+			)
+		})
+
+		It("uses a context with the configured timeout for DB operations", func() {
+			shortTimeout := 100 * time.Millisecond
+			shortTimeoutHandler := handlers.NewLocketHandler(
+				logger,
+				fakeLockDB,
+				fakeLockPick,
+				fakeRequestMetrics,
+				exitCh,
+				shortTimeout,
+			)
+
+			fakeLockDB.LockStub = func(ctx context.Context, logger lager.Logger, resource *models.Resource, ttl int64) (*db.Lock, error) {
+				deadline, ok := ctx.Deadline()
+				Expect(ok).To(BeTrue())
+				Expect(time.Until(deadline)).To(BeNumerically("<=", shortTimeout))
+				return &db.Lock{Resource: resource, TtlInSeconds: ttl, ModifiedIndex: 1}, nil
+			}
+
+			_, err := shortTimeoutHandler.Lock(context.Background(), &models.LockRequest{
+				Resource:     resource,
+				TtlInSeconds: 10,
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

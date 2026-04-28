@@ -14,23 +14,31 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const DefaultDBOperationTimeout = 10 * time.Second
+
 type locketHandler struct {
 	logger lager.Logger
 
-	db       db.LockDB
-	exitCh   chan<- struct{}
-	lockPick expiration.LockPick
-	metrics  metrics_helpers.RequestMetrics
+	db                 db.LockDB
+	exitCh             chan<- struct{}
+	lockPick           expiration.LockPick
+	metrics            metrics_helpers.RequestMetrics
+	dbOperationTimeout time.Duration
 }
 
-func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics_helpers.RequestMetrics, exitCh chan<- struct{}) *locketHandler {
+func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics_helpers.RequestMetrics, exitCh chan<- struct{}, dbOperationTimeout time.Duration) *locketHandler {
 	return &locketHandler{
-		logger:   logger,
-		db:       db,
-		lockPick: lockPick,
-		exitCh:   exitCh,
-		metrics:  requestMetrics,
+		logger:             logger,
+		db:                 db,
+		lockPick:           lockPick,
+		exitCh:             exitCh,
+		metrics:            requestMetrics,
+		dbOperationTimeout: dbOperationTimeout,
 	}
+}
+
+func (h *locketHandler) newDBContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), h.dbOperationTimeout)
 }
 
 func (h *locketHandler) exitIfUnrecoverable(err error) {
@@ -174,7 +182,10 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 		logger = logger.WithData(lager.Data{"request-uuid": requestUUID[0]})
 	}
 
-	lock, err := h.db.Lock(ctx, logger, req.Resource, req.TtlInSeconds)
+	dbCtx, dbCancel := h.newDBContext()
+	defer dbCancel()
+
+	lock, err := h.db.Lock(dbCtx, logger, req.Resource, req.TtlInSeconds)
 	if err != nil {
 		if err != models.ErrLockCollision {
 			logger.Error("failed-locking-lock", err, lager.Data{
@@ -195,7 +206,10 @@ func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest)
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	err := h.db.Release(ctx, logger, req.Resource)
+	dbCtx, dbCancel := h.newDBContext()
+	defer dbCancel()
+
+	err := h.db.Release(dbCtx, logger, req.Resource)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +222,10 @@ func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*m
 	logger.Debug("started")
 	defer logger.Debug("complete")
 
-	lock, err := h.db.Fetch(ctx, logger, req.Key)
+	dbCtx, dbCancel := h.newDBContext()
+	defer dbCancel()
+
+	lock, err := h.db.Fetch(dbCtx, logger, req.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +246,10 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		return nil, err
 	}
 
-	locks, err := h.db.FetchAll(ctx, logger, models.GetType(&models.Resource{TypeCode: req.TypeCode}))
+	dbCtx, dbCancel := h.newDBContext()
+	defer dbCancel()
+
+	locks, err := h.db.FetchAll(dbCtx, logger, models.GetType(&models.Resource{TypeCode: req.TypeCode}))
 	if err != nil {
 		return nil, err
 	}

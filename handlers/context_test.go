@@ -84,6 +84,7 @@ var _ = Describe("LocketHandler", func() {
 			fakeLockPick,
 			fakeRequestMetrics,
 			exitCh,
+			handlers.DefaultDBOperationTimeout,
 		)
 	})
 
@@ -122,26 +123,29 @@ var _ = Describe("LocketHandler", func() {
 			}
 		})
 
-		It("cancels the database request", func() {
+		It("does not cancel the database request when the grpc context is cancelled", func() {
 			ctxWithCancel, cancelFn := context.WithCancel(context.Background())
 
-			finishedRequest := make(chan struct{}, 1)
+			finishedRequest := make(chan error, 1)
 			go func() {
 				defer GinkgoRecover()
 				_, err := locketHandler.Lock(ctxWithCancel, &models.LockRequest{
 					Resource:     resource,
 					TtlInSeconds: 10,
 				})
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(context.Canceled))
-				close(finishedRequest)
+				finishedRequest <- err
 			}()
 
 			Eventually(logger).Should(gbytes.Say("started"))
 
 			cancelFn()
 
-			Eventually(finishedRequest, 5*time.Second).Should(BeClosed())
+			// The DB operation should NOT be cancelled by the gRPC context.
+			// With MaxOpenConns=1 and a pg_sleep(60) blocking the connection,
+			// the Lock DB call will block waiting for a connection. If the fix
+			// is working, the DB context (context.Background) is NOT cancelled,
+			// so the call remains blocked — it does NOT return context.Canceled.
+			Consistently(finishedRequest, 2*time.Second).ShouldNot(Receive())
 		})
 	})
 })
