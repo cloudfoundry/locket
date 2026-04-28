@@ -111,7 +111,7 @@ func main() {
 	lockPick := expiration.NewLockPick(sqlDB, clock, metronClient)
 	burglar := expiration.NewBurglar(logger, sqlDB, lockPick, clock, locket.RetryInterval, metronClient)
 	exitCh := make(chan struct{})
-	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, requestNotifier, exitCh)
+	handler := handlers.NewLocketHandler(logger, sqlDB, lockPick, requestNotifier, exitCh, handlers.DefaultDBOperationTimeout)
 	server := grpcserver.NewGRPCServer(logger, cfg.ListenAddress, tlsConfig, handler)
 
 	members := grouper.Members{
