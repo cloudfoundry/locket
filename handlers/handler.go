@@ -21,6 +21,7 @@ type locketHandler struct {
 	exitCh   chan<- struct{}
 	lockPick expiration.LockPick
 	metrics  metrics_helpers.RequestMetrics
+	models.UnimplementedLocketServer
 }
 
 func NewLocketHandler(logger lager.Logger, db db.LockDB, lockPick expiration.LockPick, requestMetrics metrics_helpers.RequestMetrics, exitCh chan<- struct{}) *locketHandler {
@@ -229,7 +230,8 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		return nil, err
 	}
 
-	locks, err := h.db.FetchAll(ctx, logger, models.GetType(&models.Resource{TypeCode: req.TypeCode}))
+	resource := &models.Resource{TypeCode: req.TypeCode}
+	locks, err := h.db.FetchAll(ctx, logger, models.GetType(resource))
 	if err != nil {
 		return nil, err
 	}
@@ -239,9 +241,10 @@ func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllReques
 		responses = append(responses, lock.Resource)
 	}
 
-	return &models.FetchAllResponse{
+	response := &models.FetchAllResponse{
 		Resources: responses,
-	}, nil
+	}
+	return response, nil
 }
 
 func validate(req interface{}) error {

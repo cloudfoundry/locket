@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
 )

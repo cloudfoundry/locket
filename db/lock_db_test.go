@@ -33,7 +33,9 @@ func validateLockInDB(rawDB *sql.DB, res *models.Resource, expectedIndex, expect
 	if res.Value != value {
 		errMsg += fmt.Sprintf("mismatch value (%s, %s),", res.Value, value)
 	}
+	//lint:ignore SA1019 - testing deprecated functionality
 	if res.Type != lockType {
+		//lint:ignore SA1019 - testing deprecated functionality
 		errMsg += fmt.Sprintf("mismatch value (%s, %s),", res.Type, lockType)
 	}
 	if expectedIndex != index {
@@ -83,9 +85,10 @@ var _ = Describe("Lock", func() {
 			Type:  "lock",
 		}
 		expectedResource = &models.Resource{
-			Key:      resource.Key,
-			Owner:    resource.Owner,
-			Value:    resource.Value,
+			Key:   resource.Key,
+			Owner: resource.Owner,
+			Value: resource.Value,
+			//lint:ignore SA1019 - testing deprecated functionality
 			Type:     resource.Type,
 			TypeCode: models.LOCK,
 		}
@@ -290,6 +293,7 @@ var _ = Describe("Lock", func() {
 					`INSERT INTO locks (path, owner, value, type, modified_index, modified_id, ttl) VALUES (?, ?, ?, ?, ?, ?, ?);`,
 					dbFlavor,
 				)
+				//lint:ignore SA1019 - testing deprecated functionality
 				result, err := rawDB.Exec(query, lock.Key, lock.Owner, lock.Value, lock.Type, 434, "modified-id", 5)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.RowsAffected()).To(BeEquivalentTo(1))
@@ -377,6 +381,7 @@ var _ = Describe("Lock", func() {
 							TypeCode: models.LOCK,
 						}
 						expectedLock = lock
+						//lint:ignore SA1019 - testing deprecated functionality
 						expectedLock.Type = models.LockType
 					})
 
@@ -401,6 +406,7 @@ var _ = Describe("Lock", func() {
 							TypeCode: models.PRESENCE,
 						}
 						expectedLock = lock
+						//lint:ignore SA1019 - testing deprecated functionality
 						expectedLock.Type = models.PresenceType
 					})
 
@@ -554,6 +560,7 @@ var _ = Describe("Lock", func() {
 				dbFlavor,
 			)
 
+			//lint:ignore SA1019 - testing deprecated functionality
 			result, err := rawDB.Exec(query, resource.Key, resource.Owner, resource.Value, currentIndex, currentTTL, modifiedId, resource.Type)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RowsAffected()).To(BeEquivalentTo(1))
@@ -643,7 +650,8 @@ var _ = Describe("Lock", func() {
 					Key:   resource.Key,
 					Owner: "danny",
 					Value: resource.Value,
-					Type:  resource.Type,
+					//lint:ignore SA1019 - testing deprecated functionality
+					Type: resource.Type,
 				}
 
 				released, err := sqlDB.FetchAndRelease(ctx, logger, oldLock)
