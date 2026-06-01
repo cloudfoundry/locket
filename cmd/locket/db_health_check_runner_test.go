@@ -11,11 +11,11 @@ import (
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 
-	locket "code.cloudfoundry.org/locket/cmd/locket"
-	"code.cloudfoundry.org/locket/db/dbfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/lager/v3/lagertest"
+	locket "code.cloudfoundry.org/locket/cmd/locket"
+	"code.cloudfoundry.org/locket/db/dbfakes"
 )
 
 var _ = Describe("DBHealthCheckRunner", func() {
