@@ -81,9 +81,12 @@ var _ = Describe("Locket", func() {
 				})
 			})
 
-			It("exit with non-zero status code", func() {
+			// diego-logging-client now dials loggregator non-blocking (lazy). Locket
+			// starts successfully and retries the connection in the background, so
+			// it must NOT exit when the loggregator agent is temporarily unavailable.
+			It("starts successfully and does not exit", func() {
 				locketProcess = ifrit.Invoke(locketRunner)
-				Eventually(locketProcess.Wait()).Should(Receive(HaveOccurred()))
+				Consistently(locketProcess.Wait()).ShouldNot(Receive())
 			})
 		})
 
