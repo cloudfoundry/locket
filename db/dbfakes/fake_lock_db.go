@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
 )
@@ -501,18 +501,6 @@ func (fake *FakeLockDB) ReleaseReturnsOnCall(i int, result1 error) {
 func (fake *FakeLockDB) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.countMutex.RLock()
-	defer fake.countMutex.RUnlock()
-	fake.fetchMutex.RLock()
-	defer fake.fetchMutex.RUnlock()
-	fake.fetchAllMutex.RLock()
-	defer fake.fetchAllMutex.RUnlock()
-	fake.fetchAndReleaseMutex.RLock()
-	defer fake.fetchAndReleaseMutex.RUnlock()
-	fake.lockMutex.RLock()
-	defer fake.lockMutex.RUnlock()
-	fake.releaseMutex.RLock()
-	defer fake.releaseMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
