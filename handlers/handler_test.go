@@ -246,7 +246,7 @@ var _ = Describe("LocketHandler", func() {
 			var ctx context.Context
 
 			BeforeEach(func() {
-				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
+				ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -293,6 +293,19 @@ var _ = Describe("LocketHandler", func() {
 
 				It("does not emit a requests cancelled metric", func() {
 					Expect(fakeRequestMetrics.IncrementRequestsCancelledCounterCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when the context has no uuid metadata", func() {
+				BeforeEach(func() {
+					ctx = context.Background()
+					var cancel func()
+					ctx, cancel = context.WithCancel(ctx)
+					cancel()
+				})
+
+				It("does not panic and logs empty request-id", func() {
+					Expect(logger).To(gbytes.Say("context-cancelled"))
 				})
 			})
 		})
@@ -398,7 +411,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
+				ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -501,7 +514,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
+				ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
@@ -696,7 +709,7 @@ var _ = Describe("LocketHandler", func() {
 		Context("when the context errors", func() {
 			var ctx context.Context
 			BeforeEach(func() {
-				ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
+				ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs("uuid", "some-request-id"))
 			})
 
 			JustBeforeEach(func() {
