@@ -26,6 +26,7 @@ var _ = Describe("LocketConfig", func() {
 			"db_connection_timeout": "30s",
 			"db_read_timeout": "600s",
 			"db_write_timeout": "600s",
+			"db_operation_timeout": "10s",
 			"max_database_connection_lifetime": "1h",
 			"database_connection_string": "stuff",
 			"debug_address": "some-more-stuff",
@@ -74,6 +75,7 @@ var _ = Describe("LocketConfig", func() {
 			DBConnectionTimeout:           durationjson.Duration(30 * time.Second),
 			DBReadTimeout:                 durationjson.Duration(600 * time.Second),
 			DBWriteTimeout:                durationjson.Duration(600 * time.Second),
+			DBOperationTimeout:            durationjson.Duration(10 * time.Second),
 			MaxOpenDatabaseConnections:    1000,
 			MaxDatabaseConnectionLifetime: durationjson.Duration(time.Hour),
 			LagerConfig: lagerflags.LagerConfig{

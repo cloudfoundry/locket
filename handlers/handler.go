@@ -115,7 +115,7 @@ func (h *locketHandler) Release(ctx context.Context, req *models.ReleaseRequest)
 	)
 
 	err = h.monitorRequest("Release", ctx, req.Resource.Key, req.Resource.Owner, func() error {
-		response, err = h.release(ctx, req)
+		response, err = h.release(req)
 		return err
 	})
 
@@ -129,7 +129,7 @@ func (h *locketHandler) Fetch(ctx context.Context, req *models.FetchRequest) (*m
 	)
 
 	err = h.monitorRequest("Fetch", ctx, req.Key, "", func() error {
-		response, err = h.fetch(ctx, req)
+		response, err = h.fetch(req)
 		return err
 	})
 
@@ -143,7 +143,7 @@ func (h *locketHandler) FetchAll(ctx context.Context, req *models.FetchAllReques
 	)
 
 	err = h.monitorRequest("FetchAll", ctx, "", "", func() error {
-		response, err = h.fetchAll(ctx, req)
+		response, err = h.fetchAll(req)
 		return err
 	})
 
@@ -203,7 +203,7 @@ func (h *locketHandler) lock(ctx context.Context, req *models.LockRequest) (*mod
 	return &models.LockResponse{}, nil
 }
 
-func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
+func (h *locketHandler) release(req *models.ReleaseRequest) (*models.ReleaseResponse, error) {
 	logger := h.logger.Session("release")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -219,7 +219,7 @@ func (h *locketHandler) release(ctx context.Context, req *models.ReleaseRequest)
 	return &models.ReleaseResponse{}, nil
 }
 
-func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*models.FetchResponse, error) {
+func (h *locketHandler) fetch(req *models.FetchRequest) (*models.FetchResponse, error) {
 	logger := h.logger.Session("fetch")
 	logger.Debug("started")
 	defer logger.Debug("complete")
@@ -237,7 +237,7 @@ func (h *locketHandler) fetch(ctx context.Context, req *models.FetchRequest) (*m
 	}, nil
 }
 
-func (h *locketHandler) fetchAll(ctx context.Context, req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
+func (h *locketHandler) fetchAll(req *models.FetchAllRequest) (*models.FetchAllResponse, error) {
 	logger := h.logger.Session("fetch-all")
 	logger.Debug("started")
 	defer logger.Debug("complete")
