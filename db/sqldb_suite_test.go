@@ -98,6 +98,8 @@ var _ = BeforeSuite(func() {
 	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(ctx, logger)
 	Expect(err).NotTo(HaveOccurred())
+	err = sqlDB.CreateHealthCheckTable(ctx, logger)
+	Expect(err).NotTo(HaveOccurred())
 
 	sqlHelper = helpers.NewSQLHelper(dbFlavor)
 
@@ -138,4 +140,5 @@ func truncateTables(db *sql.DB) {
 
 var truncateTablesSQL = []string{
 	"TRUNCATE TABLE locks",
+	"TRUNCATE TABLE locket_health_check",
 }
