@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/db-helpers/testhelpers/sqlrunner"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"

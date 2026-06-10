@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
-	"code.cloudfoundry.org/bbs/guidprovider"
+	"code.cloudfoundry.org/db-helpers/sqldb/helpers"
+	"code.cloudfoundry.org/db-helpers/sqldb/helpers/monitor"
+	"code.cloudfoundry.org/db-helpers/guidprovider"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"

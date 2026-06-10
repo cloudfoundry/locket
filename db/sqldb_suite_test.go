@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor"
+	"code.cloudfoundry.org/db-helpers/sqldb/helpers"
+	"code.cloudfoundry.org/db-helpers/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/bbs/guidprovider/fakes"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/lager/v3/lagertest"

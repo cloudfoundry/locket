@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
+	"code.cloudfoundry.org/db-helpers/sqldb/helpers"
 	"code.cloudfoundry.org/locket/db"
 	"code.cloudfoundry.org/locket/models"
 	. "github.com/onsi/ginkgo/v2"
