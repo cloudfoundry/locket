@@ -3,6 +3,7 @@ module code.cloudfoundry.org/locket
 go 1.26.0
 
 require (
+	code.cloudfoundry.org/bbs v0.0.0-00010101000000-000000000000
 	code.cloudfoundry.org/clock v1.75.0
 	code.cloudfoundry.org/debugserver v0.102.0
 	code.cloudfoundry.org/diego-db-helpers v0.3.0
