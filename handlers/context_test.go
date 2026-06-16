@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/diego-db-helpers/guidprovider"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor"
-	"code.cloudfoundry.org/diego-db-helpers/guidprovider"
-	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/diego-db-helpers/testhelpers/sqlrunner"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/db"
