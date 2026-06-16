@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers"
-	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/bbs/guidprovider/fakes"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers"
+	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
 	. "github.com/onsi/ginkgo/v2"
