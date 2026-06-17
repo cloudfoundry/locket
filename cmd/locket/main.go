@@ -53,7 +53,7 @@ func main() {
 
 	clock := clock.NewClock()
 
-	dbParams := &helpers.BBSDBParam{
+	dbParams := &helpers.ConnectParams{
 		DriverName:                    cfg.DatabaseDriver,
 		DatabaseConnectionString:      cfg.DatabaseConnectionString,
 		ConnectionTimeout:             time.Duration(cfg.DBConnectionTimeout),
