@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	"code.cloudfoundry.org/bbs/guidprovider/fakes"
-	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/diego-db-helpers/guidprovider/guidproviderfakes"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor"
+	"code.cloudfoundry.org/diego-db-helpers/testhelpers"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	sqldb "code.cloudfoundry.org/locket/db"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,11 +23,11 @@ var (
 	sqlDB                                *sqldb.SQLDB
 	logger                               *lagertest.TestLogger
 	ctx                                  context.Context
-	fakeGUIDProvider                     *fakes.FakeGUIDProvider
+	fakeGUIDProvider                     *guidproviderfakes.FakeGUIDProvider
 	dbDriverName, dbBaseConnectionString string
 	dbFlavor                             string
 	sqlHelper                            helpers.SQLHelper
-	dbParams                             *helpers.BBSDBParam
+	dbParams                             *helpers.ConnectParams
 )
 
 func TestSql(t *testing.T) {
@@ -41,7 +41,7 @@ var _ = BeforeSuite(func() {
 	logger = lagertest.NewTestLogger("sql-db")
 	ctx = context.Background()
 
-	if test_helpers.UsePostgres() {
+	if testhelpers.UsePostgres() {
 		dbDriverName = "postgres"
 		user, ok := os.LookupEnv("DB_USER")
 		if !ok {
@@ -53,7 +53,7 @@ var _ = BeforeSuite(func() {
 		}
 		dbBaseConnectionString = fmt.Sprintf("postgres://%s:%s@localhost/", user, password)
 		dbFlavor = helpers.Postgres
-	} else if test_helpers.UseMySQL() {
+	} else if testhelpers.UseMySQL() {
 		dbDriverName = "mysql"
 		user, ok := os.LookupEnv("DB_USER")
 		if !ok {
@@ -71,7 +71,7 @@ var _ = BeforeSuite(func() {
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
-	dbParams = &helpers.BBSDBParam{
+	dbParams = &helpers.ConnectParams{
 		DriverName:                    dbDriverName,
 		DatabaseConnectionString:      dbBaseConnectionString,
 		SqlCACertFile:                 "",
@@ -93,7 +93,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rawDB.Ping()).NotTo(HaveOccurred())
 
-	fakeGUIDProvider = &fakes.FakeGUIDProvider{}
+	fakeGUIDProvider = &guidproviderfakes.FakeGUIDProvider{}
 	db := helpers.NewMonitoredDB(rawDB, monitor.New())
 	sqlDB = sqldb.NewSQLDB(db, dbFlavor, fakeGUIDProvider)
 	err = sqlDB.CreateLockTable(ctx, logger)
