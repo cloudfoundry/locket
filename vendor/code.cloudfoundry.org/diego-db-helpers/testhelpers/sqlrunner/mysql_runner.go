@@ -47,7 +47,7 @@ func (m *MySQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	baseConnString := fmt.Sprintf("%s:%s@/", user, password)
 
 	var err error
-	dbParams := &helpers.BBSDBParam{
+	dbParams := &helpers.ConnectParams{
 		DriverName:                    "mysql",
 		DatabaseConnectionString:      baseConnString,
 		SqlCACertFile:                 "",
@@ -66,7 +66,12 @@ func (m *MySQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	Expect(m.db.Close()).To(Succeed())
 
 	connStringWithDB := fmt.Sprintf("%s%s", baseConnString, m.sqlDBName)
-	dbParams.DatabaseConnectionString = connStringWithDB
+	dbParams = &helpers.ConnectParams{
+		DriverName:                    "mysql",
+		DatabaseConnectionString:      connStringWithDB,
+		SqlCACertFile:                 "",
+		SqlEnableIdentityVerification: false,
+	}
 	m.db, err = helpers.Connect(logger, dbParams)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(m.db.Ping()).NotTo(HaveOccurred())
@@ -153,5 +158,4 @@ func (m *MySQLRunner) ResetTables(tables []string) {
 }
 
 func (m *MySQLRunner) Reset() {
-	m.ResetTables([]string{"domains", "configurations", "tasks", "desired_lrps", "actual_lrps", "locks"})
 }

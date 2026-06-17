@@ -47,7 +47,7 @@ func (p *PostgresRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) er
 	baseConnString := fmt.Sprintf("postgres://%s:%s@localhost/", user, password)
 
 	var err error
-	dbParams := &helpers.BBSDBParam{
+	dbParams := &helpers.ConnectParams{
 		DriverName:                    "postgres",
 		DatabaseConnectionString:      baseConnString,
 		SqlCACertFile:                 "",
@@ -66,7 +66,12 @@ func (p *PostgresRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) er
 	Expect(p.db.Close()).To(Succeed())
 
 	connStringWithDB := fmt.Sprintf("%s/%s", baseConnString, p.sqlDBName)
-	dbParams.DatabaseConnectionString = connStringWithDB
+	dbParams = &helpers.ConnectParams{
+		DriverName:                    "postgres",
+		DatabaseConnectionString:      connStringWithDB,
+		SqlCACertFile:                 "",
+		SqlEnableIdentityVerification: false,
+	}
 	p.db, err = helpers.Connect(logger, dbParams)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(p.db.Ping()).To(Succeed())
@@ -81,7 +86,12 @@ func (p *PostgresRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) er
 	Expect(p.db.Close()).To(Succeed())
 
 	logger.Info("openning-connection-to-database")
-	dbParams.DatabaseConnectionString = baseConnString
+	dbParams = &helpers.ConnectParams{
+		DriverName:                    "postgres",
+		DatabaseConnectionString:      baseConnString,
+		SqlCACertFile:                 "",
+		SqlEnableIdentityVerification: false,
+	}
 	p.db, err = helpers.Connect(logger, dbParams)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -162,5 +172,4 @@ func (p *PostgresRunner) ResetTables(tables []string) {
 }
 
 func (p *PostgresRunner) Reset() {
-	p.ResetTables([]string{"domains", "configurations", "tasks", "desired_lrps", "actual_lrps", "locks"})
 }
