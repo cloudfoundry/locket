@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/diego-db-helpers/guidprovider"
+	"code.cloudfoundry.org/diego-db-helpers/testhelpers"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers"
 	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor"
 	"code.cloudfoundry.org/diego-db-helpers/testhelpers/sqlrunner"
@@ -42,11 +42,11 @@ var _ = Describe("LocketHandler", func() {
 		logger = lagertest.NewTestLogger("locket-handler")
 
 		dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
-		sqlRunner = test_helpers.NewSQLRunner(dbName)
+		sqlRunner = testhelpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 
 		var err error
-		dbParams := &helpers.BBSDBParam{
+		dbParams := &helpers.ConnectParams{
 			DriverName:                    sqlRunner.DriverName(),
 			DatabaseConnectionString:      sqlRunner.ConnectionString(),
 			SqlCACertFile:                 "",
@@ -99,9 +99,9 @@ var _ = Describe("LocketHandler", func() {
 			go func() {
 				defer GinkgoRecover()
 				var sleepQuery string
-				if test_helpers.UseMySQL() {
+				if testhelpers.UseMySQL() {
 					sleepQuery = "select sleep(60);"
-				} else if test_helpers.UsePostgres() {
+				} else if testhelpers.UsePostgres() {
 					sleepQuery = `--pg_sleep_query_context_test
             select pg_sleep(60);`
 				} else {
@@ -113,7 +113,7 @@ var _ = Describe("LocketHandler", func() {
 
 		AfterEach(func() {
 			sqlConn.SetMaxOpenConns(0)
-			if test_helpers.UsePostgres() {
+			if testhelpers.UsePostgres() {
 				// cancel the sleep query in postgres, since it does not allow to drop the database
 				_, err := sqlConn.Exec(`SELECT pg_cancel_backend(pid)
 				FROM pg_stat_activity

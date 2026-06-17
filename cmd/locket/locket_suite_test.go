@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"code.cloudfoundry.org/bbs/test_helpers"
+	dbTesthelpers "code.cloudfoundry.org/diego-db-helpers/testhelpers"
 	"code.cloudfoundry.org/diego-db-helpers/testhelpers/sqlrunner"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
@@ -65,7 +65,7 @@ var _ = SynchronizedBeforeSuite(
 		SetDefaultEventuallyTimeout(15 * time.Second)
 
 		dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
-		sqlRunner = test_helpers.NewSQLRunner(dbName)
+		sqlRunner = dbTesthelpers.NewSQLRunner(dbName)
 		sqlProcess = ginkgomon.Invoke(sqlRunner)
 	},
 )

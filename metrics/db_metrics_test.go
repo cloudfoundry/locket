@@ -3,8 +3,8 @@ package metrics_test
 import (
 	"time"
 
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/helpersfakes"
-	"code.cloudfoundry.org/bbs/db/sqldb/helpers/monitor/monitorfakes"
+	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/helpersfakes"
+	"code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor/monitorfakes"
 	"code.cloudfoundry.org/clock/fakeclock"
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	loggregator "code.cloudfoundry.org/go-loggregator/v9"
