@@ -3,7 +3,6 @@ module code.cloudfoundry.org/locket
 go 1.26.0
 
 require (
-	code.cloudfoundry.org/bbs v0.0.0-00010101000000-000000000000
 	code.cloudfoundry.org/clock v1.75.0
 	code.cloudfoundry.org/debugserver v0.102.0
 	code.cloudfoundry.org/diego-db-helpers v0.3.0
@@ -49,5 +48,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace code.cloudfoundry.org/bbs => ../bbs
