@@ -49,7 +49,4 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace (
-	code.cloudfoundry.org/bbs => ../bbs
-	code.cloudfoundry.org/diego-db-helpers => /Users/gf009738/workspace/diego-db-helpers
-)
+replace code.cloudfoundry.org/bbs => ../bbs
