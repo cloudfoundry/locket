@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	code.cloudfoundry.org/clock v1.75.0
 	code.cloudfoundry.org/debugserver v0.102.0
-	code.cloudfoundry.org/diego-db-helpers v0.3.0
+	code.cloudfoundry.org/diego-db-helpers v0.4.0
 	code.cloudfoundry.org/diego-logging-client v0.112.0
 	code.cloudfoundry.org/durationjson v0.77.0
 	code.cloudfoundry.org/go-loggregator/v9 v9.2.1
@@ -14,7 +14,7 @@ require (
 	code.cloudfoundry.org/tlsconfig v0.60.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/onsi/ginkgo/v2 v2.31.0
+	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.0
 	github.com/pkg/errors v0.9.1
 	github.com/square/certstrap v1.3.0
@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20260615142411-472d6bcdb3c6 // indirect
+	code.cloudfoundry.org/go-diodes v0.0.0-20260622134745-74c0e1643bdd // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -45,6 +45,6 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.46.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260622175928-b703f567277d // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
