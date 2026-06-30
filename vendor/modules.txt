@@ -1,11 +1,11 @@
-# code.cloudfoundry.org/clock v1.75.0
+# code.cloudfoundry.org/clock v1.76.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
-# code.cloudfoundry.org/debugserver v0.102.0
+# code.cloudfoundry.org/debugserver v0.103.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/debugserver
-# code.cloudfoundry.org/diego-db-helpers v0.4.0
+# code.cloudfoundry.org/diego-db-helpers v0.5.0
 ## explicit; go 1.26.0
 code.cloudfoundry.org/diego-db-helpers/guidprovider
 code.cloudfoundry.org/diego-db-helpers/guidprovider/guidproviderfakes
@@ -15,14 +15,14 @@ code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor
 code.cloudfoundry.org/diego-db-helpers/sqldb/helpers/monitor/monitorfakes
 code.cloudfoundry.org/diego-db-helpers/testhelpers
 code.cloudfoundry.org/diego-db-helpers/testhelpers/sqlrunner
-# code.cloudfoundry.org/diego-logging-client v0.112.0
+# code.cloudfoundry.org/diego-logging-client v0.113.0
 ## explicit; go 1.25.8
 code.cloudfoundry.org/diego-logging-client
 code.cloudfoundry.org/diego-logging-client/testhelpers
-# code.cloudfoundry.org/durationjson v0.77.0
+# code.cloudfoundry.org/durationjson v0.78.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/durationjson
-# code.cloudfoundry.org/go-diodes v0.0.0-20260622134745-74c0e1643bdd
+# code.cloudfoundry.org/go-diodes v0.0.0-20260629064500-85da08bf73ac
 ## explicit; go 1.25.0
 code.cloudfoundry.org/go-diodes
 # code.cloudfoundry.org/go-loggregator/v9 v9.2.1
@@ -33,7 +33,7 @@ code.cloudfoundry.org/go-loggregator/v9/runtimeemitter
 # code.cloudfoundry.org/inigo v0.0.0-20250908175034-b7230e46c815
 ## explicit
 code.cloudfoundry.org/inigo/helpers/portauthority
-# code.cloudfoundry.org/lager/v3 v3.74.0
+# code.cloudfoundry.org/lager/v3 v3.75.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
@@ -124,8 +124,8 @@ github.com/onsi/ginkgo/v2/internal/reporters
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.42.0
-## explicit; go 1.24.0
+# github.com/onsi/gomega v1.42.1
+## explicit; go 1.25.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/gbytes
@@ -159,7 +159,7 @@ github.com/tedsuo/ifrit/ginkgomon_v2
 github.com/tedsuo/ifrit/grouper
 github.com/tedsuo/ifrit/http_server
 github.com/tedsuo/ifrit/sigmon
-# go.step.sm/crypto v0.83.0
+# go.step.sm/crypto v0.84.1
 ## explicit; go 1.25.8
 go.step.sm/crypto/fingerprint
 go.step.sm/crypto/internal/bcrypt_pbkdf
@@ -240,7 +240,7 @@ golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
-# golang.org/x/tools v0.46.0
+# golang.org/x/tools v0.47.0
 ## explicit; go 1.25.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/edge
