@@ -3,18 +3,18 @@ module code.cloudfoundry.org/locket
 go 1.26.0
 
 require (
-	code.cloudfoundry.org/clock v1.81.0
-	code.cloudfoundry.org/debugserver v0.108.0
-	code.cloudfoundry.org/diego-db-helpers v0.8.0
-	code.cloudfoundry.org/diego-logging-client v0.118.0
-	code.cloudfoundry.org/durationjson v0.82.0
+	code.cloudfoundry.org/clock v1.82.0
+	code.cloudfoundry.org/debugserver v0.109.0
+	code.cloudfoundry.org/diego-db-helpers v0.10.0
+	code.cloudfoundry.org/diego-logging-client v0.119.0
+	code.cloudfoundry.org/durationjson v0.84.0
 	code.cloudfoundry.org/go-loggregator/v9 v9.2.1
 	code.cloudfoundry.org/inigo v0.0.0-20250908175034-b7230e46c815
-	code.cloudfoundry.org/lager/v3 v3.80.0
-	code.cloudfoundry.org/tlsconfig v0.63.0
+	code.cloudfoundry.org/lager/v3 v3.81.0
+	code.cloudfoundry.org/tlsconfig v0.64.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/onsi/ginkgo/v2 v2.32.0
+	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.42.1
 	github.com/pkg/errors v0.9.1
 	github.com/square/certstrap v1.3.0
@@ -39,12 +39,12 @@ require (
 	go.step.sm/crypto v0.87.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260810153831-ec0a7760b754 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 )
