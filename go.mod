@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.42.1
 	github.com/pkg/errors v0.9.1
 	github.com/square/certstrap v1.3.0
-	github.com/tedsuo/ifrit v0.0.0-20260813155221-94822c932811
+	github.com/tedsuo/ifrit v0.0.0-20260418191334-846868129986
 	google.golang.org/grpc v1.83.0
 )
 
@@ -47,4 +47,9 @@ require (
 	golang.org/x/tools v0.49.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
+)
+
+replace (
+	// pin ifrit until https://github.com/tedsuo/ifrit/pull/48 is merged
+	github.com/tedsuo/ifrit => github.com/tedsuo/ifrit v0.0.0-20260418191334-846868129986
 )
