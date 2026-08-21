@@ -3,27 +3,27 @@ module code.cloudfoundry.org/locket
 go 1.26.0
 
 require (
-	code.cloudfoundry.org/clock v1.83.0
-	code.cloudfoundry.org/debugserver v0.110.0
-	code.cloudfoundry.org/diego-db-helpers v0.11.0
-	code.cloudfoundry.org/diego-logging-client v0.120.0
-	code.cloudfoundry.org/durationjson v0.85.0
+	code.cloudfoundry.org/clock v1.84.0
+	code.cloudfoundry.org/debugserver v0.111.0
+	code.cloudfoundry.org/diego-db-helpers v0.12.0
+	code.cloudfoundry.org/diego-logging-client v0.121.0
+	code.cloudfoundry.org/durationjson v0.86.0
 	code.cloudfoundry.org/go-loggregator/v9 v9.2.1
 	code.cloudfoundry.org/inigo v0.0.0-20250908175034-b7230e46c815
 	code.cloudfoundry.org/lager/v3 v3.82.0
-	code.cloudfoundry.org/tlsconfig v0.64.0
+	code.cloudfoundry.org/tlsconfig v0.65.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.42.1
 	github.com/pkg/errors v0.9.1
 	github.com/square/certstrap v1.3.0
-	github.com/tedsuo/ifrit v0.0.0-20260418191334-846868129986
-	google.golang.org/grpc v1.83.0
+	github.com/tedsuo/ifrit v0.0.0-20260813155221-94822c932811
+	google.golang.org/grpc v1.83.1
 )
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20260720065427-59f65622c841 // indirect
+	code.cloudfoundry.org/go-diodes v0.0.0-20260818081020-5f89c9327272 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
@@ -45,11 +45,9 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
-replace (
-	// pin ifrit until https://github.com/tedsuo/ifrit/pull/48 is merged
-	github.com/tedsuo/ifrit => github.com/tedsuo/ifrit v0.0.0-20260418191334-846868129986
-)
+// pin ifrit until https://github.com/tedsuo/ifrit/pull/48 is merged
+replace github.com/tedsuo/ifrit => github.com/tedsuo/ifrit v0.0.0-20260418191334-846868129986
