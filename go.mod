@@ -3,34 +3,34 @@ module code.cloudfoundry.org/locket
 go 1.26.0
 
 require (
-	code.cloudfoundry.org/clock v1.84.0
-	code.cloudfoundry.org/debugserver v0.111.0
+	code.cloudfoundry.org/clock v1.85.0
+	code.cloudfoundry.org/debugserver v0.112.0
 	code.cloudfoundry.org/diego-db-helpers v0.12.0
-	code.cloudfoundry.org/diego-logging-client v0.121.0
-	code.cloudfoundry.org/durationjson v0.86.0
+	code.cloudfoundry.org/diego-logging-client v0.122.0
+	code.cloudfoundry.org/durationjson v0.87.0
 	code.cloudfoundry.org/go-loggregator/v9 v9.2.1
 	code.cloudfoundry.org/inigo v0.0.0-20250908175034-b7230e46c815
-	code.cloudfoundry.org/lager/v3 v3.82.0
+	code.cloudfoundry.org/lager/v3 v3.84.0
 	code.cloudfoundry.org/tlsconfig v0.65.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/onsi/ginkgo/v2 v2.32.1
-	github.com/onsi/gomega v1.42.1
+	github.com/onsi/gomega v1.43.0
 	github.com/pkg/errors v0.9.1
 	github.com/square/certstrap v1.3.0
 	github.com/tedsuo/ifrit v0.0.0-20260813155221-94822c932811
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 )
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20260818081020-5f89c9327272 // indirect
+	code.cloudfoundry.org/go-diodes v0.0.0-20260831145205-e8366a756183 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-sql-driver/mysql v1.10.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260824235931-c0b50f2f6510 // indirect
+	github.com/google/pprof v0.0.0-20260830191439-4932ad3515ea // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.10.0 // indirect
@@ -45,7 +45,7 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260831171406-18b4a7587f8a // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
