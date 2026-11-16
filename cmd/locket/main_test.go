@@ -208,14 +208,25 @@ var _ = Describe("Locket", func() {
 				It("increases the DBOpenConnections metric", func() {
 					metricName := "DBOpenConnections"
 					openConnections := make(chan float64, 10)
+					metricsChan, done := testMetricsChan, make(chan struct{})
+					DeferCleanup(func() { close(done) })
 					go func() {
 						for {
-							metric := <-testMetricsChan
+							var metric *loggregator_v2.Envelope
+							select {
+							case metric = <-metricsChan:
+							case <-done:
+								return
+							}
 							gauge := metric.GetGauge()
 							if gauge != nil {
 								metrics := gauge.GetMetrics()
 								if m, found := metrics[metricName]; found {
-									openConnections <- m.Value
+									select {
+									case openConnections <- m.Value:
+									case <-done:
+										return
+									}
 								}
 							}
 						}
@@ -234,14 +245,25 @@ var _ = Describe("Locket", func() {
 					It("eventually decreases the DBOpenConnections metric", func() {
 						metricName := "DBOpenConnections"
 						openConnections := make(chan float64, 10)
+						metricsChan, done := testMetricsChan, make(chan struct{})
+						DeferCleanup(func() { close(done) })
 						go func() {
 							for {
-								metric := <-testMetricsChan
+								var metric *loggregator_v2.Envelope
+								select {
+								case metric = <-metricsChan:
+								case <-done:
+									return
+								}
 								gauge := metric.GetGauge()
 								if gauge != nil {
 									metrics := gauge.GetMetrics()
 									if m, found := metrics[metricName]; found {
-										openConnections <- m.Value
+										select {
+										case openConnections <- m.Value:
+										case <-done:
+											return
+										}
 									}
 								}
 							}
