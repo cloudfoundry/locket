@@ -208,18 +208,9 @@ var _ = Describe("Locket", func() {
 				It("increases the DBOpenConnections metric", func() {
 					metricName := "DBOpenConnections"
 					openConnections := make(chan float64, 10)
-					go func() {
-						for {
-							metric := <-testMetricsChan
-							gauge := metric.GetGauge()
-							if gauge != nil {
-								metrics := gauge.GetMetrics()
-								if m, found := metrics[metricName]; found {
-									openConnections <- m.Value
-								}
-							}
-						}
-					}()
+					done := make(chan struct{})
+					DeferCleanup(func() { close(done) })
+					go forwardMetric(testMetricsChan, done, metricName, openConnections)
 					Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
 					Consistently(func() float64 { return <-openConnections }, 10*time.Second).Should(BeNumerically(">", 5))
 				})
@@ -234,18 +225,9 @@ var _ = Describe("Locket", func() {
 					It("eventually decreases the DBOpenConnections metric", func() {
 						metricName := "DBOpenConnections"
 						openConnections := make(chan float64, 10)
-						go func() {
-							for {
-								metric := <-testMetricsChan
-								gauge := metric.GetGauge()
-								if gauge != nil {
-									metrics := gauge.GetMetrics()
-									if m, found := metrics[metricName]; found {
-										openConnections <- m.Value
-									}
-								}
-							}
-						}()
+						done := make(chan struct{})
+						DeferCleanup(func() { close(done) })
+						go forwardMetric(testMetricsChan, done, metricName, openConnections)
 						Eventually(openConnections).Should(Receive(BeNumerically(">", 5)))
 						Eventually(openConnections).Should(Receive(BeNumerically("<", 5)))
 					})
@@ -494,3 +476,25 @@ var _ = Describe("Locket", func() {
 		})
 	})
 })
+
+// forwardMetric sends the value of the named gauge from metricsChan to out
+// until done is closed. metricsChan is passed in (rather than read from the
+// package-level testMetricsChan) so the goroutine never races with the suite's
+// BeforeEach reassigning it.
+func forwardMetric(metricsChan <-chan *loggregator_v2.Envelope, done <-chan struct{}, name string, out chan<- float64) {
+	for {
+		var metric *loggregator_v2.Envelope
+		select {
+		case metric = <-metricsChan:
+		case <-done:
+			return
+		}
+		if m, found := metric.GetGauge().GetMetrics()[name]; found {
+			select {
+			case out <- m.Value:
+			case <-done:
+				return
+			}
+		}
+	}
+}
